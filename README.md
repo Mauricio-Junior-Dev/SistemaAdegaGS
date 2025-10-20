@@ -11,6 +11,252 @@ Sistema completo para gerenciamento de adega com:
 
 ## 🚀 Deploy em Servidor de Produção
 
+## 🐳 Deploy com Docker (Recomendado)
+
+### Docker Compose para Produção
+
+```yaml
+# docker-compose.prod.yml
+version: '3.8'
+
+services:
+  # Backend Laravel
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: adega-backend
+    restart: unless-stopped
+    environment:
+      - APP_ENV=production
+      - APP_DEBUG=false
+      - DB_HOST=mysql
+      - DB_DATABASE=adega_gs_prod
+      - DB_USERNAME=adega_user
+      - DB_PASSWORD=senha_super_segura_aqui
+      - REDIS_HOST=redis
+    volumes:
+      - ./backend:/var/www/html
+      - backend_storage:/var/www/html/storage
+    depends_on:
+      - mysql
+      - redis
+    networks:
+      - adega-network
+
+  # Frontend Angular
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: adega-frontend
+    restart: unless-stopped
+    environment:
+      - API_URL=https://seudominio.com/api
+      - GOOGLE_CLIENT_ID=SEU_GOOGLE_CLIENT_ID_AQUI
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - adega-network
+
+  # Nginx
+  nginx:
+    image: nginx:alpine
+    container_name: adega-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/ssl:/etc/nginx/ssl
+      - ./frontend/dist:/var/www/html
+      - ./backend/public:/var/www/html/api
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - adega-network
+
+  # MySQL
+  mysql:
+    image: mysql:8.0
+    container_name: adega-mysql
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=root_password_super_segura
+      - MYSQL_DATABASE=adega_gs_prod
+      - MYSQL_USER=adega_user
+      - MYSQL_PASSWORD=senha_super_segura_aqui
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - adega-network
+
+  # Redis
+  redis:
+    image: redis:alpine
+    container_name: adega-redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    networks:
+      - adega-network
+
+volumes:
+  mysql_data:
+  redis_data:
+  backend_storage:
+
+networks:
+  adega-network:
+    driver: bridge
+```
+
+### Dockerfile do Backend
+
+```dockerfile
+# backend/Dockerfile
+FROM php:8.1-fpm-alpine
+
+# Instalar dependências
+RUN apk add --no-cache \
+    nginx \
+    mysql-client \
+    nodejs \
+    npm \
+    git \
+    unzip
+
+# Instalar extensões PHP
+RUN docker-php-ext-install pdo pdo_mysql
+
+# Instalar Composer
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+# Configurar diretório de trabalho
+WORKDIR /var/www/html
+
+# Copiar arquivos
+COPY . .
+
+# Instalar dependências
+RUN composer install --no-dev --optimize-autoloader
+
+# Configurar permissões
+RUN chown -R www-data:www-data /var/www/html
+RUN chmod -R 755 /var/www/html
+
+EXPOSE 9000
+CMD ["php-fpm"]
+```
+
+### Dockerfile do Frontend
+
+```dockerfile
+# frontend/Dockerfile
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Copiar package.json
+COPY package*.json ./
+
+# Instalar dependências
+RUN npm ci --only=production
+
+# Copiar código
+COPY . .
+
+# Build para produção
+RUN npm run build --configuration=production
+
+# Servir arquivos estáticos
+FROM nginx:alpine
+COPY --from=0 /app/dist/adega /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/nginx.conf
+
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]
+```
+
+### Comandos para Deploy com Docker
+
+```bash
+# 1. Clonar repositório
+git clone https://github.com/seu-usuario/adega.git
+cd adega
+
+# 2. Configurar variáveis de ambiente
+cp .env.example .env
+nano .env
+
+# 3. Configurar Google OAuth
+# Editar frontend/src/environments/environment.prod.ts
+# Adicionar seu Google Client ID
+
+# 4. Build e deploy
+docker-compose -f docker-compose.prod.yml up -d --build
+
+# 5. Executar migrações
+docker-compose -f docker-compose.prod.yml exec backend php artisan migrate --force
+
+# 6. Configurar permissões
+docker-compose -f docker-compose.prod.yml exec backend chown -R www-data:www-data storage
+docker-compose -f docker-compose.prod.yml exec backend chmod -R 775 storage
+
+# 7. Verificar status
+docker-compose -f docker-compose.prod.yml ps
+```
+
+### Configuração do Nginx para Docker
+
+```nginx
+# nginx/nginx.conf
+events {
+    worker_connections 1024;
+}
+
+http {
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+
+    # Frontend (Angular)
+    server {
+        listen 80;
+        server_name seudominio.com www.seudominio.com;
+        root /var/www/html;
+        index index.html;
+
+        # Frontend
+        location / {
+            try_files $uri $uri/ /index.html;
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+        }
+
+        # Backend API
+        location /api {
+            proxy_pass http://backend:9000;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        # Storage
+        location /storage {
+            alias /var/www/html/api/storage;
+            expires 1y;
+            add_header Cache-Control "public";
+        }
+    }
+}
+```
+
+## 🚀 Deploy Tradicional (Sem Docker)
+
 ### Requisitos do Servidor
 
 - **PHP**: 8.1+ com extensões: OpenSSL, PDO, Mbstring, Tokenizer, XML, Ctype, JSON, BCMath, Fileinfo, GD
@@ -144,7 +390,8 @@ nano src/environments/environment.prod.ts
 export const environment = {
   production: true,
   apiUrl: 'https://seudominio.com/api',
-  sanctumUrl: 'https://seudominio.com/sanctum'
+  sanctumUrl: 'https://seudominio.com/sanctum',
+  googleClientId: 'SEU_GOOGLE_CLIENT_ID_AQUI' // Substitua pelo seu Client ID do Google
 };
 ```
 
@@ -157,7 +404,47 @@ ng build --configuration=production
 sudo cp -r dist/adega/* /var/www/adega/frontend/
 ```
 
-### 5. Configuração do Nginx
+### 5. Configuração do Google OAuth para Produção
+
+**IMPORTANTE**: Antes de fazer o deploy, configure o Google OAuth:
+
+#### 5.1. Configurar Google Cloud Console
+
+1. **Acesse** [Google Cloud Console](https://console.cloud.google.com/)
+2. **Vá em** "APIs & Services" → "Credentials"
+3. **Clique** no seu OAuth 2.0 Client ID existente
+4. **Adicione** as seguintes origens autorizadas:
+
+```
+Origens JavaScript autorizadas:
+- https://seudominio.com
+- https://www.seudominio.com
+
+URIs de redirecionamento autorizados:
+- https://seudominio.com/login
+- https://www.seudominio.com/login
+```
+
+#### 5.2. Ativar APIs Necessárias
+
+No Google Cloud Console, ative as seguintes APIs:
+- ✅ **Identity Toolkit API**
+- ✅ **Identity and Access Management (IAM) API**
+- ✅ **Google+ API** (se disponível)
+
+#### 5.3. Configurar Environment de Produção
+
+```bash
+# No arquivo frontend/src/environments/environment.prod.ts
+export const environment = {
+  production: true,
+  apiUrl: 'https://seudominio.com/api',
+  sanctumUrl: 'https://seudominio.com/sanctum',
+  googleClientId: 'SEU_GOOGLE_CLIENT_ID_AQUI' // Substitua pelo seu Client ID
+};
+```
+
+### 6. Configuração do Nginx
 
 ```bash
 # Criar configuração do site
@@ -242,7 +529,7 @@ sudo nginx -t
 sudo systemctl reload nginx
 ```
 
-### 6. Configuração de SSL (Let's Encrypt)
+### 7. Configuração de SSL (Let's Encrypt)
 
 ```bash
 # Instalar Certbot
@@ -256,7 +543,7 @@ sudo crontab -e
 # Adicionar: 0 12 * * * /usr/bin/certbot renew --quiet
 ```
 
-### 7. Configuração de Backup
+### 8. Configuração de Backup
 
 ```bash
 # Script de backup automático
@@ -296,7 +583,7 @@ sudo crontab -e
 # Adicionar: 0 2 * * * /usr/local/bin/backup-adega.sh
 ```
 
-### 8. Monitoramento e Logs
+### 9. Monitoramento e Logs
 
 ```bash
 # Verificar status dos serviços
@@ -315,7 +602,7 @@ df -h
 free -h
 ```
 
-### 9. Configurações de Segurança
+### 10. Configurações de Segurança
 
 ```bash
 # Firewall
@@ -392,6 +679,67 @@ php artisan route:clear
 php artisan view:clear
 php artisan optimize
 ```
+
+## 🔐 Configuração do Login com Google em Produção
+
+### Passo a Passo Completo
+
+#### 1. Configurar Google Cloud Console
+
+```bash
+# 1. Acesse https://console.cloud.google.com/
+# 2. Vá em "APIs & Services" → "Credentials"
+# 3. Clique no seu OAuth 2.0 Client ID
+# 4. Configure as seguintes URLs:
+
+Origens JavaScript autorizadas:
+- https://seudominio.com
+- https://www.seudominio.com
+
+URIs de redirecionamento autorizados:
+- https://seudominio.com/login
+- https://www.seudominio.com/login
+```
+
+#### 2. Ativar APIs Necessárias
+
+No Google Cloud Console, ative:
+- ✅ **Identity Toolkit API**
+- ✅ **Identity and Access Management (IAM) API**
+- ✅ **Google+ API** (se disponível)
+
+#### 3. Configurar Environment de Produção
+
+```typescript
+// frontend/src/environments/environment.prod.ts
+export const environment = {
+  production: true,
+  apiUrl: 'https://seudominio.com/api',
+  sanctumUrl: 'https://seudominio.com/sanctum',
+  googleClientId: 'SEU_GOOGLE_CLIENT_ID_AQUI' // Substitua pelo seu Client ID
+};
+```
+
+#### 4. Testar Login Google
+
+```bash
+# 1. Acesse https://seudominio.com/login
+# 2. Clique no botão "Entrar com Google"
+# 3. Faça login com sua conta Google
+# 4. Verifique se foi redirecionado corretamente
+```
+
+#### 5. Solução de Problemas
+
+**Erro 403 no Console:**
+- ✅ **Normal** - Não afeta o funcionamento
+- ✅ **Login funciona** - Apenas verificação de status
+- ✅ **Pode ignorar** - Erro cosmético
+
+**Login não funciona:**
+- ❌ Verificar se as URLs estão corretas no Google Console
+- ❌ Verificar se as APIs estão ativadas
+- ❌ Verificar se o Client ID está correto
 
 ## 👥 Usuários de Teste
 

@@ -1,8 +1,9 @@
-import { Component } from '@angular/core';
+import { Component, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthService } from '../../../core/services/auth.service';
+import { SocialAuthService } from '../../../core/services/social-auth.service';
 import { Router } from '@angular/router';
 
 @Component({
@@ -12,7 +13,7 @@ import { Router } from '@angular/router';
   standalone: true,
   imports: [CommonModule, RouterModule, ReactiveFormsModule]
 })
-export class RegisterComponent {
+export class RegisterComponent implements OnDestroy {
   registerForm: FormGroup;
   loading = false;
   error: string | null = null;
@@ -20,6 +21,7 @@ export class RegisterComponent {
   constructor(
     private fb: FormBuilder,
     private authService: AuthService,
+    private socialAuthService: SocialAuthService,
     private router: Router
   ) {
     this.registerForm = this.fb.group({
@@ -32,6 +34,53 @@ export class RegisterComponent {
     }, {
       validators: this.passwordMatchValidator
     });
+
+    // Inicializar serviços de autenticação social
+    this.initializeSocialAuth();
+    
+    // Escutar eventos de autenticação social
+    window.addEventListener('social-auth-success', this.handleSocialAuthSuccess.bind(this));
+    window.addEventListener('social-auth-error', this.handleSocialAuthError.bind(this));
+  }
+
+  ngOnDestroy(): void {
+    // Remover listeners
+    window.removeEventListener('social-auth-success', this.handleSocialAuthSuccess.bind(this));
+    window.removeEventListener('social-auth-error', this.handleSocialAuthError.bind(this));
+  }
+
+  private async initializeSocialAuth(): Promise<void> {
+    try {
+      await this.socialAuthService.initializeGoogle();
+    } catch (error) {
+      console.error('Erro ao inicializar autenticação social:', error);
+    }
+  }
+
+  loginWithGoogle(): void {
+    this.loading = true;
+    this.error = null;
+    
+    if (window.google && window.google.accounts) {
+      window.google.accounts.id.prompt();
+    }
+  }
+
+
+  private handleSocialAuthSuccess(event: any): void {
+    const authResponse = event.detail;
+    
+    // Salvar dados de autenticação
+    this.authService.saveAuth(authResponse);
+    
+    // Redirecionar para a página inicial
+    this.router.navigate(['/']);
+    this.loading = false;
+  }
+
+  private handleSocialAuthError(event: any): void {
+    this.error = 'Erro na autenticação social. Tente novamente.';
+    this.loading = false;
   }
 
   private passwordMatchValidator(g: FormGroup) {

@@ -63,6 +63,9 @@ export class CheckoutComponent implements OnInit {
   selectedAddressId: number | null = null;
   useSavedAddress = false;
   loadingAddresses = false;
+  
+  // Controle de Steps
+  currentStep = 1;
 
   constructor(
     private fb: FormBuilder,
@@ -278,6 +281,19 @@ export class CheckoutComponent implements OnInit {
    */
   clearError(): void {
     this.error = null;
+  }
+
+  // Controle de Steps
+  nextStep(): void {
+    if (this.currentStep < 4) {
+      this.currentStep++;
+    }
+  }
+
+  prevStep(): void {
+    if (this.currentStep > 1) {
+      this.currentStep--;
+    }
   }
 
   async onSubmit(): Promise<void> {

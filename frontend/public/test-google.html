@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Teste Google Sign-In</title>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+    <h1>Teste Google Sign-In</h1>
+    <div id="g_id_onload"
+         data-client_id="908499908342-sjub85e0ld97i2438vu517tu3qdebd66.apps.googleusercontent.com"
+         data-callback="handleCredentialResponse">
+    </div>
+    <div class="g_id_signin" data-type="standard"></div>
+
+    <script>
+        function handleCredentialResponse(response) {
+            console.log("Encoded JWT ID token: " + response.credential);
+            
+            // Decodificar o JWT
+            const payload = JSON.parse(atob(response.credential.split('.')[1]));
+            console.log("Payload:", payload);
+            
+            alert("Login com Google funcionou! Email: " + payload.email);
+        }
+    </script>
+</body>
+</html>

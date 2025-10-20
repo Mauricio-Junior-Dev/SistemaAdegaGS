@@ -1,8 +1,9 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router, ActivatedRoute } from '@angular/router';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthService } from '../../../core/services/auth.service';
+import { SocialAuthService } from '../../../core/services/social-auth.service';
 
 @Component({
   selector: 'app-login',
@@ -11,7 +12,7 @@ import { AuthService } from '../../../core/services/auth.service';
   standalone: true,
   imports: [CommonModule, RouterModule, ReactiveFormsModule]
 })
-export class LoginComponent implements OnInit {
+export class LoginComponent implements OnInit, OnDestroy {
   loginForm: FormGroup;
   loading = false;
   error: string | null = null;
@@ -20,6 +21,7 @@ export class LoginComponent implements OnInit {
   constructor(
     private fb: FormBuilder,
     private authService: AuthService,
+    private socialAuthService: SocialAuthService,
     private router: Router,
     private route: ActivatedRoute
   ) {
@@ -32,6 +34,124 @@ export class LoginComponent implements OnInit {
   ngOnInit(): void {
     // Capturar o returnUrl dos query params
     this.returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/';
+    
+    // Inicializar serviços de autenticação social
+    this.initializeSocialAuth();
+    
+    // Escutar eventos de autenticação social
+    window.addEventListener('social-auth-success', this.handleSocialAuthSuccess.bind(this));
+    window.addEventListener('social-auth-error', this.handleSocialAuthError.bind(this));
+    
+    // Configurar callback global do Google
+    (window as any).handleGoogleResponse = (response: any) => {
+      this.handleGoogleResponse(response);
+    };
+  }
+
+  ngOnDestroy(): void {
+    // Remover listeners
+    window.removeEventListener('social-auth-success', this.handleSocialAuthSuccess.bind(this));
+    window.removeEventListener('social-auth-error', this.handleSocialAuthError.bind(this));
+  }
+
+  private async initializeSocialAuth(): Promise<void> {
+    try {
+      await this.socialAuthService.initializeGoogle();
+    } catch (error) {
+      console.error('Erro ao inicializar autenticação social:', error);
+    }
+  }
+
+  loginWithGoogle(): void {
+    this.loading = true;
+    this.error = null;
+    this.socialAuthService.loginWithGoogle();
+  }
+
+  private handleSocialAuthSuccess(event: any): void {
+    const authResponse = event.detail;
+    
+    // Salvar dados de autenticação
+    this.authService.saveAuth(authResponse);
+    
+    // Redirecionar baseado no tipo de usuário
+    const userType = authResponse.user.type;
+    let targetRoute = this.returnUrl;
+
+    if (this.returnUrl === '/') {
+      switch (userType) {
+        case 'admin':
+          targetRoute = '/admin';
+          break;
+        case 'employee':
+          targetRoute = '/funcionario';
+          break;
+        case 'customer':
+          targetRoute = '/';
+          break;
+      }
+    }
+
+    this.router.navigate([targetRoute]);
+    this.loading = false;
+  }
+
+  private handleSocialAuthError(event: any): void {
+    this.error = 'Erro na autenticação social. Tente novamente.';
+    this.loading = false;
+  }
+
+  private handleGoogleResponse(response: any): void {
+    try {
+      // Decodificar o JWT token
+      const payload = JSON.parse(atob(response.credential.split('.')[1]));
+      
+      // Enviar para o backend
+      this.loading = true;
+      this.error = null;
+      
+      this.socialAuthService.sendSocialAuthToBackend('google', {
+        token: response.credential,
+        email: payload.email,
+        name: payload.name,
+        picture: payload.picture
+      }).subscribe({
+        next: (authResponse) => {
+          // Salvar dados de autenticação
+          this.authService.saveAuth(authResponse);
+          
+          // Redirecionar baseado no tipo de usuário
+          const userType = authResponse.user.type;
+          let targetRoute = this.returnUrl;
+
+          if (this.returnUrl === '/') {
+            switch (userType) {
+              case 'admin':
+                targetRoute = '/admin';
+                break;
+              case 'employee':
+                targetRoute = '/funcionario';
+                break;
+              case 'customer':
+                targetRoute = '/';
+                break;
+            }
+          }
+
+          this.router.navigate([targetRoute]);
+          this.loading = false;
+        },
+        error: (error) => {
+          console.error('Erro na autenticação social:', error);
+          this.error = 'Erro na autenticação social. Tente novamente.';
+          this.loading = false;
+        }
+      });
+    } catch (error) {
+      console.error('Erro ao processar token do Google:', error);
+      this.error = 'Erro ao processar login com Google';
+      this.loading = false;
+    }
   }
 
   onSubmit(): void {
@@ -42,33 +162,28 @@ export class LoginComponent implements OnInit {
     this.loading = true;
     this.error = null;
 
-    this.authService.login(this.loginForm.value).subscribe({
-      next: (response) => {
-        console.log('Login bem sucedido:', response);
-        // Redirecionar baseado no tipo de usuário
-        const userType = response.user.type;
-        let targetRoute = this.returnUrl;
+     this.authService.login(this.loginForm.value).subscribe({
+       next: (response) => {
+         // Redirecionar baseado no tipo de usuário
+         const userType = response.user.type;
+         let targetRoute = this.returnUrl;
 
-        if (this.returnUrl === '/') {
-          switch (userType) {
-            case 'admin':
-              targetRoute = '/admin';
-              break;
-            case 'employee':
-              targetRoute = '/funcionario';
-              break;
-            case 'customer':
-              targetRoute = '/';
-              break;
-          }
-        }
+         if (this.returnUrl === '/') {
+           switch (userType) {
+             case 'admin':
+               targetRoute = '/admin';
+               break;
+             case 'employee':
+               targetRoute = '/funcionario';
+               break;
+             case 'customer':
+               targetRoute = '/';
+               break;
+           }
+         }
 
-        console.log('Redirecionando para:', targetRoute);
-        this.router.navigate([targetRoute]).then(
-          () => console.log('Navegação bem sucedida'),
-          (err) => console.error('Erro na navegação:', err)
-        );
-      },
+         this.router.navigate([targetRoute]);
+       },
       error: (error) => {
         this.error = error.error.message || 'Erro ao fazer login';
         this.loading = false;

@@ -18,6 +18,7 @@ return new class extends Migration
             $table->string('password');
             $table->enum('type', ['admin', 'employee', 'customer']);
             $table->string('phone')->nullable();
+            $table->string('avatar')->nullable();
             $table->string('document_number')->nullable(); // CPF/CNPJ
             $table->boolean('is_active')->default(true);
             $table->rememberToken();

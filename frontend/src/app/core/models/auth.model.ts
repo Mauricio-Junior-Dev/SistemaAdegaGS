@@ -6,6 +6,7 @@ export interface User {
   document_number: string;
   type: 'admin' | 'employee' | 'customer';
   is_active: boolean;
+  avatar?: string;
   created_at: string;
   updated_at: string;
 }

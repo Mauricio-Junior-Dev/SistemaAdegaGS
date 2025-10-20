@@ -53,9 +53,25 @@
         <span *ngIf="loading">Entrando...</span>
       </button>
 
+      <!-- Social Login Divider -->
+      <div class="social-divider">
+        <span>ou</span>
+      </div>
+
+      <!-- Social Login Buttons -->
+      <div class="social-login">
+        <!-- Google Login -->
+        <div id="g_id_onload"
+             data-client_id="908499908342-sjub85e0ld97i2438vu517tu3qdebd66.apps.googleusercontent.com"
+             data-callback="handleGoogleResponse">
+        </div>
+        <div class="g_id_signin" data-type="standard" data-theme="outline" data-size="large"></div>
+
+      </div>
+
       <!-- Register Link -->
       <div class="auth-links">
-        <p>Ainda não tem uma conta? <a routerLink="/registro">Cadastre-se</a></p>
+        <p>Ainda não tem uma conta? <a routerLink="/register">Cadastre-se</a></p>
       </div>
     </form>
   </div>

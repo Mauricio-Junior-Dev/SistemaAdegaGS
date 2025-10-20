@@ -1,90 +1,103 @@
 <div class="checkout-page">
-  <div class="checkout-container">
-    <!-- Header -->
-    <div class="checkout-header">
-      <h1>Finalizar Pedido</h1>
-      <p class="checkout-subtitle">Complete seu pedido em poucos passos</p>
-    </div>
-
-    <div class="checkout-content">
-      <!-- Sidebar com Resumo -->
-      <div class="checkout-sidebar">
-        <div class="order-summary-card">
-          <h3>Resumo do Pedido</h3>
-          
-          <div class="cart-items">
-            <div *ngFor="let item of cartItems$ | async" class="cart-item">
-              <div class="item-image">
-                <img [src]="getImageUrl(item.product)" [alt]="item.product.name">
-              </div>
-              <div class="item-details">
-                <h4 class="item-name">{{ item.product.name }}</h4>
-                <div class="item-info">
-                  <span class="item-quantity">Qtd: {{ item.quantity }}</span>
-                  <span class="item-price">R$ {{ item.price | number:'1.2-2' }}</span>
-                </div>
-              </div>
+  <!-- Header com Progresso -->
+  <div class="checkout-header">
+    <div class="container">
+      <div class="header-content">
+        <div class="logo-section">
+          <h1>Finalizar Pedido</h1>
+          <p class="subtitle">Complete sua compra de forma rápida e segura</p>
+        </div>
+        
+        <!-- Barra de Progresso -->
+        <div class="progress-container">
+          <div class="progress-steps">
+            <div class="step" [class.active]="currentStep >= 1" [class.completed]="currentStep > 1">
+              <div class="step-number">1</div>
+              <span class="step-label">Carrinho</span>
             </div>
-          </div>
-
-          <div class="order-totals">
-            <div class="total-row">
-              <span>Subtotal</span>
-              <span>R$ {{ cartTotal$ | async | number:'1.2-2' }}</span>
+            <div class="step-line" [class.completed]="currentStep > 1"></div>
+            
+            <div class="step" [class.active]="currentStep >= 2" [class.completed]="currentStep > 2">
+              <div class="step-number">2</div>
+              <span class="step-label">Entrega</span>
             </div>
-            <div class="total-row">
-              <span>Taxa de entrega</span>
-              <span class="free-delivery">Grátis</span>
+            <div class="step-line" [class.completed]="currentStep > 2"></div>
+            
+            <div class="step" [class.active]="currentStep >= 3" [class.completed]="currentStep > 3">
+              <div class="step-number">3</div>
+              <span class="step-label">Pagamento</span>
             </div>
-            <div class="total-final">
-              <span>Total</span>
-              <span>R$ {{ cartTotal$ | async | number:'1.2-2' }}</span>
+            <div class="step-line" [class.completed]="currentStep > 3"></div>
+            
+            <div class="step" [class.active]="currentStep >= 4">
+              <div class="step-number">4</div>
+              <span class="step-label">Confirmação</span>
             </div>
           </div>
         </div>
       </div>
+    </div>
+  </div>
 
+  <div class="checkout-container">
+    <div class="checkout-layout">
       <!-- Conteúdo Principal -->
       <div class="checkout-main">
-        <mat-stepper orientation="vertical" class="modern-stepper">
-          <!-- Resumo do Carrinho -->
-          <mat-step label="Resumo do Pedido" [completed]="true">
-            <div class="step-content">
-              <div class="step-header">
+        <div class="checkout-steps">
+          
+          <!-- Step 1: Resumo do Carrinho -->
+          <div class="step-card" [class.active]="currentStep === 1">
+            <div class="step-header">
+              <div class="step-icon">
                 <mat-icon>shopping_cart</mat-icon>
-                <h2>Confirme seus itens</h2>
               </div>
-              <p class="step-description">Verifique os produtos que você está comprando</p>
-              
-              <div class="cart-preview">
-                <div *ngFor="let item of cartItems$ | async" class="preview-item">
-                  <img [src]="getImageUrl(item.product)" [alt]="item.product.name">
-                  <div class="preview-details">
-                    <h4>{{ item.product.name }}</h4>
-                    <p>{{ item.quantity }}x R$ {{ item.price | number:'1.2-2' }}</p>
+              <div class="step-info">
+                <h2>Confirme seus itens</h2>
+                <p>Verifique os produtos que você está comprando</p>
+              </div>
+            </div>
+            
+            <div class="step-content" *ngIf="currentStep === 1">
+              <div class="cart-items-list">
+                <div *ngFor="let item of cartItems$ | async" class="cart-item-modern">
+                  <div class="item-image">
+                    <img [src]="getImageUrl(item.product)" [alt]="item.product.name">
+                    <div class="quantity-badge">{{ item.quantity }}</div>
+                  </div>
+                  <div class="item-details">
+                    <h4 class="item-name">{{ item.product.name }}</h4>
+                    <p class="item-category">{{ item.product.category?.name || 'Categoria' }}</p>
+                    <div class="item-price">
+                      <span class="unit-price">R$ {{ item.price | number:'1.2-2' }} cada</span>
+                      <span class="total-price">R$ {{ (item.price * item.quantity) | number:'1.2-2' }}</span>
+                    </div>
                   </div>
                 </div>
               </div>
-
+              
               <div class="step-actions">
-                <button mat-raised-button color="primary" matStepperNext class="continue-btn">
+                <button mat-raised-button color="primary" (click)="nextStep()" class="continue-btn">
                   <mat-icon>arrow_forward</mat-icon>
-                  Continuar
+                  Continuar para Entrega
                 </button>
               </div>
             </div>
-          </mat-step>
+          </div>
 
-          <!-- Endereço de Entrega -->
-          <mat-step label="Endereço de Entrega" [stepControl]="deliveryForm">
-            <div class="step-content">
-              <div class="step-header">
+          <!-- Step 2: Endereço de Entrega -->
+          <div class="step-card" [class.active]="currentStep === 2">
+            <div class="step-header">
+              <div class="step-icon">
                 <mat-icon>location_on</mat-icon>
-                <h2>Onde entregar?</h2>
               </div>
-              <p class="step-description">Escolha ou cadastre um endereço de entrega</p>
-
-              <form [formGroup]="deliveryForm">
+              <div class="step-info">
+                <h2>Onde entregar?</h2>
+                <p>Escolha ou cadastre um endereço de entrega</p>
+              </div>
+            </div>
+            
+            <div class="step-content" *ngIf="currentStep === 2">
+              <form [formGroup]="deliveryForm" class="delivery-form">
                 <!-- Seleção de Endereços Salvos -->
                 <div *ngIf="addresses.length > 0" class="address-selection">
                   <div class="address-options">
@@ -201,28 +214,32 @@
                 </div>
 
                 <div class="step-actions">
-                  <button mat-button matStepperPrevious class="back-btn">
+                  <button mat-button (click)="prevStep()" class="back-btn">
                     <mat-icon>arrow_back</mat-icon>
                     Voltar
                   </button>
-                  <button mat-raised-button color="primary" matStepperNext [disabled]="!isDeliveryFormValid()" class="continue-btn">
+                  <button mat-raised-button color="primary" (click)="nextStep()" [disabled]="!isDeliveryFormValid()" class="continue-btn">
                     <mat-icon>arrow_forward</mat-icon>
-                    Continuar
+                    Continuar para Pagamento
                   </button>
                 </div>
               </form>
             </div>
-          </mat-step>
+          </div>
 
-          <!-- Forma de Pagamento -->
-          <mat-step label="Forma de Pagamento" [stepControl]="paymentForm">
-            <div class="step-content">
-              <div class="step-header">
+          <!-- Step 3: Forma de Pagamento -->
+          <div class="step-card" [class.active]="currentStep === 3">
+            <div class="step-header">
+              <div class="step-icon">
                 <mat-icon>payment</mat-icon>
-                <h2>Como pagar?</h2>
               </div>
-              <p class="step-description">Escolha a forma de pagamento que preferir</p>
-
+              <div class="step-info">
+                <h2>Como pagar?</h2>
+                <p>Escolha a forma de pagamento que preferir</p>
+              </div>
+            </div>
+            
+            <div class="step-content" *ngIf="currentStep === 3">
               <form [formGroup]="paymentForm">
                 <div class="payment-methods">
                   <mat-radio-group formControlName="method">
@@ -282,7 +299,7 @@
                 </div>
 
                 <div class="step-actions">
-                  <button mat-button matStepperPrevious [disabled]="loading" class="back-btn">
+                  <button mat-button (click)="prevStep()" [disabled]="loading" class="back-btn">
                     <mat-icon>arrow_back</mat-icon>
                     Voltar
                   </button>
@@ -295,8 +312,64 @@
                 </div>
               </form>
             </div>
-          </mat-step>
-        </mat-stepper>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sidebar com Resumo -->
+      <div class="checkout-sidebar">
+        <div class="order-summary-card">
+          <div class="summary-header">
+            <h3>Resumo do Pedido</h3>
+            <div class="item-count">{{ (cartItems$ | async)?.length || 0 }} itens</div>
+          </div>
+          
+          <div class="cart-items">
+            <div *ngFor="let item of cartItems$ | async" class="cart-item">
+              <div class="item-image">
+                <img [src]="getImageUrl(item.product)" [alt]="item.product.name">
+              </div>
+              <div class="item-details">
+                <h4 class="item-name">{{ item.product.name }}</h4>
+                <div class="item-info">
+                  <span class="item-quantity">Qtd: {{ item.quantity }}</span>
+                  <span class="item-price">R$ {{ item.price | number:'1.2-2' }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="order-totals">
+            <div class="total-row">
+              <span>Subtotal</span>
+              <span>R$ {{ cartTotal$ | async | number:'1.2-2' }}</span>
+            </div>
+            <div class="total-row">
+              <span>Taxa de entrega</span>
+              <span class="free-delivery">Grátis</span>
+            </div>
+            <div class="total-final">
+              <span>Total</span>
+              <span>R$ {{ cartTotal$ | async | number:'1.2-2' }}</span>
+            </div>
+          </div>
+
+          <!-- Garantias e Segurança -->
+          <div class="security-badges">
+            <div class="badge">
+              <mat-icon>security</mat-icon>
+              <span>Compra 100% Segura</span>
+            </div>
+            <div class="badge">
+              <mat-icon>local_shipping</mat-icon>
+              <span>Entrega Rápida</span>
+            </div>
+            <div class="badge">
+              <mat-icon>support_agent</mat-icon>
+              <span>Suporte 24/7</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>

@@ -29,7 +29,7 @@ export class AuthService {
     }
   }
 
-  private saveAuth(response: AuthResponse): void {
+  private saveAuthInternal(response: AuthResponse): void {
     localStorage.setItem('user', JSON.stringify(response.user));
     localStorage.setItem('token', response.access_token);
     this.userSubject.next(response.user);
@@ -38,12 +38,12 @@ export class AuthService {
 
   register(data: RegisterRequest): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${this.apiUrl}/register`, data)
-      .pipe(tap(response => this.saveAuth(response)));
+      .pipe(tap(response => this.saveAuthInternal(response)));
   }
 
   login(data: LoginRequest): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${this.apiUrl}/login`, data)
-      .pipe(tap(response => this.saveAuth(response)));
+      .pipe(tap(response => this.saveAuthInternal(response)));
   }
 
   logout(): Observable<any> {
@@ -92,5 +92,12 @@ export class AuthService {
 
   getUser(): User | null {
     return this.userSubject.value;
+  }
+
+  saveAuth(response: AuthResponse): void {
+    localStorage.setItem('user', JSON.stringify(response.user));
+    localStorage.setItem('token', response.access_token);
+    this.userSubject.next(response.user);
+    this.tokenSubject.next(response.access_token);
   }
 }
