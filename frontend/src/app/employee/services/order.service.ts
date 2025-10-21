@@ -13,6 +13,14 @@ export interface OrderSummary {
   completed: number;
 }
 
+export interface OrderResponse {
+  data: Order[];
+  total: number;
+  current_page: number;
+  per_page: number;
+  last_page: number;
+}
+
 export type OrderStatus = 'pending' | 'delivering' | 'completed' | 'cancelled';
 export type PaymentMethod = 'dinheiro' | 'cartão de débito' | 'cartão de crédito' | 'pix';
 export type PaymentStatus = 'pending' | 'completed' | 'failed' | 'refunded';
@@ -119,20 +127,50 @@ export class OrderService {
       .subscribe();
   }
 
-  fetchOrders(filters?: { status?: OrderStatus }): Observable<Order[]> {
-    let params = {};
+  fetchOrders(filters?: { 
+    status?: OrderStatus; 
+    page?: number; 
+    per_page?: number; 
+    search?: string;
+    sort_by?: string;
+    sort_order?: string;
+  }): Observable<OrderResponse> {
+    let params: any = {};
+    
     if (filters?.status) {
-      params = { status: filters.status };
+      params.status = filters.status;
+    }
+    if (filters?.page) {
+      params.page = filters.page;
+    }
+    if (filters?.per_page) {
+      params.per_page = filters.per_page;
+    }
+    if (filters?.search) {
+      params.search = filters.search;
+    }
+    if (filters?.sort_by) {
+      params.sort_by = filters.sort_by;
+    }
+    if (filters?.sort_order) {
+      params.sort_order = filters.sort_order;
     }
 
-    return this.http.get<Order[]>(this.apiUrl, { params }).pipe(
-      tap(orders => {
+    return this.http.get<OrderResponse>(this.apiUrl, { params }).pipe(
+      tap(response => {
         // Só atualizar o subject se não tivermos filtros específicos
         // (para evitar conflitos com o carregamento local)
-        if (!filters?.status) {
-          this.ordersSubject.next(orders);
+        if (!filters?.status && !filters?.search) {
+          this.ordersSubject.next(response.data);
         }
       })
+    );
+  }
+
+  // Método para compatibilidade com código existente
+  fetchOrdersLegacy(filters?: { status?: OrderStatus }): Observable<Order[]> {
+    return this.fetchOrders(filters).pipe(
+      map(response => response.data)
     );
   }
 

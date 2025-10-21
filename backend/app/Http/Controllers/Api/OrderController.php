@@ -18,14 +18,40 @@ class OrderController extends Controller
     {
         $query = Order::with(['items.product', 'user', 'payment', 'deliveryAddress']);
 
-        if ($request->has('status')) {
+        // Filtros
+        if ($request->has('status') && $request->status !== 'all') {
             $query->where('status', $request->status);
         }
 
-        $orders = $query->latest()->get();
+        // Busca por número do pedido ou nome do cliente
+        if ($request->has('search') && $request->search) {
+            $search = $request->search;
+            $query->where(function($q) use ($search) {
+                $q->where('order_number', 'like', "%{$search}%")
+                  ->orWhereHas('user', function($q) use ($search) {
+                      $q->where('name', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        // Ordenação
+        $sortBy = $request->get('sort_by', 'created_at');
+        $sortOrder = $request->get('sort_order', 'desc');
+        $query->orderBy($sortBy, $sortOrder);
+
+        // Paginação
+        $perPage = $request->get('per_page', 15);
+        $orders = $query->paginate($perPage);
+
         Log::info('OrderController@index - Orders found: ' . $orders->count());
 
-        return response()->json($orders);
+        return response()->json([
+            'data' => $orders->items(),
+            'total' => $orders->total(),
+            'current_page' => $orders->currentPage(),
+            'per_page' => $orders->perPage(),
+            'last_page' => $orders->lastPage()
+        ]);
     }
 
     public function myOrders(Request $request)

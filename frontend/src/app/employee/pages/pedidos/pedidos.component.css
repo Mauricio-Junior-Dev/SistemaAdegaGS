@@ -4,6 +4,24 @@
   min-height: 100vh;
 }
 
+.search-section {
+  margin-bottom: 20px;
+  padding: 16px 0;
+}
+
+.search-field {
+  width: 100%;
+  max-width: 400px;
+}
+
+.search-field input {
+  font-size: 16px; /* Evita zoom no mobile */
+}
+
+.search-field .mat-mdc-form-field-subscript-wrapper {
+  display: none; /* Remove linha de erro desnecessária */
+}
+
 .header-section {
   margin-bottom: 30px;
 }
@@ -245,9 +263,7 @@
 }
 
 .mat-mdc-row:hover {
-  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-  transform: scale(1.001);
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease;
 }
 
 .mat-mdc-header-cell {

@@ -4,7 +4,7 @@
     <div class="header-stats" *ngIf="!loading">
       <div class="stat-card">
         <mat-icon>receipt_long</mat-icon>
-        <span class="stat-number">{{orders.length}}</span>
+        <span class="stat-number">{{stats.total}}</span>
         <span class="stat-label">Total</span>
       </div>
       <div class="stat-card pending">
@@ -107,10 +107,29 @@
           <mat-icon>list_alt</mat-icon>
           Lista de Pedidos
         </mat-card-title>
-        <mat-card-subtitle>{{filteredOrders.length}} pedido(s) encontrado(s)</mat-card-subtitle>
+        <mat-card-subtitle>{{totalItems}} pedido(s) encontrado(s)</mat-card-subtitle>
       </mat-card-header>
       <mat-card-content>
-        <table mat-table [dataSource]="filteredOrders" class="orders-table">
+        <!-- Campo de Busca -->
+        <div class="search-section">
+          <mat-form-field appearance="outline" class="search-field">
+            <mat-label>Buscar pedidos...</mat-label>
+            <input matInput 
+                   [(ngModel)]="searchTerm"
+                   (ngModelChange)="onSearchChange($event)"
+                   placeholder="Número do pedido ou nome do cliente">
+            <mat-icon matSuffix *ngIf="!searching && !searchTerm">search</mat-icon>
+            <mat-spinner matSuffix *ngIf="searching" diameter="20"></mat-spinner>
+            <button mat-icon-button 
+                    matSuffix 
+                    *ngIf="searchTerm && !searching"
+                    (click)="clearSearch()"
+                    matTooltip="Limpar busca">
+              <mat-icon>clear</mat-icon>
+            </button>
+          </mat-form-field>
+        </div>
+        <table mat-table [dataSource]="orders" class="orders-table">
           <!-- ID -->
           <ng-container matColumnDef="id">
             <th mat-header-cell *matHeaderCellDef>Pedido</th>
@@ -220,8 +239,17 @@
           <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
         </table>
 
+        <!-- Paginação -->
+        <mat-paginator
+          [length]="totalItems"
+          [pageSize]="pageSize"
+          [pageIndex]="currentPage"
+          [pageSizeOptions]="[10, 15, 30, 50]"
+          (page)="onPageChange($event)">
+        </mat-paginator>
+
         <!-- Empty State -->
-        <div *ngIf="filteredOrders.length === 0" class="empty-state">
+        <div *ngIf="orders.length === 0 && !loading" class="empty-state">
           <mat-icon>receipt_long</mat-icon>
           <p>Nenhum pedido encontrado</p>
         </div>

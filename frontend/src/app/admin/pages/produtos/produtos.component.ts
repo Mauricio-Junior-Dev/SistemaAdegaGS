@@ -209,7 +209,23 @@ export class ProdutosComponent implements OnInit, OnDestroy {
             },
             error: (error) => {
               console.error('Erro ao excluir produto:', error);
-              this.snackBar.open('Erro ao excluir produto', 'Fechar', { duration: 3000 });
+              
+              let errorMessage = 'Erro ao excluir produto';
+              
+              if (error.error && error.error.error) {
+                errorMessage = error.error.error;
+              } else if (error.status === 400) {
+                errorMessage = 'Não é possível excluir produto com pedidos associados';
+              } else if (error.status === 403) {
+                errorMessage = 'Acesso não autorizado';
+              } else if (error.status === 404) {
+                errorMessage = 'Produto não encontrado';
+              }
+              
+              this.snackBar.open(errorMessage, 'Fechar', { 
+                duration: 5000,
+                panelClass: ['error-snackbar']
+              });
             }
           });
       }
