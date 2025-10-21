@@ -76,6 +76,15 @@ Route::middleware(['admin'])->group(function () {
     Route::post('/admin/settings/backup', [SettingController::class, 'backup']);
     Route::get('/admin/settings/backups', [SettingController::class, 'listBackups']);
     Route::post('/admin/settings/restore', [SettingController::class, 'restore']);
+
+    // Banners
+    Route::get('/admin/banners', [App\Http\Controllers\BannerController::class, 'index']);
+    Route::get('/admin/banners/{banner}', [App\Http\Controllers\BannerController::class, 'show']);
+    Route::post('/admin/banners', [App\Http\Controllers\BannerController::class, 'store']);
+    Route::put('/admin/banners/{banner}', [App\Http\Controllers\BannerController::class, 'update']);
+    Route::delete('/admin/banners/{banner}', [App\Http\Controllers\BannerController::class, 'destroy']);
+    Route::post('/admin/banners/upload', [App\Http\Controllers\BannerController::class, 'upload']);
+    Route::post('/admin/banners/reorder', [App\Http\Controllers\BannerController::class, 'reorder']);
     
     // Endpoint de teste para debug
     Route::post('/admin/settings/test', function(\Illuminate\Http\Request $request) {

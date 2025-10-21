@@ -7,8 +7,14 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatCardModule } from '@angular/material/card';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 
 import { SystemSettings, SettingsService } from '../../../services/settings.service';
+import { BannerService, Banner } from '../../../../core/services/banner.service';
+import { BannerDialogComponent } from '../../../../shared/components/banner-dialog/banner-dialog.component';
 
 @Component({
   selector: 'app-general-settings',
@@ -21,7 +27,11 @@ import { SystemSettings, SettingsService } from '../../../services/settings.serv
     MatButtonModule,
     MatIconModule,
     MatSnackBarModule,
-    MatProgressBarModule
+    MatProgressBarModule,
+    MatCardModule,
+    MatChipsModule,
+    MatTooltipModule,
+    MatDialogModule
   ],
   template: `
     <div class="settings-section">
@@ -161,6 +171,59 @@ import { SystemSettings, SettingsService } from '../../../services/settings.serv
         </mat-form-field>
       </div>
 
+      <h2>Banners do Carrossel</h2>
+      <div class="banners-section">
+        <div class="banners-header">
+          <p>Gerencie os banners que aparecem no carrossel da página inicial</p>
+          <button mat-raised-button color="primary" (click)="addBanner()">
+            <mat-icon>add</mat-icon>
+            Adicionar Banner
+          </button>
+        </div>
+
+        <div class="banners-grid" *ngIf="banners.length > 0">
+          <mat-card *ngFor="let banner of banners; let i = index" class="banner-card">
+            <div class="banner-image">
+              <img [src]="getBannerImageUrl(banner.image_url)" [alt]="banner.title || 'Banner'">
+              <div class="banner-overlay">
+                <mat-chip [class]="banner.is_active ? 'status-active' : 'status-inactive'">
+                  {{ banner.is_active ? 'Ativo' : 'Inativo' }}
+                </mat-chip>
+              </div>
+            </div>
+            
+            <mat-card-content>
+              <h3>{{ banner.title || 'Sem título' }}</h3>
+              <p *ngIf="banner.subtitle">{{ banner.subtitle }}</p>
+              <p class="banner-order">Ordem: {{ banner.order }}</p>
+            </mat-card-content>
+            
+            <mat-card-actions>
+              <button mat-icon-button (click)="editBanner(banner)" matTooltip="Editar">
+                <mat-icon>edit</mat-icon>
+              </button>
+              <button mat-icon-button color="warn" (click)="deleteBanner(banner)" matTooltip="Excluir">
+                <mat-icon>delete</mat-icon>
+              </button>
+              <button mat-icon-button (click)="moveBanner(i, 'up')" [disabled]="i === 0" matTooltip="Mover para cima">
+                <mat-icon>keyboard_arrow_up</mat-icon>
+              </button>
+              <button mat-icon-button (click)="moveBanner(i, 'down')" [disabled]="i === banners.length - 1" matTooltip="Mover para baixo">
+                <mat-icon>keyboard_arrow_down</mat-icon>
+              </button>
+            </mat-card-actions>
+          </mat-card>
+        </div>
+
+        <div *ngIf="banners.length === 0" class="no-banners">
+          <mat-icon>image</mat-icon>
+          <p>Nenhum banner cadastrado</p>
+          <button mat-raised-button color="primary" (click)="addBanner()">
+            Adicionar Primeiro Banner
+          </button>
+        </div>
+      </div>
+
       <div class="actions">
         <button mat-raised-button
                 color="primary"
@@ -292,8 +355,92 @@ import { SystemSettings, SettingsService } from '../../../services/settings.serv
       margin-top: 8px;
     }
 
+    /* Banners Section */
+    .banners-section {
+      margin-bottom: 32px;
+    }
+
+    .banners-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .banners-header p {
+      color: #666;
+      margin: 0;
+    }
+
+    .banners-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+    }
+
+    .banner-card {
+      position: relative;
+    }
+
+    .banner-image {
+      position: relative;
+      height: 150px;
+      overflow: hidden;
+    }
+
+    .banner-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .banner-overlay {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+    }
+
+    .status-active {
+      background-color: #4caf50;
+      color: white;
+    }
+
+    .status-inactive {
+      background-color: #f44336;
+      color: white;
+    }
+
+    .banner-order {
+      font-size: 0.9rem;
+      color: #666;
+      margin: 8px 0 0 0;
+    }
+
+    .no-banners {
+      text-align: center;
+      padding: 40px;
+      color: #666;
+    }
+
+    .no-banners mat-icon {
+      font-size: 48px;
+      width: 48px;
+      height: 48px;
+      margin-bottom: 16px;
+    }
+
     @media (max-width: 600px) {
       .form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .banners-header {
+        flex-direction: column;
+        gap: 16px;
+        align-items: stretch;
+      }
+
+      .banners-grid {
         grid-template-columns: 1fr;
       }
 
@@ -314,15 +461,20 @@ export class GeneralSettingsComponent implements OnInit {
   uploading = false;
   uploadingFavicon = false;
   hasChanges = false;
+  banners: Banner[] = [];
+  loadingBanners = false;
   private originalSettings: Partial<SystemSettings> = {};
 
   constructor(
     private settingsService: SettingsService,
+    private bannerService: BannerService,
+    private dialog: MatDialog,
     private snackBar: MatSnackBar
   ) {}
 
   ngOnInit(): void {
     this.originalSettings = { ...this.settings };
+    this.loadBanners();
   }
 
   onLogoSelected(event: Event): void {
@@ -445,5 +597,117 @@ export class GeneralSettingsComponent implements OnInit {
     }
     
     return faviconUrl;
+  }
+
+  // Banner Management Methods
+  loadBanners(): void {
+    this.loadingBanners = true;
+    this.bannerService.getAllBanners().subscribe({
+      next: (banners: Banner[]) => {
+        this.banners = banners.sort((a: Banner, b: Banner) => a.order - b.order);
+        this.loadingBanners = false;
+      },
+      error: (error: any) => {
+        console.error('Erro ao carregar banners:', error);
+        this.snackBar.open('Erro ao carregar banners', 'Fechar', { duration: 3000 });
+        this.loadingBanners = false;
+      }
+    });
+  }
+
+  getBannerImageUrl(imageUrl: string): string {
+    if (!imageUrl) return '';
+    
+    // Se a URL já é completa, retorna como está
+    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+      return imageUrl;
+    }
+    
+    // Se é um caminho relativo, adiciona a URL do backend
+    if (imageUrl.startsWith('/storage/')) {
+      return 'http://localhost:8000' + imageUrl;
+    }
+    
+    // Se começa com storage/, adiciona a URL base
+    if (imageUrl.startsWith('storage/')) {
+      return 'http://localhost:8000/' + imageUrl;
+    }
+    
+    // Se não tem prefixo, adiciona storage/
+    return 'http://localhost:8000/storage/' + imageUrl;
+  }
+
+  addBanner(): void {
+    const dialogRef = this.dialog.open(BannerDialogComponent, {
+      width: '600px',
+      data: {
+        uploadImage: (file: File) => this.bannerService.uploadBannerImage(file),
+        createBanner: (banner: any) => this.bannerService.createBanner(banner),
+        updateBanner: (banner: any) => this.bannerService.updateBanner(banner)
+      }
+    });
+
+    dialogRef.afterClosed().subscribe((result) => {
+      if (result) {
+        this.loadBanners();
+      }
+    });
+  }
+
+  editBanner(banner: Banner): void {
+    const dialogRef = this.dialog.open(BannerDialogComponent, {
+      width: '600px',
+      data: {
+        banner,
+        uploadImage: (file: File) => this.bannerService.uploadBannerImage(file),
+        createBanner: (banner: any) => this.bannerService.createBanner(banner),
+        updateBanner: (banner: any) => this.bannerService.updateBanner(banner)
+      }
+    });
+
+    dialogRef.afterClosed().subscribe((result) => {
+      if (result) {
+        this.loadBanners();
+      }
+    });
+  }
+
+  deleteBanner(banner: Banner): void {
+    if (confirm(`Tem certeza que deseja excluir o banner "${banner.title || 'Sem título'}"?`)) {
+      this.bannerService.deleteBanner(banner.id).subscribe({
+        next: () => {
+          this.snackBar.open('Banner excluído com sucesso', 'Fechar', { duration: 3000 });
+          this.loadBanners();
+        },
+        error: (error: any) => {
+          console.error('Erro ao excluir banner:', error);
+          this.snackBar.open('Erro ao excluir banner', 'Fechar', { duration: 3000 });
+        }
+      });
+    }
+  }
+
+  moveBanner(index: number, direction: 'up' | 'down'): void {
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= this.banners.length) return;
+
+    // Troca as posições no array
+    const banner = this.banners[index];
+    this.banners[index] = this.banners[newIndex];
+    this.banners[newIndex] = banner;
+
+    // Atualiza a ordem no backend
+    const bannerIds = this.banners.map(b => b.id);
+    this.bannerService.reorderBanners(bannerIds).subscribe({
+      next: () => {
+        this.snackBar.open('Ordem dos banners atualizada', 'Fechar', { duration: 3000 });
+      },
+      error: (error: any) => {
+        console.error('Erro ao reordenar banners:', error);
+        this.snackBar.open('Erro ao reordenar banners', 'Fechar', { duration: 3000 });
+        // Reverte a mudança em caso de erro
+        this.loadBanners();
+      }
+    });
   }
 }

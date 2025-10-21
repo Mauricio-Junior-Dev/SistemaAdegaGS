@@ -4,6 +4,8 @@ import { RouterModule } from '@angular/router';
 import { ProductService } from '../../../core/services/product.service';
 import { CartService } from '../../../core/services/cart.service';
 import { Product, Category } from '../../../core/models/product.model';
+import { BannerCarouselComponent, Banner } from '../../../shared/components/banner-carousel/banner-carousel.component';
+import { BannerService } from '../../../core/services/banner.service';
 import { environment } from '../../../../environments/environment';
 
 @Component({
@@ -11,32 +13,37 @@ import { environment } from '../../../../environments/environment';
   templateUrl: './home.component.html',
   styleUrls: ['./home.component.css'],
   standalone: true,
-  imports: [CommonModule, RouterModule]
+  imports: [CommonModule, RouterModule, BannerCarouselComponent]
 })
 export class HomeComponent implements OnInit {
   categories: Category[] = [];
   featuredProducts: Product[] = [];
   popularProducts: Product[] = [];
+  banners: Banner[] = [];
   loading = {
     categories: true,
     featured: true,
-    popular: true
+    popular: true,
+    banners: true
   };
   error = {
     categories: null as string | null,
     featured: null as string | null,
-    popular: null as string | null
+    popular: null as string | null,
+    banners: null as string | null
   };
 
   constructor(
     private productService: ProductService,
-    private cartService: CartService
+    private cartService: CartService,
+    private bannerService: BannerService
   ) {}
 
   ngOnInit(): void {
     this.loadCategories();
     this.loadFeaturedProducts();
     this.loadPopularProducts();
+    this.loadBanners();
   }
 
   loadCategories(): void {
@@ -130,5 +137,22 @@ export class HomeComponent implements OnInit {
     const first = (product as any).images?.[0];
     if (first) return first;
     return 'assets/images/no-image.jpg';
+  }
+
+  loadBanners(): void {
+    this.loading.banners = true;
+    this.error.banners = null;
+
+    this.bannerService.getActiveBanners().subscribe({
+      next: (banners) => {
+        this.banners = banners;
+        this.loading.banners = false;
+      },
+      error: (error) => {
+        console.error('Erro ao carregar banners:', error);
+        this.error.banners = 'Erro ao carregar banners';
+        this.loading.banners = false;
+      }
+    });
   }
 }

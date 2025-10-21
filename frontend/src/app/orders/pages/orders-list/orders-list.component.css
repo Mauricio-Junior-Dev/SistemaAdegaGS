@@ -153,18 +153,27 @@ mat-chip {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+  flex: 1;
 }
 
 .item-quantity {
   font-weight: 600;
-  color: #666;
+  color: #007bff;
+  min-width: 30px;
 }
 
 .item-name {
   color: #1A1A1A;
+  flex: 1;
 }
 
-.item-price {
+.item-unit-price {
+  color: #6c757d;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.item-subtotal {
   font-weight: 600;
   color: #00A868;
 }

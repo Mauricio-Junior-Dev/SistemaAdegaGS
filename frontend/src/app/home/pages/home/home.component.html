@@ -2,12 +2,31 @@
   <!-- Banner Principal -->
   <section class="main-banner">
     <div class="container">
-      <div class="banner-content">
+      <!-- Loading State -->
+      <div *ngIf="loading.banners" class="loading-container">
+        <div class="loading-spinner"></div>
+      </div>
+
+      <!-- Error State -->
+      <div *ngIf="error.banners" class="error-message">
+        {{ error.banners }}
+      </div>
+
+      <!-- Banner Carousel -->
+      <app-banner-carousel 
+        *ngIf="!loading.banners && !error.banners && banners.length > 0"
+        [banners]="banners" 
+        [autoPlay]="true" 
+        [autoPlayInterval]="5000">
+      </app-banner-carousel>
+
+      <!-- Fallback quando não há banners -->
+      <div *ngIf="!loading.banners && !error.banners && banners.length === 0" class="no-banners">
         <h1>ADEGA GS</h1>
         <p>Delivery de bebidas na sua porta</p>
-        <button routerLink="/produtos" class="cta-button">
+        <a routerLink="/produtos" class="cta-button">
           Peça Agora!
-        </button>
+        </a>
       </div>
     </div>
   </section>

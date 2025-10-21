@@ -1,5 +1,29 @@
 <div class="pedidos-container">
-  <h1>Controle de Pedidos</h1>
+  <div class="header-section">
+    <h1>📦 Controle de Pedidos</h1>
+    <div class="header-stats" *ngIf="!loading">
+      <div class="stat-card">
+        <mat-icon>receipt_long</mat-icon>
+        <span class="stat-number">{{orders.length}}</span>
+        <span class="stat-label">Total</span>
+      </div>
+      <div class="stat-card pending">
+        <mat-icon>schedule</mat-icon>
+        <span class="stat-number">{{getPendingCount()}}</span>
+        <span class="stat-label">Pendentes</span>
+      </div>
+      <div class="stat-card delivering">
+        <mat-icon>local_shipping</mat-icon>
+        <span class="stat-number">{{getDeliveringCount()}}</span>
+        <span class="stat-label">Em Entrega</span>
+      </div>
+      <div class="stat-card completed">
+        <mat-icon>check_circle</mat-icon>
+        <span class="stat-number">{{getCompletedCount()}}</span>
+        <span class="stat-label">Concluídos</span>
+      </div>
+    </div>
+  </div>
 
   <!-- Loading State -->
   <div *ngIf="loading" class="loading-container">
@@ -10,9 +34,15 @@
   <!-- Main Content -->
   <div *ngIf="!loading" class="pedidos-content">
     <!-- Filtros -->
-    <mat-card class="filters-card">
+    <mat-card class="filters-card modern-card">
+      <mat-card-header>
+        <mat-card-title>
+          <mat-icon>filter_list</mat-icon>
+          Filtros de Status
+        </mat-card-title>
+      </mat-card-header>
       <mat-card-content>
-        <mat-button-toggle-group [value]="selectedStatus" (change)="onStatusFilterChange($event.value)">
+        <mat-button-toggle-group [value]="selectedStatus" (change)="onStatusFilterChange($event.value)" class="status-filters">
           <mat-button-toggle value="all">
             <div class="toggle-content">
               <span>Todos</span>
@@ -71,7 +101,14 @@
     </mat-card>
 
     <!-- Lista de Pedidos -->
-    <mat-card class="orders-card">
+    <mat-card class="orders-card modern-card">
+      <mat-card-header>
+        <mat-card-title>
+          <mat-icon>list_alt</mat-icon>
+          Lista de Pedidos
+        </mat-card-title>
+        <mat-card-subtitle>{{filteredOrders.length}} pedido(s) encontrado(s)</mat-card-subtitle>
+      </mat-card-header>
       <mat-card-content>
         <table mat-table [dataSource]="filteredOrders" class="orders-table">
           <!-- ID -->
@@ -124,9 +161,13 @@
                 <span class="items-count">{{order.items.length}} {{order.items.length === 1 ? 'item' : 'itens'}}</span>
                 <div class="items-summary">
                   <ng-container *ngFor="let item of order.items.slice(0, 2)">
-                    <small>{{item.quantity}}x {{item.product.name}}</small>
+                    <div class="item-detail">
+                      <span class="item-quantity">{{item.quantity}}x</span>
+                      <span class="item-name">{{item.product.name}}</span>
+                      <span class="item-price">{{formatCurrency(item.price)}}</span>
+                    </div>
                   </ng-container>
-                  <small *ngIf="order.items.length > 2">...</small>
+                  <small *ngIf="order.items.length > 2" class="more-items">+{{order.items.length - 2}} mais...</small>
                 </div>
               </div>
             </td>

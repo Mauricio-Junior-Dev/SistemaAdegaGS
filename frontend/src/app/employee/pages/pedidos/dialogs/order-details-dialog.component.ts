@@ -5,6 +5,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDividerModule } from '@angular/material/divider';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { Order, OrderStatus } from '../../../services/order.service';
 
 @Component({
@@ -171,7 +172,8 @@ import { Order, OrderStatus } from '../../../services/order.service';
     MatButtonModule,
     MatIconModule,
     MatChipsModule,
-    MatDividerModule
+    MatDividerModule,
+    MatTooltipModule
   ]
 })
 export class OrderDetailsDialogComponent {

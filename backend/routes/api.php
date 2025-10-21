@@ -21,6 +21,9 @@ Route::get('/categories/{category}', [CategoryController::class, 'show']);
 // Configurações públicas (sem autenticação)
 Route::get('/public/settings', [App\Http\Controllers\Api\Admin\SettingController::class, 'publicSettings']);
 
+// Banners públicos (sem autenticação)
+Route::get('/banners/active', [App\Http\Controllers\BannerController::class, 'active']);
+
 
 // Endpoint de teste sem middleware
 Route::get('/test-no-auth', function () {

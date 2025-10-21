@@ -45,15 +45,15 @@
             <div class="item-info">
               <span class="item-quantity">{{ item.quantity }}x</span>
               <span class="item-name">{{ item.product?.name }}</span>
+              <span class="item-unit-price">R$ {{ getUnitPrice(item) | number:'1.2-2' }} cada</span>
             </div>
-            <span class="item-price">R$ {{ item.unit_price * item.quantity | number:'1.2-2' }}</span>
           </div>
         </div>
 
         <div class="order-footer">
           <div class="payment-info">
             <mat-icon>payment</mat-icon>
-            <span>{{ getPaymentMethodLabel(order.payment_method || '') }}</span>
+            <span>{{ getPaymentMethodLabel(order) }}</span>
           </div>
           <div class="order-total">
             <span>Total:</span>
@@ -62,17 +62,18 @@
         </div>
 
         <div class="order-actions">
-          <button mat-button color="primary">
+          <button mat-button color="primary" (click)="showOrderDetails(order)">
             <mat-icon>visibility</mat-icon>
             Ver Detalhes
           </button>
           <button mat-button *ngIf="order.status === 'pending' || order.status === 'processing'">
             <mat-icon>help</mat-icon>
-            Ajuda
+            <a href="https://wa.me/5511999999999?text=Olá, estou precisando de ajuda com o pedido #{{ order.order_number }}" style="text-decoration: none; color: inherit;" target="_blank">
+              Ajuda
+            </a>
           </button>
         </div>
       </div>
     </div>
   </div>
 </div>
-
