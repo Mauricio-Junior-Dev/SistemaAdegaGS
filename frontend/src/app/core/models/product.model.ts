@@ -5,6 +5,7 @@ export interface Product {
     slug: string;
     description?: string;
     price: number;
+    original_price?: number;
     cost_price: number;
     current_stock: number;
     min_stock: number;
@@ -12,6 +13,8 @@ export interface Product {
     barcode?: string;
     is_active: boolean;
     featured: boolean;
+    offers?: boolean;
+    popular?: boolean;
     images?: string[];
     category?: Category;
     low_stock?: boolean;

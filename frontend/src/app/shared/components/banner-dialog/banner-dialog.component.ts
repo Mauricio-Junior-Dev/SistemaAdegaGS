@@ -55,20 +55,6 @@ import { Banner, CreateBannerRequest, UpdateBannerRequest } from '../../../core/
         <!-- Formulário -->
         <div class="form-fields">
           <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Título</mat-label>
-            <input matInput 
-                   [(ngModel)]="bannerForm.title"
-                   placeholder="Ex: Promoção Especial">
-          </mat-form-field>
-
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Subtítulo</mat-label>
-            <input matInput 
-                   [(ngModel)]="bannerForm.subtitle"
-                   placeholder="Ex: Descontos imperdíveis para você">
-          </mat-form-field>
-
-          <mat-form-field appearance="outline" class="full-width">
             <mat-label>Link (opcional)</mat-label>
             <input matInput 
                    [(ngModel)]="bannerForm.link"
@@ -199,15 +185,11 @@ import { Banner, CreateBannerRequest, UpdateBannerRequest } from '../../../core/
 })
 export class BannerDialogComponent implements OnInit {
   bannerForm: {
-    title: string;
-    subtitle: string;
     link: string;
     image_url: string;
     order: number;
     is_active: boolean;
   } = {
-    title: '',
-    subtitle: '',
     link: '',
     image_url: '',
     order: 1,
@@ -232,8 +214,6 @@ export class BannerDialogComponent implements OnInit {
     if (this.data.banner) {
       this.isEdit = true;
       this.bannerForm = {
-        title: this.data.banner.title || '',
-        subtitle: this.data.banner.subtitle || '',
         link: this.data.banner.link || '',
         image_url: this.data.banner.image_url || '',
         order: this.data.banner.order || 1,

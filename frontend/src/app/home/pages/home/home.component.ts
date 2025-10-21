@@ -155,4 +155,20 @@ export class HomeComponent implements OnInit {
       }
     });
   }
+
+  hasOffer(product: Product): boolean {
+    // Verifica se há um preço original maior que o preço atual
+    const originalPrice = (product as any).original_price;
+    return originalPrice && originalPrice > product.price;
+  }
+
+  getOriginalPrice(product: Product): number {
+    return (product as any).original_price || product.price;
+  }
+
+  getDiscountPercentage(product: Product): number {
+    const originalPrice = (product as any).original_price;
+    if (!originalPrice || originalPrice <= product.price) return 0;
+    return Math.round(((originalPrice - product.price) / originalPrice) * 100);
+  }
 }

@@ -140,6 +140,19 @@ import { environment } from '../../../../../environments/environment';
             </mat-form-field>
 
             <mat-form-field appearance="outline">
+              <mat-label>Preço Original (Oferta)</mat-label>
+              <input matInput 
+                     type="number" 
+                     formControlName="original_price" 
+                     min="0"
+                     step="0.01">
+              <span matPrefix>R$&nbsp;</span>
+              <mat-error *ngIf="productForm.get('original_price')?.hasError('min')">
+                Preço original deve ser maior que zero
+              </mat-error>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
               <mat-label>Quantidade em Estoque</mat-label>
               <input matInput 
                      type="number" 
@@ -174,6 +187,18 @@ import { environment } from '../../../../../environments/environment';
           <div class="form-row status-row">
             <mat-slide-toggle formControlName="is_active" color="primary">
               Produto Ativo
+            </mat-slide-toggle>
+            
+            <mat-slide-toggle formControlName="featured" color="accent">
+              Produto em Destaque
+            </mat-slide-toggle>
+            
+            <mat-slide-toggle formControlName="offers" color="warn">
+              Produto em Oferta
+            </mat-slide-toggle>
+            
+            <mat-slide-toggle formControlName="popular" color="primary">
+              Produto Popular
             </mat-slide-toggle>
           </div>
         </div>
@@ -307,9 +332,13 @@ export class ProductFormDialogComponent implements OnInit {
       sku: ['', Validators.required],
       barcode: [''],
       price: ['', [Validators.required, Validators.min(0)]],
+      original_price: ['', [Validators.min(0)]],
       current_stock: ['', [Validators.required, Validators.min(0)]],
       min_stock: ['', [Validators.required, Validators.min(0)]],
-      is_active: [true]
+      is_active: [true],
+      featured: [false],
+      offers: [false],
+      popular: [false]
     });
 
     if (this.isEdit) {

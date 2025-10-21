@@ -15,6 +15,7 @@ class Product extends Model
         'slug',
         'description',
         'price',
+        'original_price',
         'cost_price',
         'current_stock',
         'min_stock',
@@ -22,16 +23,21 @@ class Product extends Model
         'barcode',
         'is_active',
         'featured',
+        'offers',
+        'popular',
         'images'
     ];
 
     protected $casts = [
         'price' => 'decimal:2',
+        'original_price' => 'decimal:2',
         'cost_price' => 'decimal:2',
         'current_stock' => 'integer',
         'min_stock' => 'integer',
         'is_active' => 'boolean',
         'featured' => 'boolean',
+        'offers' => 'boolean',
+        'popular' => 'boolean',
         'images' => 'array'
     ];
 

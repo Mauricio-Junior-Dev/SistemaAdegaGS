@@ -5,8 +5,6 @@ import { MatIconModule } from '@angular/material/icon';
 export interface Banner {
   id: number;
   image_url: string;
-  title?: string;
-  subtitle?: string;
   link?: string;
   order: number;
   is_active: boolean;
@@ -24,16 +22,10 @@ export interface Banner {
                class="carousel-slide" 
                [class.active]="i === currentSlide">
             <div class="banner-content">
-              <img [src]="getImageUrl(banner.image_url)" [alt]="banner.title || 'Banner'">
-              <div class="banner-overlay" *ngIf="banner.title || banner.subtitle">
-                <div class="banner-text">
-                  <h2 *ngIf="banner.title">{{ banner.title }}</h2>
-                  <p *ngIf="banner.subtitle">{{ banner.subtitle }}</p>
-                  <a *ngIf="banner.link" [href]="banner.link" class="banner-link">
-                    Saiba Mais
-                  </a>
-                </div>
-              </div>
+              <a *ngIf="banner.link" [href]="banner.link" class="banner-link-wrapper">
+                <img [src]="getImageUrl(banner.image_url)" [alt]="'Banner ' + (i + 1)">
+              </a>
+              <img *ngIf="!banner.link" [src]="getImageUrl(banner.image_url)" [alt]="'Banner ' + (i + 1)">
             </div>
           </div>
         </div>
@@ -96,53 +88,25 @@ export interface Banner {
       width: 100%;
       height: 100%;
       object-fit: cover;
+      display: block;
     }
 
-    .banner-overlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: linear-gradient(135deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.3) 100%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .banner-text {
-      text-align: center;
-      color: white;
-      padding: 2rem;
-      max-width: 600px;
-    }
-
-    .banner-text h2 {
-      font-size: 2.5rem;
-      font-weight: bold;
-      margin-bottom: 1rem;
-      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
-    }
-
-    .banner-text p {
-      font-size: 1.2rem;
-      margin-bottom: 2rem;
-      text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
-    }
-
-    .banner-link {
-      display: inline-block;
-      background-color: var(--primary, #4a90e2);
-      color: white;
-      padding: 1rem 2rem;
+    .banner-link-wrapper {
+      display: block;
+      width: 100%;
+      height: 100%;
       text-decoration: none;
-      border-radius: 8px;
-      font-weight: bold;
-      transition: background-color 0.3s ease;
+      transition: transform 0.3s ease;
     }
 
-    .banner-link:hover {
-      background-color: var(--primary-dark, #357abd);
+    .banner-link-wrapper:hover {
+      transform: scale(1.02);
+    }
+
+    .banner-link-wrapper img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
     }
 
     .carousel-arrow {
@@ -208,17 +172,6 @@ export interface Banner {
         border-radius: 8px;
       }
 
-      .banner-text h2 {
-        font-size: 1.8rem;
-      }
-
-      .banner-text p {
-        font-size: 1rem;
-      }
-
-      .banner-text {
-        padding: 1rem;
-      }
 
       .carousel-arrow {
         width: 40px;
@@ -248,19 +201,6 @@ export interface Banner {
         height: 200px;
       }
 
-      .banner-text h2 {
-        font-size: 1.5rem;
-      }
-
-      .banner-text p {
-        font-size: 0.9rem;
-        margin-bottom: 1rem;
-      }
-
-      .banner-link {
-        padding: 0.8rem 1.5rem;
-        font-size: 0.9rem;
-      }
     }
   `]
 })

@@ -28,6 +28,11 @@ class ProductController extends Controller
             $query->where('popular', true);
         }
 
+        // Filtrar produtos em oferta
+        if ($request->boolean('offers')) {
+            $query->where('offers', true);
+        }
+
         // Busca por nome ou descrição
         if ($request->has('search')) {
             $search = $request->search;

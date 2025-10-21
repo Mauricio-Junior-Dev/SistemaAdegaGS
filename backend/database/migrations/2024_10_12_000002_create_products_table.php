@@ -15,6 +15,7 @@ return new class extends Migration
             $table->string('slug')->unique();
             $table->text('description')->nullable();
             $table->decimal('price', 10, 2);
+            $table->decimal('original_price', 10, 2)->nullable();
             $table->decimal('cost_price', 10, 2);
             
             // Campos de estoque (coluna única)
@@ -25,6 +26,8 @@ return new class extends Migration
             $table->string('barcode')->nullable();
             $table->boolean('is_active')->default(true);
             $table->boolean('featured')->default(false);
+            $table->boolean('offers')->default(false);
+            $table->boolean('popular')->default(false);
             $table->string('image_url')->nullable();
             $table->json('images')->nullable();
             $table->timestamps();

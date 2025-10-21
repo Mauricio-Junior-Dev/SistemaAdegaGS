@@ -1,43 +1,25 @@
-<a [routerLink]="['/produtos', product.slug]" 
-   class="block bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
-  <!-- Imagem -->
-  <div class="aspect-w-1 aspect-h-1 w-full">
+<div class="product-card">
+  <!-- Nome do Produto -->
+  <h3 class="product-name">{{ product.name }}</h3>
+  
+  <!-- Imagem do Produto -->
+  <div class="product-image-container">
     <img [src]="getImageUrl(product)"
          [alt]="product.name"
-         class="w-full h-full object-cover">
+         class="product-image">
   </div>
 
-  <!-- Informações -->
-  <div class="p-4">
-    <!-- Categoria -->
-    <span class="text-xs text-gray-500 uppercase">{{ product.category?.name }}</span>
-    
-    <!-- Nome -->
-    <h3 class="text-lg font-semibold text-secondary mt-1 line-clamp-2">
-      {{ product.name }}
-    </h3>
-    
-    <!-- Preço -->
-    <div class="mt-2 flex items-center justify-between">
-      <div>
-        <span class="text-2xl font-bold text-secondary">
-          {{ product.price | number:'1.2-2' }}
-        </span>
-        <span class="text-sm text-gray-500 ml-1">/ unid</span>
-      </div>
-
-      <!-- Botão Adicionar -->
-      <button (click)="onAddToCart($event)"
-              class="flex items-center justify-center w-10 h-10 bg-primary rounded-full hover:bg-primary-dark transition-colors">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-        </svg>
-      </button>
-    </div>
-
-    <!-- Estoque -->
-    <div class="mt-2 text-sm" *ngIf="getLowStock(product)">
-      <span class="text-red-600">Últimas unidades!</span>
-    </div>
+  <!-- Preço -->
+  <div class="price">
+    R$ {{ product.price | number:'1.2-2' }}
   </div>
-</a>
+
+  <!-- Botão Adicionar ao Carrinho -->
+  <button (click)="onAddToCart($event)"
+          class="add-to-cart-btn">
+    <svg class="cart-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13l2.5 5m6-5v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6m8 0V9a2 2 0 00-2-2H9a2 2 0 00-2 2v4.01" />
+    </svg>
+    <span>Adicionar</span>
+  </button>
+</div>

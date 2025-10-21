@@ -54,4 +54,40 @@ export class ProductService {
       map(response => response.data)
     );
   }
+
+  getOffers(): Observable<Product[]> {
+    return this.getProducts({ offers: true, per_page: 20 }).pipe(
+      map(response => response.data)
+    );
+  }
+
+  getImageUrl(product: Product): string {
+    if (product.image_url) {
+      return product.image_url.startsWith('http') 
+        ? product.image_url 
+        : `${this.apiUrl}/storage/${product.image_url}`;
+    }
+    return '/assets/images/no-image.png';
+  }
+
+  hasOffer(product: Product): boolean {
+    return Boolean(product.offers) && 
+           Boolean(product.original_price) && 
+           product.original_price! > product.price;
+  }
+
+  getOriginalPrice(product: Product): number {
+    return product.original_price || product.price;
+  }
+
+  getDiscountPercentage(product: Product): number {
+    if (!this.hasOffer(product)) return 0;
+    const originalPrice = this.getOriginalPrice(product);
+    const discount = ((originalPrice - product.price) / originalPrice) * 100;
+    return Math.round(discount);
+  }
+
+  getLowStock(product: Product): boolean {
+    return product.current_stock <= product.min_stock;
+  }
 }

@@ -42,8 +42,6 @@ class BannerController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'title' => 'nullable|string|max:255',
-            'subtitle' => 'nullable|string|max:500',
             'image_url' => 'required|string',
             'link' => 'nullable|string|max:500',
             'order' => 'required|integer|min:1',
@@ -68,8 +66,6 @@ class BannerController extends Controller
     public function update(Request $request, Banner $banner): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'title' => 'nullable|string|max:255',
-            'subtitle' => 'nullable|string|max:500',
             'image_url' => 'required|string',
             'link' => 'nullable|string|max:500',
             'order' => 'required|integer|min:1',

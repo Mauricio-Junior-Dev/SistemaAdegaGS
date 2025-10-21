@@ -335,6 +335,138 @@ class DatabaseSeeder extends Seeder
                 'min_stock' => 20,
                 'featured' => true,
                 'initial_stock' => 40
+            ],
+
+            // PRODUTOS EM OFERTA
+            [
+                'category_id' => 1,
+                'name' => 'Cerveja Heineken Lata 350ml - Pack 12 Unidades',
+                'price' => 52.90,
+                'original_price' => 65.90,
+                'cost_price' => 42.00,
+                'current_stock' => 50,
+                'min_stock' => 10,
+                'featured' => true,
+                'popular' => true,
+                'offers' => true,
+                'initial_stock' => 50
+            ],
+            [
+                'category_id' => 6,
+                'name' => 'Vodka Smirnoff 1L',
+                'price' => 89.90,
+                'original_price' => 120.00,
+                'cost_price' => 70.00,
+                'current_stock' => 30,
+                'min_stock' => 5,
+                'featured' => true,
+                'popular' => false,
+                'offers' => true,
+                'initial_stock' => 30
+            ],
+            [
+                'category_id' => 6,
+                'name' => 'Whisky Johnnie Walker Red Label 1L',
+                'price' => 149.90,
+                'original_price' => 199.90,
+                'cost_price' => 120.00,
+                'current_stock' => 25,
+                'min_stock' => 5,
+                'featured' => true,
+                'popular' => true,
+                'offers' => true,
+                'initial_stock' => 25
+            ],
+            [
+                'category_id' => 1,
+                'name' => 'Cerveja Corona Extra 355ml - Pack 6 Unidades',
+                'price' => 45.90,
+                'original_price' => 58.90,
+                'cost_price' => 35.00,
+                'current_stock' => 40,
+                'min_stock' => 10,
+                'featured' => false,
+                'popular' => true,
+                'offers' => true,
+                'initial_stock' => 40
+            ],
+            [
+                'category_id' => 6,
+                'name' => 'Gin Bombay Sapphire 750ml',
+                'price' => 129.90,
+                'original_price' => 169.90,
+                'cost_price' => 100.00,
+                'current_stock' => 20,
+                'min_stock' => 5,
+                'featured' => true,
+                'popular' => false,
+                'offers' => true,
+                'initial_stock' => 20
+            ],
+            [
+                'category_id' => 1,
+                'name' => 'Cerveja Stella Artois 330ml - Pack 12 Unidades',
+                'price' => 68.90,
+                'original_price' => 85.90,
+                'cost_price' => 55.00,
+                'current_stock' => 35,
+                'min_stock' => 10,
+                'featured' => true,
+                'popular' => true,
+                'offers' => true,
+                'initial_stock' => 35
+            ],
+            [
+                'category_id' => 6,
+                'name' => 'Rum Havana Club 7 Anos 1L',
+                'price' => 79.90,
+                'original_price' => 99.90,
+                'cost_price' => 60.00,
+                'current_stock' => 28,
+                'min_stock' => 5,
+                'featured' => false,
+                'popular' => true,
+                'offers' => true,
+                'initial_stock' => 28
+            ],
+            [
+                'category_id' => 1,
+                'name' => 'Cerveja Budweiser 350ml - Pack 24 Unidades',
+                'price' => 89.90,
+                'original_price' => 115.90,
+                'cost_price' => 70.00,
+                'current_stock' => 60,
+                'min_stock' => 15,
+                'featured' => true,
+                'popular' => true,
+                'offers' => true,
+                'initial_stock' => 60
+            ],
+            [
+                'category_id' => 6,
+                'name' => 'Tequila Jose Cuervo Especial 750ml',
+                'price' => 95.90,
+                'original_price' => 125.90,
+                'cost_price' => 75.00,
+                'current_stock' => 22,
+                'min_stock' => 5,
+                'featured' => true,
+                'popular' => false,
+                'offers' => true,
+                'initial_stock' => 22
+            ],
+            [
+                'category_id' => 1,
+                'name' => 'Cerveja Brahma 350ml - Pack 12 Unidades',
+                'price' => 32.90,
+                'original_price' => 42.90,
+                'cost_price' => 25.00,
+                'current_stock' => 80,
+                'min_stock' => 20,
+                'featured' => false,
+                'popular' => true,
+                'offers' => true,
+                'initial_stock' => 80
             ]
         ];
 
@@ -350,12 +482,15 @@ class DatabaseSeeder extends Seeder
                 'slug' => Str::slug($productData['name']),
                 'description' => $productData['name'],
                 'price' => $productData['price'],
+                'original_price' => $productData['original_price'] ?? null,
                 'cost_price' => $productData['cost_price'],
                 'current_stock' => $productData['current_stock'],
                 'min_stock' => $productData['min_stock'],
                 'sku' => Str::upper(Str::random(8)),
                 'is_active' => true,
-                'featured' => $productData['featured'],
+                'featured' => $productData['featured'] ?? false,
+                'offers' => $productData['offers'] ?? false,
+                'popular' => $productData['popular'] ?? false,
                 'images' => []
             ]);
 
@@ -501,5 +636,6 @@ class DatabaseSeeder extends Seeder
                 'updated_at' => $date
             ]);
         }
+
     }
 }

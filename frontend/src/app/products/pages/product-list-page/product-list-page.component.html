@@ -61,19 +61,26 @@
     <div *ngIf="!loading && !error" 
          [class]="'products-container ' + (viewMode === 'grid' ? 'grid-view' : 'list-view')">
       <div *ngFor="let product of products" class="product-card">
-        <div class="product-image">
-          <img [src]="getImageUrl(product)" [alt]="product.name">
+        <!-- Nome do Produto -->
+        <h3 class="product-name">{{ product.name }}</h3>
+        
+        <!-- Imagem do Produto -->
+        <div class="product-image-container">
+          <img [src]="getImageUrl(product)" [alt]="product.name" class="product-image">
         </div>
-        <div class="product-info">
-          <h3 class="product-name">{{ product.name }}</h3>
-          <p class="product-description">{{ product.description }}</p>
-          <div class="product-footer">
-            <span class="price">R$ {{ product.price | number:'1.2-2' }}</span>
-            <button (click)="addToCart(product)" class="add-to-cart">
-              Adicionar
-            </button>
-          </div>
+
+        <!-- Preço -->
+        <div class="price">
+          R$ {{ product.price | number:'1.2-2' }}
         </div>
+
+        <!-- Botão Adicionar ao Carrinho -->
+        <button (click)="addToCart(product)" class="add-to-cart-btn">
+          <svg class="cart-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13l2.5 5m6-5v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6m8 0V9a2 2 0 00-2-2H9a2 2 0 00-2 2v4.01" />
+          </svg>
+          <span>Adicionar</span>
+        </button>
       </div>
     </div>
 

@@ -68,25 +68,33 @@ class ProductController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'required|string',
             'price' => 'required|numeric|min:0',
+            'original_price' => 'nullable|numeric|min:0',
             'current_stock' => 'required|integer|min:0',
             'min_stock' => 'required|integer|min:0',
             'sku' => 'required|string|unique:products,sku',
             'barcode' => 'nullable|string|unique:products,barcode',
             'category_id' => 'required|exists:categories,id',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'is_active' => 'boolean'
+            'is_active' => 'boolean',
+            'featured' => 'boolean',
+            'offers' => 'boolean',
+            'popular' => 'boolean'
         ]);
 
         $product = new Product();
         $product->name = $request->name;
         $product->description = $request->description;
         $product->price = $request->price;
+        $product->original_price = $request->original_price;
         $product->current_stock = $request->current_stock;
         $product->min_stock = $request->min_stock;
         $product->sku = $request->sku;
         $product->barcode = $request->barcode;
         $product->category_id = $request->category_id;
         $product->is_active = $request->boolean('is_active', true);
+        $product->featured = $request->boolean('featured', false);
+        $product->offers = $request->boolean('offers', false);
+        $product->popular = $request->boolean('popular', false);
 
         if ($request->hasFile('image')) {
             $path = $request->file('image')->store('products', 'public');
@@ -112,13 +120,17 @@ class ProductController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'required|string',
             'price' => 'required|numeric|min:0',
+            'original_price' => 'nullable|numeric|min:0',
             'current_stock' => 'required|integer|min:0',
             'min_stock' => 'required|integer|min:0',
             'sku' => 'required|string|unique:products,sku,' . $product->id,
             'barcode' => 'nullable|string|unique:products,barcode,' . $product->id,
             'category_id' => 'required|exists:categories,id',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'is_active' => 'boolean'
+            'is_active' => 'boolean',
+            'featured' => 'boolean',
+            'offers' => 'boolean',
+            'popular' => 'boolean'
         ]);
 
         $oldStock = $product->current_stock;
@@ -127,12 +139,16 @@ class ProductController extends Controller
         $product->name = $request->name;
         $product->description = $request->description;
         $product->price = $request->price;
+        $product->original_price = $request->original_price;
         $product->current_stock = $newStock;
         $product->min_stock = $request->min_stock;
         $product->sku = $request->sku;
         $product->barcode = $request->barcode;
         $product->category_id = $request->category_id;
         $product->is_active = $request->boolean('is_active', true);
+        $product->featured = $request->boolean('featured', false);
+        $product->offers = $request->boolean('offers', false);
+        $product->popular = $request->boolean('popular', false);
 
         if ($request->hasFile('image')) {
             // Deletar imagem anterior se existir
