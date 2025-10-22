@@ -52,15 +52,20 @@ export class OffersComponent implements OnInit {
   }
 
   hasOffer(product: Product): boolean {
-    return this.productService.hasOffer(product);
+    return this.productService.hasDiscount(product);
   }
 
   getOriginalPrice(product: Product): number {
-    return this.productService.getOriginalPrice(product);
+    return product.original_price || product.price;
   }
 
   getDiscountPercentage(product: Product): number {
     return this.productService.getDiscountPercentage(product);
+  }
+
+  getDiscountAmount(product: Product): number {
+    if (!this.hasOffer(product)) return 0;
+    return (product.original_price || 0) - product.price;
   }
 
   getLowStock(product: Product): boolean {

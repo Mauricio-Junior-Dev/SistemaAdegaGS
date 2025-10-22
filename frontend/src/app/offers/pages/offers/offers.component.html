@@ -25,10 +25,22 @@
   <!-- Offers Grid -->
   <div *ngIf="!loading && !error" class="offers-grid">
     <div *ngFor="let product of offers" class="offer-card">
+      <!-- Badge de Desconto -->
+      <div *ngIf="hasOffer(product)" class="discount-badge">
+        -{{ getDiscountPercentage(product) }}%
+      </div>
+      
       <app-product-card 
         [product]="product"
         (addToCart)="addToCart($event)">
       </app-product-card>
+      
+      <!-- Informações de Desconto -->
+      <div *ngIf="hasOffer(product)" class="discount-info">
+        <div class="discount-amount">
+          Economize R$ {{ getDiscountAmount(product) | number:'1.2-2' }}
+        </div>
+      </div>
     </div>
   </div>
 

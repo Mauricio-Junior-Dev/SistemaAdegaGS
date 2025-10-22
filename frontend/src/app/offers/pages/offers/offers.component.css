@@ -40,11 +40,51 @@
 }
 
 .offer-card {
+  position: relative;
   transition: transform 0.3s ease;
 }
 
 .offer-card:hover {
   transform: translateY(-4px);
+}
+
+/* Badge de Desconto */
+.discount-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 700;
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+/* Informações de Desconto */
+.discount-info {
+  margin-top: 8px;
+  text-align: center;
+}
+
+.discount-amount {
+  background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+  display: inline-block;
+  box-shadow: 0 2px 8px rgba(46, 204, 113, 0.3);
 }
 
 /* Estados de Loading e Erro */

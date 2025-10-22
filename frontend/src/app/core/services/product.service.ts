@@ -56,8 +56,11 @@ export class ProductService {
   }
 
   getOffers(): Observable<Product[]> {
-    return this.getProducts({ offers: true, per_page: 20 }).pipe(
-      map(response => response.data)
+    return this.getProducts({ per_page: 50 }).pipe(
+      map(response => {
+        // Filtrar produtos que têm desconto real
+        return response.data.filter(product => this.hasDiscount(product));
+      })
     );
   }
 
@@ -71,9 +74,14 @@ export class ProductService {
   }
 
   hasOffer(product: Product): boolean {
-    return Boolean(product.offers) && 
-           Boolean(product.original_price) && 
-           product.original_price! > product.price;
+    return this.hasDiscount(product);
+  }
+
+  hasDiscount(product: Product): boolean {
+    return Boolean(product.original_price) && 
+           product.original_price! > product.price &&
+           product.original_price! > 0 &&
+           product.price > 0;
   }
 
   getOriginalPrice(product: Product): number {
@@ -81,8 +89,8 @@ export class ProductService {
   }
 
   getDiscountPercentage(product: Product): number {
-    if (!this.hasOffer(product)) return 0;
-    const originalPrice = this.getOriginalPrice(product);
+    if (!this.hasDiscount(product)) return 0;
+    const originalPrice = product.original_price!;
     const discount = ((originalPrice - product.price) / originalPrice) * 100;
     return Math.round(discount);
   }

@@ -94,15 +94,20 @@
             <img [src]="getProductImage(product)" [alt]="product.name" class="product-image">
           </div>
 
-          <!-- Preço -->
-          <div class="price">
-            R$ {{ product.price | number:'1.2-2' }}
+          <!-- Preços -->
+          <div class="price-container">
+            <div *ngIf="product.original_price && product.original_price > product.price" class="price-original">
+              R$ {{ product.original_price | number:'1.2-2' }}
+            </div>
+            <div class="price-current">
+              R$ {{ product.price | number:'1.2-2' }}
+            </div>
           </div>
 
           <!-- Botão Adicionar ao Carrinho -->
           <button (click)="addToCart(product)" class="add-to-cart-btn">
             <svg class="cart-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13l2.5 5m6-5v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6m8 0V9a2 2 0 00-2-2H9a2 2 0 00-2 2v4.01" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
             <span>Adicionar</span>
           </button>
@@ -147,15 +152,20 @@
             <img [src]="getProductImage(product)" [alt]="product.name" class="product-image">
           </div>
 
-          <!-- Preço -->
-          <div class="price">
-            R$ {{ product.price | number:'1.2-2' }}
+          <!-- Preços -->
+          <div class="price-container">
+            <div *ngIf="product.original_price && product.original_price > product.price" class="price-original">
+              R$ {{ product.original_price | number:'1.2-2' }}
+            </div>
+            <div class="price-current">
+              R$ {{ product.price | number:'1.2-2' }}
+            </div>
           </div>
 
           <!-- Botão Adicionar ao Carrinho -->
           <button (click)="addToCart(product)" class="add-to-cart-btn">
             <svg class="cart-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4m0 0L7 13m0 0l-2.5 5M7 13l2.5 5m6-5v6a2 2 0 01-2 2H9a2 2 0 01-2-2v-6m8 0V9a2 2 0 00-2-2H9a2 2 0 00-2 2v4.01" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
             <span>Adicionar</span>
           </button>
