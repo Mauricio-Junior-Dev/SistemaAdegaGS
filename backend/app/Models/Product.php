@@ -19,6 +19,10 @@ class Product extends Model
         'cost_price',
         'current_stock',
         'min_stock',
+        'doses_por_garrafa',
+        'doses_vendidas',
+        'can_sell_by_dose',
+        'dose_price',
         'sku',
         'barcode',
         'is_active',
@@ -34,6 +38,10 @@ class Product extends Model
         'cost_price' => 'decimal:2',
         'current_stock' => 'integer',
         'min_stock' => 'integer',
+        'doses_por_garrafa' => 'integer',
+        'doses_vendidas' => 'integer',
+        'can_sell_by_dose' => 'boolean',
+        'dose_price' => 'decimal:2',
         'is_active' => 'boolean',
         'featured' => 'boolean',
         'offers' => 'boolean',
@@ -89,5 +97,40 @@ class Product extends Model
         } else { // ajuste
             $this->update(['current_stock' => $quantity]);
         }
+    }
+
+    /**
+     * Atualiza o estoque baseado no tipo de venda (dose ou garrafa)
+     */
+    public function atualizarEstoquePorVenda(int $quantidade, string $tipo): void
+    {
+        if ($tipo === 'dose') {
+            // Incrementa o contador de doses vendidas
+            $this->increment('doses_vendidas', $quantidade);
+            
+            // Verifica se atingiu o limite para deduzir garrafas
+            if ($this->doses_vendidas >= $this->doses_por_garrafa) {
+                $garrafas_a_deduzir = floor($this->doses_vendidas / $this->doses_por_garrafa);
+                
+                // Verifica se há estoque suficiente
+                if ($this->current_stock < $garrafas_a_deduzir) {
+                    throw new \Exception('Estoque insuficiente de garrafas');
+                }
+                
+                // Deduz as garrafas do estoque
+                $this->decrement('current_stock', $garrafas_a_deduzir);
+                
+                // Atualiza o contador de doses vendidas com o resto
+                $this->doses_vendidas = $this->doses_vendidas % $this->doses_por_garrafa;
+            }
+        } else {
+            // Venda direta de garrafa - deduz do estoque
+            if ($this->current_stock < $quantidade) {
+                throw new \Exception('Estoque insuficiente de garrafas');
+            }
+            $this->decrement('current_stock', $quantidade);
+        }
+        
+        $this->save();
     }
 }

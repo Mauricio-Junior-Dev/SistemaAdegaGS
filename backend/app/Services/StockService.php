@@ -23,6 +23,8 @@ class StockService
 
         $query = Product::query()
             ->with(['category'])
+            // Filtrar apenas produtos ativos
+            ->where('is_active', true)
             // Filtro de baixo estoque apenas quando valor truthy
             ->when(!empty($filters['low_stock']), function ($query) {
                 $query->whereRaw('current_stock <= min_stock');
@@ -89,7 +91,8 @@ class StockService
 
     public function getLowStockProducts(): Collection
     {
-        return Product::whereRaw('current_stock <= min_stock')
+        return Product::where('is_active', true)
+            ->whereRaw('current_stock <= min_stock')
             ->with('category')
             ->get();
     }
@@ -97,10 +100,10 @@ class StockService
     public function getStockSummary(): array
     {
         return [
-            'total_products' => Product::count(),
-            'low_stock_count' => Product::whereRaw('current_stock <= min_stock')->count(),
-            'out_of_stock_count' => Product::where('current_stock', 0)->count(),
-            'total_stock_value' => Product::sum(DB::raw('current_stock * cost_price'))
+            'total_products' => Product::where('is_active', true)->count(),
+            'low_stock_count' => Product::where('is_active', true)->whereRaw('current_stock <= min_stock')->count(),
+            'out_of_stock_count' => Product::where('is_active', true)->where('current_stock', 0)->count(),
+            'total_stock_value' => Product::where('is_active', true)->sum(DB::raw('current_stock * cost_price'))
         ];
     }
 }

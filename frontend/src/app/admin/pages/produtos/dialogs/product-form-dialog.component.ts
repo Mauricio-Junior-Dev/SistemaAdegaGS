@@ -123,7 +123,7 @@ import { environment } from '../../../../../environments/environment';
           <!-- Preço e Estoque -->
           <div class="form-row">
             <mat-form-field appearance="outline">
-              <mat-label>Preço</mat-label>
+              <mat-label>Preço da Garrafa</mat-label>
               <input matInput 
                      type="number" 
                      formControlName="price" 
@@ -181,6 +181,45 @@ import { environment } from '../../../../../environments/environment';
                 Estoque mínimo não pode ser negativo
               </mat-error>
             </mat-form-field>
+          </div>
+
+          <!-- Configurações de Dose -->
+          <div class="dose-section">
+            <h3>Configurações de Venda por Dose</h3>
+            
+            <div class="form-row">
+              <mat-form-field appearance="outline">
+                <mat-label>Doses por Garrafa</mat-label>
+                <input matInput 
+                       type="number" 
+                       formControlName="doses_por_garrafa" 
+                       required
+                       min="1">
+                <mat-error *ngIf="productForm.get('doses_por_garrafa')?.hasError('required')">
+                  Doses por garrafa é obrigatório
+                </mat-error>
+                <mat-error *ngIf="productForm.get('doses_por_garrafa')?.hasError('min')">
+                  Deve ser pelo menos 1 dose por garrafa
+                </mat-error>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Preço da Dose</mat-label>
+                <input matInput 
+                       type="number" 
+                       formControlName="dose_price" 
+                       min="0"
+                       step="0.01">
+                <span matPrefix>R$&nbsp;</span>
+                <mat-error *ngIf="productForm.get('dose_price')?.hasError('min')">
+                  Preço da dose deve ser maior que zero
+                </mat-error>
+              </mat-form-field>
+            </div>
+
+            <mat-slide-toggle formControlName="can_sell_by_dose" color="primary">
+              Permitir venda por dose
+            </mat-slide-toggle>
           </div>
 
           <!-- Status -->
@@ -242,6 +281,21 @@ import { environment } from '../../../../../environments/environment';
 
     .status-row {
       margin-top: 8px;
+    }
+
+    .dose-section {
+      margin-top: 24px;
+      padding: 16px;
+      background-color: #f5f5f5;
+      border-radius: 8px;
+      border: 1px solid #e0e0e0;
+    }
+
+    .dose-section h3 {
+      margin: 0 0 16px 0;
+      color: #333;
+      font-size: 16px;
+      font-weight: 500;
     }
 
     .image-upload {
@@ -335,6 +389,9 @@ export class ProductFormDialogComponent implements OnInit {
       original_price: ['', [Validators.min(0)]],
       current_stock: ['', [Validators.required, Validators.min(0)]],
       min_stock: ['', [Validators.required, Validators.min(0)]],
+      doses_por_garrafa: [5, [Validators.required, Validators.min(1)]],
+      can_sell_by_dose: [false],
+      dose_price: ['', [Validators.min(0)]],
       is_active: [true],
       featured: [false],
       offers: [false],

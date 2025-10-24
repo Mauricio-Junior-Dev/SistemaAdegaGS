@@ -56,6 +56,10 @@ import { Subscription } from 'rxjs';
             <mat-icon>people</mat-icon>
             <span>Usuários</span>
           </a>
+          <a routerLink="/admin/movimentacoes" routerLinkActive="active" class="nav-item">
+            <mat-icon>swap_horiz</mat-icon>
+            <span>Movimentações</span>
+          </a>
           <a routerLink="/admin/relatorios" routerLinkActive="active" class="nav-item">
             <mat-icon>assessment</mat-icon>
             <span>Relatórios</span>

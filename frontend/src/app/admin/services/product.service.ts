@@ -18,6 +18,9 @@ export interface Product {
   price: number;
   current_stock: number;
   min_stock: number;
+  doses_por_garrafa: number;
+  can_sell_by_dose: boolean;
+  dose_price?: number;
   sku: string;
   barcode?: string;
   category_id: number;
@@ -37,6 +40,9 @@ export interface CreateProductDTO {
   price: number;
   current_stock: number;
   min_stock: number;
+  doses_por_garrafa: number;
+  can_sell_by_dose: boolean;
+  dose_price?: number;
   sku: string;
   barcode?: string;
   category_id: number;

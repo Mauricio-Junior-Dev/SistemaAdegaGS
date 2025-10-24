@@ -62,8 +62,37 @@
             <div *ngIf="selectedProduct" class="selected-product">
               <div class="product-info">
                 <span class="name">{{selectedProduct.name}}</span>
-                <span class="price">{{formatCurrency(selectedProduct.price)}}</span>
+                <div class="price-info">
+                  <span class="price">Garrafa: {{formatCurrency(selectedProduct.price)}}</span>
+                  <span class="dose-price" *ngIf="selectedProduct.can_sell_by_dose && selectedProduct.dose_price">
+                    | Dose: {{formatCurrency(selectedProduct.dose_price)}}
+                  </span>
+                </div>
+                <div class="product-details">
+                  <span class="stock">Estoque: {{selectedProduct.current_stock}} garrafas</span>
+                  <span class="doses-info" *ngIf="selectedProduct.doses_por_garrafa">
+                    ({{selectedProduct.doses_por_garrafa}} doses por garrafa)
+                  </span>
+                </div>
               </div>
+              
+              <!-- Seleção do Tipo de Venda -->
+              <div class="sale-type-selection" *ngIf="selectedProduct.can_sell_by_dose">
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Tipo de Venda</mat-label>
+                  <mat-select [(ngModel)]="saleType">
+                    <mat-option value="garrafa">Garrafa - {{formatCurrency(selectedProduct.price)}}</mat-option>
+                    <mat-option value="dose" *ngIf="selectedProduct.dose_price">Dose - {{formatCurrency(selectedProduct.dose_price)}}</mat-option>
+                  </mat-select>
+                </mat-form-field>
+              </div>
+              
+              <!-- Aviso quando produto não pode ser vendido por dose -->
+              <div *ngIf="!selectedProduct.can_sell_by_dose" class="dose-unavailable-info">
+                <mat-icon>info</mat-icon>
+                <span>Este produto só pode ser vendido por garrafa</span>
+              </div>
+
               <div class="quantity-control">
                 <button mat-icon-button 
                         (click)="quantity = quantity > 1 ? quantity - 1 : 1"
@@ -73,14 +102,24 @@
                 <span class="quantity">{{quantity}}</span>
                 <button mat-icon-button 
                         (click)="quantity = quantity + 1"
-                        [disabled]="selectedProduct.current_stock === 0 || quantity >= selectedProduct.current_stock">
+                        [disabled]="selectedProduct.current_stock === 0 || (saleType === 'garrafa' ? quantity >= selectedProduct.current_stock : false)">
                   <mat-icon>add</mat-icon>
                 </button>
               </div>
+              
+              <!-- Informações de disponibilidade -->
+              <div *ngIf="saleType === 'dose'" class="dose-info">
+                <mat-icon>info</mat-icon>
+                <span>
+                  {{quantity}} dose(s) = {{ceil(quantity / selectedProduct.doses_por_garrafa)}} garrafa(s) necessária(s)
+                </span>
+              </div>
+              
               <div *ngIf="selectedProduct.current_stock === 0" class="stock-warning">
                 <mat-icon color="warn">warning</mat-icon>
                 <span>Produto sem estoque. Não é possível adicionar ao carrinho.</span>
               </div>
+              
               <button mat-raised-button 
                       color="primary" 
                       (click)="addToCart()"
@@ -108,7 +147,10 @@
               <div *ngFor="let item of cartItems; let i = index" class="cart-item">
                 <div class="item-info">
                   <span class="name">{{item.product.name}}</span>
-                  <span class="price">{{formatCurrency(item.product.price)}}</span>
+                  <span class="sale-type" [class.dose]="item.sale_type === 'dose'" [class.garrafa]="item.sale_type === 'garrafa'">
+                    {{item.sale_type === 'dose' ? 'Dose' : 'Garrafa'}}
+                  </span>
+                  <span class="price">{{formatCurrency(getProductPrice(item.product, item.sale_type))}}</span>
                 </div>
                 <div class="item-controls">
                   <div class="quantity-control">
@@ -120,7 +162,7 @@
                     <span class="quantity">{{item.quantity}}</span>
                     <button mat-icon-button 
                             (click)="updateQuantity(i, 1)"
-                            [disabled]="item.product.current_stock === 0 || item.quantity >= item.product.current_stock">
+                            [disabled]="item.product.current_stock === 0 || (item.sale_type === 'garrafa' ? item.quantity >= item.product.current_stock : false)">
                       <mat-icon>add</mat-icon>
                     </button>
                   </div>

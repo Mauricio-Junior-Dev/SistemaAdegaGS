@@ -118,6 +118,10 @@ export const routes: Routes = [
       {
         path: 'delivery-zones',
         loadComponent: () => import('./admin/pages/delivery-zones/delivery-zones.component').then(m => m.DeliveryZonesComponent)
+      },
+      {
+        path: 'movimentacoes',
+        loadComponent: () => import('./admin/pages/movimentacoes/movimentacoes.component').then(m => m.MovimentacoesComponent)
       }
     ]
   }

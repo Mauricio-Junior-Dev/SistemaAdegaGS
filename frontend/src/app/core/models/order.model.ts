@@ -28,6 +28,7 @@ export interface OrderItem {
     order_id: number;
     product_id: number;
     quantity: number;
+    sale_type: 'dose' | 'garrafa';
     unit_price: number;
     total_price: number;
     product?: Product;

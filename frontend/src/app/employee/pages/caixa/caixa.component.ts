@@ -14,6 +14,7 @@ import { MatBadgeModule } from '@angular/material/badge';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDividerModule } from '@angular/material/divider';
+import { MatSelectModule } from '@angular/material/select';
 import { Subject, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
 
 import { CashService } from '../../services/cash.service';
@@ -29,6 +30,7 @@ import { CloseCashDialogComponent } from './dialogs/close-cash-dialog.component'
 interface CartItem {
   product: Product;
   quantity: number;
+  sale_type: 'dose' | 'garrafa';
   subtotal: number;
 }
 
@@ -52,7 +54,8 @@ interface CartItem {
     MatBadgeModule,
     MatProgressSpinnerModule,
     MatTooltipModule,
-    MatDividerModule
+    MatDividerModule,
+    MatSelectModule
   ]
 })
 export class CaixaComponent implements OnInit, OnDestroy {
@@ -69,6 +72,7 @@ export class CaixaComponent implements OnInit, OnDestroy {
   searchResults: Product[] = [];
   selectedProduct: Product | null = null;
   quantity = 1;
+  saleType: 'dose' | 'garrafa' = 'garrafa';
 
   // Cliente
   customerName = '';
@@ -277,6 +281,9 @@ export class CaixaComponent implements OnInit, OnDestroy {
   selectProduct(product: Product): void {
     this.selectedProduct = product;
     this.quantity = 1;
+    // Se o produto pode ser vendido por dose, permitir seleção
+    // Senão, forçar apenas garrafa
+    this.saleType = product.can_sell_by_dose ? 'garrafa' : 'garrafa';
     this.searchTerm = '';
     this.searchResults = [];
   }
@@ -284,37 +291,65 @@ export class CaixaComponent implements OnInit, OnDestroy {
   addToCart(): void {
     if (!this.selectedProduct || this.quantity < 1) return;
 
-    // Bloquear inclusão quando o produto não possui estoque
-    if (this.selectedProduct.current_stock <= 0) {
-      this.snackBar.open('Produto sem estoque disponível', 'Fechar', { duration: 3000 });
-      return;
-    }
-
-    const existingItem = this.cartItems.find(item => item.product.id === this.selectedProduct!.id);
-
-    if (existingItem) {
-      const newQuantity = existingItem.quantity + this.quantity;
-      if (newQuantity > this.selectedProduct.current_stock) {
-        this.snackBar.open('Quantidade excede o estoque disponível', 'Fechar', { duration: 3000 });
+    // Verificar disponibilidade baseada no tipo de venda
+    if (this.saleType === 'garrafa') {
+      if (this.selectedProduct.current_stock <= 0) {
+        this.snackBar.open('Produto sem estoque disponível', 'Fechar', { duration: 3000 });
         return;
       }
-      existingItem.quantity = newQuantity;
-      existingItem.subtotal = newQuantity * this.selectedProduct.price;
-    } else {
       if (this.quantity > this.selectedProduct.current_stock) {
         this.snackBar.open('Quantidade excede o estoque disponível', 'Fechar', { duration: 3000 });
         return;
       }
+    } else {
+      // Para doses, verificar se há garrafas suficientes para converter
+      const dosesNecessarias = this.quantity;
+      const garrafasNecessarias = Math.ceil(dosesNecessarias / this.selectedProduct.doses_por_garrafa);
+      
+      if (this.selectedProduct.current_stock < garrafasNecessarias) {
+        this.snackBar.open(`Produto não possui garrafas suficientes para as doses solicitadas (necessário: ${garrafasNecessarias} garrafas)`, 'Fechar', { duration: 3000 });
+        return;
+      }
+    }
+
+    // Verificar se já existe item com mesmo produto e tipo de venda
+    const existingItem = this.cartItems.find(item => 
+      item.product.id === this.selectedProduct!.id && item.sale_type === this.saleType
+    );
+
+    if (existingItem) {
+      const newQuantity = existingItem.quantity + this.quantity;
+      
+      // Verificar novamente a disponibilidade
+      if (this.saleType === 'garrafa') {
+        if (newQuantity > this.selectedProduct.current_stock) {
+          this.snackBar.open('Quantidade excede o estoque disponível', 'Fechar', { duration: 3000 });
+          return;
+        }
+      } else {
+        const dosesNecessarias = newQuantity;
+        const garrafasNecessarias = Math.ceil(dosesNecessarias / this.selectedProduct.doses_por_garrafa);
+        if (this.selectedProduct.current_stock < garrafasNecessarias) {
+          this.snackBar.open(`Quantidade excede as garrafas disponíveis para conversão`, 'Fechar', { duration: 3000 });
+          return;
+        }
+      }
+      
+      existingItem.quantity = newQuantity;
+      existingItem.subtotal = newQuantity * this.getProductPrice(this.selectedProduct, this.saleType);
+    } else {
       this.cartItems.push({
         product: this.selectedProduct,
         quantity: this.quantity,
-        subtotal: this.quantity * this.selectedProduct.price
+        sale_type: this.saleType,
+        subtotal: this.quantity * this.getProductPrice(this.selectedProduct, this.saleType)
       });
     }
 
     this.updateTotal();
     this.selectedProduct = null;
     this.quantity = 1;
+    this.saleType = 'garrafa';
   }
 
   removeFromCart(index: number): void {
@@ -326,12 +361,26 @@ export class CaixaComponent implements OnInit, OnDestroy {
     const item = this.cartItems[index];
     const newQuantity = item.quantity + change;
 
-    if (newQuantity < 1 || newQuantity > item.product.current_stock) {
+    if (newQuantity < 1) {
       return;
     }
 
+    // Verificar disponibilidade baseada no tipo de venda
+    if (item.sale_type === 'garrafa') {
+      if (newQuantity > item.product.current_stock) {
+        return;
+      }
+    } else {
+      // Para doses, verificar se há garrafas suficientes para converter
+      const dosesNecessarias = newQuantity;
+      const garrafasNecessarias = Math.ceil(dosesNecessarias / item.product.doses_por_garrafa);
+      if (item.product.current_stock < garrafasNecessarias) {
+        return;
+      }
+    }
+
     item.quantity = newQuantity;
-    item.subtotal = newQuantity * item.product.price;
+    item.subtotal = newQuantity * this.getProductPrice(item.product, item.sale_type);
     this.updateTotal();
   }
 
@@ -405,6 +454,7 @@ export class CaixaComponent implements OnInit, OnDestroy {
       items: this.cartItems.map(item => ({
         product_id: item.product.id,
         quantity: item.quantity,
+        sale_type: item.sale_type,
         price: item.product.price
       })),
       total: this.total,
@@ -680,6 +730,17 @@ export class CaixaComponent implements OnInit, OnDestroy {
       style: 'currency',
       currency: 'BRL'
     }).format(value);
+  }
+
+  ceil(value: number): number {
+    return Math.ceil(value);
+  }
+
+  getProductPrice(product: Product, saleType: 'dose' | 'garrafa'): number {
+    if (saleType === 'dose' && product.can_sell_by_dose && product.dose_price) {
+      return product.dose_price;
+    }
+    return product.price; // Preço da garrafa
   }
 
   toggleCashValueVisibility(): void {

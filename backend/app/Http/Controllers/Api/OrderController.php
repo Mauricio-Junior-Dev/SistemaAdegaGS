@@ -46,7 +46,7 @@ class OrderController extends Controller
         $perPage = $request->get('per_page', 15);
         $orders = $query->paginate($perPage);
 
-        Log::info('OrderController@index - Orders found: ' . $orders->count());
+        Log::info('OrderController@index - Orders found: ' . $orders->total());
 
         return response()->json([
             'data' => $orders->items(),
@@ -76,6 +76,7 @@ class OrderController extends Controller
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
+            'items.*.sale_type' => 'required|in:dose,garrafa',
             'payment_method' => 'required|in:dinheiro,cartão de débito,cartão de crédito,pix',
             'customer_name' => 'nullable|string|max:255',
             'customer_phone' => 'nullable|string|max:20',
@@ -140,11 +141,23 @@ class OrderController extends Controller
             // Adicionar itens
             foreach ($request->items as $item) {
                 $product = Product::findOrFail($item['product_id']);
+                $saleType = $item['sale_type'] ?? 'garrafa';
                 
-                // Checar disponibilidade na coluna única
-                $currentStock = (int) $product->current_stock;
-                if ($currentStock < $item['quantity']) {
-                    throw new \Exception("Produto {$product->name} não possui estoque suficiente");
+                // Verificar disponibilidade baseada no tipo de venda
+                if ($saleType === 'garrafa') {
+                    $currentStock = (int) $product->current_stock;
+                    if ($currentStock < $item['quantity']) {
+                        throw new \Exception("Produto {$product->name} não possui estoque suficiente de garrafas");
+                    }
+                } else {
+                    // Para doses, verificar se há garrafas suficientes para converter
+                    $dosesNecessarias = $item['quantity'];
+                    $garrafasNecessarias = ceil($dosesNecessarias / $product->doses_por_garrafa);
+                    $currentStock = (int) $product->current_stock;
+                    
+                    if ($currentStock < $garrafasNecessarias) {
+                        throw new \Exception("Produto {$product->name} não possui garrafas suficientes para as doses solicitadas");
+                    }
                 }
 
                 $subtotal = $product->price * $item['quantity'];
@@ -152,19 +165,22 @@ class OrderController extends Controller
                     'order_id' => $order->id,
                     'product_id' => $product->id,
                     'quantity' => $item['quantity'],
+                    'sale_type' => $saleType,
                     'price' => $product->price,
                     'subtotal' => $subtotal
                 ]);
 
-                // Atualizar estoque na coluna única
-                $product->decrement('current_stock', $item['quantity']);
+                // Usar a nova lógica de atualização de estoque
+                $product->atualizarEstoquePorVenda($item['quantity'], $saleType);
                 
                 // Registrar movimentação de estoque
+                $unitPrice = $saleType === 'dose' ? $product->dose_price : $product->price;
                 $product->stockMovements()->create([
                     'user_id' => Auth::id(),
                     'type' => 'saida',
                     'quantity' => $item['quantity'],
-                    'description' => 'Venda - Pedido #' . $order->order_number
+                    'description' => "Venda ({$saleType}) - Pedido #" . $order->order_number,
+                    'unit_cost' => $unitPrice
                 ]);
 
                 $total += $subtotal;
@@ -211,6 +227,7 @@ class OrderController extends Controller
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
+            'items.*.sale_type' => 'required|in:dose,garrafa',
             'payment_method' => 'required|in:dinheiro,cartão de débito,cartão de crédito,pix',
             'customer_name' => 'required|string|max:255',
             'customer_phone' => 'nullable|string|max:20',
@@ -302,11 +319,23 @@ class OrderController extends Controller
             // Adicionar itens
             foreach ($request->items as $item) {
                 $product = Product::findOrFail($item['product_id']);
+                $saleType = $item['sale_type'] ?? 'garrafa';
                 
-                // Checar disponibilidade na coluna única
-                $currentStock = (int) $product->current_stock;
-                if ($currentStock < $item['quantity']) {
-                    throw new \Exception("Produto {$product->name} não possui estoque suficiente");
+                // Verificar disponibilidade baseada no tipo de venda
+                if ($saleType === 'garrafa') {
+                    $currentStock = (int) $product->current_stock;
+                    if ($currentStock < $item['quantity']) {
+                        throw new \Exception("Produto {$product->name} não possui estoque suficiente de garrafas");
+                    }
+                } else {
+                    // Para doses, verificar se há garrafas suficientes para converter
+                    $dosesNecessarias = $item['quantity'];
+                    $garrafasNecessarias = ceil($dosesNecessarias / $product->doses_por_garrafa);
+                    $currentStock = (int) $product->current_stock;
+                    
+                    if ($currentStock < $garrafasNecessarias) {
+                        throw new \Exception("Produto {$product->name} não possui garrafas suficientes para as doses solicitadas");
+                    }
                 }
 
                 $subtotal = $product->price * $item['quantity'];
@@ -314,19 +343,22 @@ class OrderController extends Controller
                     'order_id' => $order->id,
                     'product_id' => $product->id,
                     'quantity' => $item['quantity'],
+                    'sale_type' => $saleType,
                     'price' => $product->price,
                     'subtotal' => $subtotal
                 ]);
 
-                // Atualizar estoque na coluna única
-                $product->decrement('current_stock', $item['quantity']);
+                // Usar a nova lógica de atualização de estoque
+                $product->atualizarEstoquePorVenda($item['quantity'], $saleType);
                 
                 // Registrar movimentação de estoque
+                $unitPrice = $saleType === 'dose' ? $product->dose_price : $product->price;
                 $product->stockMovements()->create([
                     'user_id' => Auth::id(),
                     'type' => 'saida',
                     'quantity' => $item['quantity'],
-                    'description' => 'Venda Manual - Pedido #' . $order->order_number
+                    'description' => "Venda Manual ({$saleType}) - Pedido #" . $order->order_number,
+                    'unit_cost' => $unitPrice
                 ]);
 
                 $total += $subtotal;
@@ -543,15 +575,31 @@ class OrderController extends Controller
         // Se o pedido for cancelado, estornar o estoque
         if ($request->status === 'cancelled') {
             foreach ($order->items as $item) {
-                // Repor estoque na coluna única
-                $item->product->increment('current_stock', $item->quantity);
+                $saleType = $item->sale_type ?? 'garrafa';
+                
+                if ($saleType === 'garrafa') {
+                    // Estorno direto de garrafas
+                    $item->product->increment('current_stock', $item->quantity);
+                } else {
+                    // Para doses, reverter a lógica
+                    // Calcular quantas garrafas foram deduzidas
+                    $garrafasDeduzidas = floor($item->quantity / $item->product->doses_por_garrafa);
+                    if ($garrafasDeduzidas > 0) {
+                        $item->product->increment('current_stock', $garrafasDeduzidas);
+                    }
+                    
+                    // Zerar o contador de doses vendidas
+                    $item->product->update(['doses_vendidas' => 0]);
+                }
                 
                 // Registrar movimentação de estoque
+                $unitPrice = $saleType === 'dose' ? $item->product->dose_price : $item->product->price;
                 $item->product->stockMovements()->create([
                     'user_id' => Auth::id(),
                     'type' => 'entrada',
-                    'quantity' => $item->quantity,
-                    'description' => 'Estorno - Pedido #' . $order->order_number . ' cancelado'
+                    'quantity' => $saleType === 'garrafa' ? $item->quantity : ($garrafasDeduzidas ?? 0),
+                    'description' => "Estorno ({$saleType}) - Pedido #" . $order->order_number . ' cancelado',
+                    'unit_cost' => $unitPrice
                 ]);
             }
 

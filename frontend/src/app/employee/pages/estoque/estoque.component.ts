@@ -238,36 +238,4 @@ export class EstoqueComponent implements OnInit, OnDestroy {
       });
   }
 
-  adjustStock(product: Product): void {
-    // Implementar diálogo de ajuste rápido de estoque
-    const newQuantity = prompt(`Ajuste rápido para ${product.name}:\nEstoque atual: ${product.current_stock}\nNova quantidade:`);
-    
-    if (newQuantity !== null && !isNaN(Number(newQuantity))) {
-      const quantity = Number(newQuantity);
-      const currentStock = product.current_stock;
-      const difference = quantity - currentStock;
-      
-      if (difference !== 0) {
-        const type = difference > 0 ? 'in' : 'out';
-        const reason = `Ajuste rápido - ${difference > 0 ? 'Entrada' : 'Saída'} de ${Math.abs(difference)} unidades`;
-        
-        this.stockService.updateStock(product.id, {
-          type: type,
-          quantity: Math.abs(difference),
-          reason: reason
-        }).pipe(takeUntil(this.destroy$))
-        .subscribe({
-          next: () => {
-            this.snackBar.open('Estoque ajustado com sucesso', 'Fechar', { duration: 3000 });
-            this.loadSummary();
-            this.loadProducts();
-          },
-          error: (error) => {
-            console.error('Erro ao ajustar estoque:', error);
-            this.snackBar.open('Erro ao ajustar estoque', 'Fechar', { duration: 3000 });
-          }
-        });
-      }
-    }
-  }
 }

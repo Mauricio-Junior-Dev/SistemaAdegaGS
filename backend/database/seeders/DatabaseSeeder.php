@@ -96,6 +96,57 @@ class DatabaseSeeder extends Seeder
             Address::create($addressData);
         }
 
+        // Criar produtos de teste para dose
+        $testCategory = Category::create([
+            'name' => 'Produtos de Teste',
+            'slug' => 'produtos-de-teste',
+            'description' => 'Produtos para teste do sistema',
+            'is_active' => true,
+            'position' => 99
+        ]);
+
+        // Produto de teste para dose
+        Product::create([
+            'category_id' => $testCategory->id,
+            'name' => 'Cerveja Teste - Dose',
+            'slug' => 'cerveja-teste-dose',
+            'description' => 'Cerveja para teste do sistema de doses',
+            'price' => 20.00,
+            'cost_price' => 12.50,
+            'current_stock' => 20, // 20 garrafas
+            'min_stock' => 5,
+            'doses_por_garrafa' => 5, // 5 doses por garrafa
+            'doses_vendidas' => 0,
+            'can_sell_by_dose' => true, // Pode ser vendido por dose
+            'dose_price' => 4.50, // Preço da dose
+            'sku' => 'TEST-DOSE-001',
+            'is_active' => true,
+            'featured' => false,
+            'offers' => false,
+            'popular' => false
+        ]);
+
+        // Produto de teste para garrafa
+        Product::create([
+            'category_id' => $testCategory->id,
+            'name' => 'Cerveja Teste - Garrafa',
+            'slug' => 'cerveja-teste-garrafa',
+            'description' => 'Cerveja para teste do sistema de garrafas',
+            'price' => 25.00,
+            'cost_price' => 15.00,
+            'current_stock' => 15, // 15 garrafas
+            'min_stock' => 3,
+            'doses_por_garrafa' => 5, // 5 doses por garrafa
+            'doses_vendidas' => 0,
+            'can_sell_by_dose' => false, // Não pode ser vendido por dose
+            'dose_price' => null, // Sem preço de dose
+            'sku' => 'TEST-GARRAFA-001',
+            'is_active' => true,
+            'featured' => false,
+            'offers' => false,
+            'popular' => false
+        ]);
+
         // Criar categorias
         $categories = [
             [

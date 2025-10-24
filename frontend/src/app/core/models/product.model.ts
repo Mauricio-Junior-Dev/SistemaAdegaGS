@@ -9,6 +9,10 @@ export interface Product {
     cost_price: number;
     current_stock: number;
     min_stock: number;
+    doses_por_garrafa: number;
+    doses_vendidas: number;
+    can_sell_by_dose: boolean;
+    dose_price?: number;
     sku: string;
     barcode?: string;
     is_active: boolean;

@@ -33,6 +33,7 @@ export interface OrderItem {
   id: number;
   product: Product;
   quantity: number;
+  sale_type: 'dose' | 'garrafa';
   price: number;
   subtotal: number;
 }
@@ -88,6 +89,7 @@ export interface CreateOrderRequest {
   items: {
     product_id: number;
     quantity: number;
+    sale_type: 'dose' | 'garrafa';
     price: number;
   }[];
   total: number;

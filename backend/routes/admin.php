@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\Admin\ProductController;
 use App\Http\Controllers\Api\Admin\UserController;
 use App\Http\Controllers\Api\Admin\ReportController;
 use App\Http\Controllers\Api\Admin\SettingController;
+use App\Http\Controllers\Api\Admin\StockMovementController;
 use App\Http\Controllers\DeliveryZoneController;
 
 Route::middleware(['admin'])->group(function () {
@@ -62,6 +63,11 @@ Route::middleware(['admin'])->group(function () {
     Route::get('/admin/reports/stock', [ReportController::class, 'stock']);
     Route::get('/admin/reports/customers', [ReportController::class, 'customers']);
     Route::get('/admin/reports/employees', [ReportController::class, 'employees']);
+
+    // Movimentações de Estoque
+    Route::get('/admin/stock-movements', [StockMovementController::class, 'index']);
+    Route::get('/admin/stock-movements/summary', [StockMovementController::class, 'summary']);
+    Route::get('/admin/stock-movements/export', [StockMovementController::class, 'export']);
 
     // Dashboard
     Route::get('/admin/dashboard/summary', [ReportController::class, 'dashboardSummary']);

@@ -1,0 +1,202 @@
+<div class="movimentacoes-container">
+  <div class="movimentacoes-header">
+    <h1>Movimentações de Estoque</h1>
+    <div class="header-actions">
+      <button mat-raised-button color="accent" (click)="exportMovements()">
+        <mat-icon>file_download</mat-icon>
+        Exportar
+      </button>
+    </div>
+  </div>
+
+  <!-- Resumo -->
+  <div *ngIf="showSummary && summary" class="summary-cards">
+    <mat-card class="summary-card">
+      <mat-card-header>
+        <mat-card-title>Resumo Geral</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="summary-stats">
+          <div class="stat-item">
+            <span class="stat-label">Total de Movimentações:</span>
+            <span class="stat-value">{{summary.total_movements}}</span>
+          </div>
+          <div class="stat-item" *ngIf="summary.summary.entrada">
+            <span class="stat-label">Entradas:</span>
+            <span class="stat-value primary">{{summary.summary.entrada.count}}</span>
+          </div>
+          <div class="stat-item" *ngIf="summary.summary.saida">
+            <span class="stat-label">Saídas:</span>
+            <span class="stat-value warn">{{summary.summary.saida.count}}</span>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card class="summary-card" *ngIf="summary.user_summary.length > 0">
+      <mat-card-header>
+        <mat-card-title>Por Usuário</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="user-stats">
+          <div *ngFor="let user of summary.user_summary" class="user-stat">
+            <span class="user-name">{{user.user_name}}</span>
+            <span class="user-count">{{user.movements_count}} movimentações</span>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <!-- Filtros -->
+  <mat-card class="filters-card">
+    <mat-card-content>
+      <div class="filters-container">
+        <div class="filter-row">
+          <mat-form-field appearance="outline">
+            <mat-label>Produto</mat-label>
+            <mat-select [(ngModel)]="filters.product_id" (selectionChange)="applyFilters()">
+              <mat-option [value]="null">Todos</mat-option>
+              <mat-option [value]="product.id" *ngFor="let product of products">
+                {{product.name}}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Usuário</mat-label>
+            <mat-select [(ngModel)]="filters.user_id" (selectionChange)="applyFilters()">
+              <mat-option [value]="null">Todos</mat-option>
+              <mat-option [value]="user.id" *ngFor="let user of users">
+                {{user.name}}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Tipo</mat-label>
+            <mat-select [(ngModel)]="filters.type" (selectionChange)="applyFilters()">
+              <mat-option [value]="null">Todos</mat-option>
+              <mat-option value="entrada">Entrada</mat-option>
+              <mat-option value="saida">Saída</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+
+        <div class="filter-row">
+          <mat-form-field appearance="outline">
+            <mat-label>Data Inicial</mat-label>
+            <input matInput [matDatepicker]="dateFromPicker" [(ngModel)]="dateFrom" (dateChange)="applyFilters()">
+            <mat-datepicker-toggle matSuffix [for]="dateFromPicker"></mat-datepicker-toggle>
+            <mat-datepicker #dateFromPicker></mat-datepicker>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Data Final</mat-label>
+            <input matInput [matDatepicker]="dateToPicker" [(ngModel)]="dateTo" (dateChange)="applyFilters()">
+            <mat-datepicker-toggle matSuffix [for]="dateToPicker"></mat-datepicker-toggle>
+            <mat-datepicker #dateToPicker></mat-datepicker>
+          </mat-form-field>
+
+          <div class="filter-actions">
+            <button mat-button (click)="clearFilters()">
+              <mat-icon>clear</mat-icon>
+              Limpar
+            </button>
+          </div>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading-container">
+    <mat-spinner diameter="50"></mat-spinner>
+    <p>Carregando movimentações...</p>
+  </div>
+
+  <!-- Tabela de Movimentações -->
+  <mat-card *ngIf="!loading" class="table-card">
+    <mat-card-content>
+      <table mat-table [dataSource]="movements" matSort>
+        <!-- Data -->
+        <ng-container matColumnDef="date">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Data</th>
+          <td mat-cell *matCellDef="let movement">
+            {{formatDate(movement.created_at)}}
+          </td>
+        </ng-container>
+
+        <!-- Produto -->
+        <ng-container matColumnDef="product">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Produto</th>
+          <td mat-cell *matCellDef="let movement">
+            {{movement.product?.name || 'Produto removido'}}
+          </td>
+        </ng-container>
+
+        <!-- Usuário -->
+        <ng-container matColumnDef="user">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Usuário</th>
+          <td mat-cell *matCellDef="let movement">
+            {{movement.user?.name || 'Usuário removido'}}
+          </td>
+        </ng-container>
+
+        <!-- Tipo -->
+        <ng-container matColumnDef="type">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Tipo</th>
+          <td mat-cell *matCellDef="let movement">
+            <mat-chip [color]="getTypeColor(movement.type)" selected>
+              {{getTypeLabel(movement.type)}}
+            </mat-chip>
+          </td>
+        </ng-container>
+
+        <!-- Quantidade -->
+        <ng-container matColumnDef="quantity">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Quantidade</th>
+          <td mat-cell *matCellDef="let movement">
+            <span [class]="movement.type === 'entrada' ? 'quantity-entrada' : 'quantity-saida'">
+              {{movement.type === 'entrada' ? '+' : '-'}}{{movement.quantity}}
+            </span>
+          </td>
+        </ng-container>
+
+        <!-- Descrição -->
+        <ng-container matColumnDef="description">
+          <th mat-header-cell *matHeaderCellDef>Descrição</th>
+          <td mat-cell *matCellDef="let movement">
+            {{movement.description || '-'}}
+          </td>
+        </ng-container>
+
+        <!-- Custo Unitário -->
+        <ng-container matColumnDef="unit_cost">
+          <th mat-header-cell *matHeaderCellDef>Custo Unitário</th>
+          <td mat-cell *matCellDef="let movement">
+            {{movement.unit_cost ? formatCurrency(movement.unit_cost) : '-'}}
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+      </table>
+
+      <!-- Empty State -->
+      <div *ngIf="movements.length === 0" class="empty-state">
+        <mat-icon>inventory_2</mat-icon>
+        <p>Nenhuma movimentação encontrada</p>
+      </div>
+
+      <!-- Paginação -->
+      <mat-paginator
+        [length]="totalItems"
+        [pageSize]="pageSize"
+        [pageIndex]="currentPage"
+        [pageSizeOptions]="[10, 15, 25, 50]"
+        (page)="onPageChange($event)">
+      </mat-paginator>
+    </mat-card-content>
+  </mat-card>
+</div>

@@ -26,10 +26,10 @@ return new class extends Migration
             $table->integer('min_stock')->default(5);
             
             // Campos de dose (consolidados)
-            $table->integer('doses_por_garrafa')->default(5);
-            $table->integer('doses_vendidas')->default(0);
-            $table->boolean('can_sell_by_dose')->default(false);
-            $table->decimal('dose_price', 10, 2)->nullable();
+            $table->integer('doses_por_garrafa')->default(5)->after('current_stock');
+            $table->integer('doses_vendidas')->default(0)->after('doses_por_garrafa');
+            $table->boolean('can_sell_by_dose')->default(false)->after('doses_vendidas');
+            $table->decimal('dose_price', 10, 2)->nullable()->after('can_sell_by_dose');
             
             $table->string('sku')->unique();
             $table->string('barcode')->nullable();

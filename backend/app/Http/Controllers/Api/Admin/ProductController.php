@@ -71,6 +71,9 @@ class ProductController extends Controller
             'original_price' => 'nullable|numeric|min:0',
             'current_stock' => 'required|integer|min:0',
             'min_stock' => 'required|integer|min:0',
+            'doses_por_garrafa' => 'required|integer|min:1',
+            'can_sell_by_dose' => 'boolean',
+            'dose_price' => 'nullable|numeric|min:0',
             'sku' => 'required|string|unique:products,sku',
             'barcode' => 'nullable|string|unique:products,barcode',
             'category_id' => 'required|exists:categories,id',
@@ -88,6 +91,9 @@ class ProductController extends Controller
         $product->original_price = $request->original_price;
         $product->current_stock = $request->current_stock;
         $product->min_stock = $request->min_stock;
+        $product->doses_por_garrafa = $request->doses_por_garrafa;
+        $product->can_sell_by_dose = $request->boolean('can_sell_by_dose', false);
+        $product->dose_price = $request->dose_price;
         $product->sku = $request->sku;
         $product->barcode = $request->barcode;
         $product->category_id = $request->category_id;
@@ -123,6 +129,9 @@ class ProductController extends Controller
             'original_price' => 'nullable|numeric|min:0',
             'current_stock' => 'required|integer|min:0',
             'min_stock' => 'required|integer|min:0',
+            'doses_por_garrafa' => 'required|integer|min:1',
+            'can_sell_by_dose' => 'boolean',
+            'dose_price' => 'nullable|numeric|min:0',
             'sku' => 'required|string|unique:products,sku,' . $product->id,
             'barcode' => 'nullable|string|unique:products,barcode,' . $product->id,
             'category_id' => 'required|exists:categories,id',
@@ -142,6 +151,9 @@ class ProductController extends Controller
         $product->original_price = $request->original_price;
         $product->current_stock = $newStock;
         $product->min_stock = $request->min_stock;
+        $product->doses_por_garrafa = $request->doses_por_garrafa;
+        $product->can_sell_by_dose = $request->boolean('can_sell_by_dose', false);
+        $product->dose_price = $request->dose_price;
         $product->sku = $request->sku;
         $product->barcode = $request->barcode;
         $product->category_id = $request->category_id;
