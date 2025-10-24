@@ -324,4 +324,5 @@ export class PedidosComponent implements OnInit, OnDestroy {
       minute: '2-digit'
     });
   }
+
 }

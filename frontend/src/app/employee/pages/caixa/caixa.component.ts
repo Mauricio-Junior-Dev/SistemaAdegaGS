@@ -18,7 +18,8 @@ import { Subject, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
 
 import { CashService } from '../../services/cash.service';
 import { StockService } from '../../../core/services/stock.service';
-import { OrderService, PaymentMethod, CreateOrderRequest, CreateOrderResponse, Product } from '../../services/order.service';
+import { OrderService, PaymentMethod, CreateOrderRequest, CreateOrderResponse, Product, Customer, CustomerAddress } from '../../services/order.service';
+import { QuickCustomerDialogComponent } from './dialogs/quick-customer-dialog.component';
 import { CashStatus, CashTransaction } from '../../models/cash.model';
 import { SettingsService, SystemSettings } from '../../../admin/services/settings.service';
 import { OpenCashDialogComponent } from './dialogs/open-cash-dialog.component';
@@ -72,6 +73,12 @@ export class CaixaComponent implements OnInit, OnDestroy {
   // Cliente
   customerName = '';
   customerPhone = '';
+  customerEmail = '';
+  customerDocument = '';
+  selectedCustomer: Customer | null = null;
+  customerSearchTerm = '';
+  customerSearchResults: Customer[] = [];
+  showCustomerSearch = false;
 
   // Troco
   receivedAmount = 0;
@@ -85,6 +92,7 @@ export class CaixaComponent implements OnInit, OnDestroy {
 
   private destroy$ = new Subject<void>();
   private searchSubject = new Subject<string>();
+  private customerSearchSubject = new Subject<string>();
 
   constructor(
     private cashService: CashService,
@@ -104,6 +112,19 @@ export class CaixaComponent implements OnInit, OnDestroy {
         this.searchProducts(term);
       } else {
         this.searchResults = [];
+      }
+    });
+
+    // Configurar busca de clientes com debounce
+    this.customerSearchSubject.pipe(
+      debounceTime(300),
+      distinctUntilChanged(),
+      takeUntil(this.destroy$)
+    ).subscribe(term => {
+      if (term && term.length >= 2) {
+        this.searchCustomers(term);
+      } else {
+        this.customerSearchResults = [];
       }
     });
   }
@@ -187,6 +208,72 @@ export class CaixaComponent implements OnInit, OnDestroy {
       });
   }
 
+  searchCustomers(term: string): void {
+    this.orderService.searchCustomers(term)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: customers => {
+          this.customerSearchResults = customers;
+        },
+        error: error => {
+          console.error('Erro ao buscar clientes:', error);
+          this.snackBar.open('Erro ao buscar clientes: ' + error.message, 'Fechar', { duration: 3000 });
+        }
+      });
+  }
+
+  onCustomerSearch(event: any): void {
+    this.customerSearchTerm = event.target.value;
+    this.customerSearchSubject.next(this.customerSearchTerm);
+  }
+
+  selectCustomer(customer: Customer): void {
+    this.selectedCustomer = customer;
+    this.customerName = customer.name;
+    this.customerPhone = customer.phone || '';
+    this.customerEmail = customer.email;
+    this.customerDocument = customer.document_number || '';
+    this.customerSearchTerm = '';
+    this.customerSearchResults = [];
+    this.showCustomerSearch = false;
+  }
+
+  clearCustomer(): void {
+    this.selectedCustomer = null;
+    this.customerName = '';
+    this.customerPhone = '';
+    this.customerEmail = '';
+    this.customerDocument = '';
+    this.customerSearchTerm = '';
+    this.customerSearchResults = [];
+    this.showCustomerSearch = false;
+  }
+
+  toggleCustomerSearch(): void {
+    this.showCustomerSearch = !this.showCustomerSearch;
+    if (this.showCustomerSearch) {
+      this.customerSearchTerm = '';
+      this.customerSearchResults = [];
+    }
+  }
+
+  openQuickCustomerDialog(): void {
+    const dialogRef = this.dialog.open(QuickCustomerDialogComponent, {
+      width: '500px',
+      maxWidth: '95vw',
+      data: {}
+    });
+
+    dialogRef.afterClosed().subscribe((customer: Customer) => {
+      if (customer) {
+        // Selecionar o cliente criado automaticamente
+        this.selectCustomer(customer);
+        this.snackBar.open('Cliente criado e selecionado com sucesso!', 'Fechar', { duration: 3000 });
+      }
+    });
+  }
+
+
   selectProduct(product: Product): void {
     this.selectedProduct = product;
     this.quantity = 1;
@@ -257,6 +344,12 @@ export class CaixaComponent implements OnInit, OnDestroy {
     this.total = 0;
     this.customerName = '';
     this.customerPhone = '';
+    this.customerEmail = '';
+    this.customerDocument = '';
+    this.selectedCustomer = null;
+    this.customerSearchTerm = '';
+    this.customerSearchResults = [];
+    this.showCustomerSearch = false;
     this.receivedAmount = 0;
     this.changeAmount = 0;
     this.showChangeSection = false;
@@ -318,6 +411,8 @@ export class CaixaComponent implements OnInit, OnDestroy {
       payment_method: paymentMethod,
       customer_name: this.customerName || undefined,
       customer_phone: this.customerPhone || undefined,
+      customer_email: this.customerEmail || undefined,
+      customer_document: this.customerDocument || undefined,
       received_amount: paymentMethod === 'dinheiro' ? this.receivedAmount : undefined,
       change_amount: paymentMethod === 'dinheiro' ? this.changeAmount : undefined
     };

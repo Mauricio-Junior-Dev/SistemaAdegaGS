@@ -148,17 +148,83 @@
           <mat-card-content>
             <!-- Informações do Cliente -->
             <div class="customer-info">
-              <mat-form-field appearance="outline" class="full-width">
-                <mat-label>Nome do Cliente (opcional)</mat-label>
-                <input matInput [(ngModel)]="customerName">
-                <mat-icon matSuffix>person</mat-icon>
-              </mat-form-field>
+              <div class="customer-search-header">
+                <h4>Cliente</h4>
+                <div class="customer-actions">
+                  <button mat-icon-button 
+                          (click)="toggleCustomerSearch()"
+                          [color]="showCustomerSearch ? 'primary' : 'basic'"
+                          matTooltip="Buscar cliente cadastrado">
+                    <mat-icon>search</mat-icon>
+                  </button>
+                  <button mat-icon-button 
+                          (click)="openQuickCustomerDialog()"
+                          color="accent"
+                          matTooltip="Criar novo cliente">
+                    <mat-icon>person_add</mat-icon>
+                  </button>
+                  <button mat-icon-button 
+                          *ngIf="selectedCustomer"
+                          (click)="clearCustomer()"
+                          color="warn"
+                          matTooltip="Limpar cliente">
+                    <mat-icon>clear</mat-icon>
+                  </button>
+                </div>
+              </div>
 
-              <mat-form-field appearance="outline" class="full-width">
-                <mat-label>Telefone (opcional)</mat-label>
-                <input matInput [(ngModel)]="customerPhone">
-                <mat-icon matSuffix>phone</mat-icon>
-              </mat-form-field>
+              <!-- Busca de Clientes -->
+              <div *ngIf="showCustomerSearch" class="customer-search">
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Buscar cliente por nome, telefone, email...</mat-label>
+                  <input matInput 
+                         [(ngModel)]="customerSearchTerm"
+                         (input)="onCustomerSearch($event)"
+                         placeholder="Digite para buscar">
+                  <mat-icon matSuffix>search</mat-icon>
+                </mat-form-field>
+
+                <!-- Resultados da Busca -->
+                <div *ngIf="customerSearchResults.length > 0" class="customer-results">
+                  <div *ngFor="let customer of customerSearchResults" 
+                       class="customer-result"
+                       (click)="selectCustomer(customer)">
+                    <div class="customer-info">
+                      <span class="name">{{customer.name}}</span>
+                      <span class="email">{{customer.email}}</span>
+                      <span *ngIf="customer.phone" class="phone">{{customer.phone}}</span>
+                    </div>
+                    <mat-icon>add</mat-icon>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Cliente Selecionado -->
+              <div *ngIf="selectedCustomer" class="selected-customer">
+                <div class="customer-details">
+                  <mat-icon>person</mat-icon>
+                  <div class="customer-data">
+                    <span class="name">{{selectedCustomer.name}}</span>
+                    <span class="email">{{selectedCustomer.email}}</span>
+                    <span *ngIf="selectedCustomer.phone" class="phone">{{selectedCustomer.phone}}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Campos Manuais (quando não há cliente selecionado) -->
+              <div *ngIf="!selectedCustomer" class="manual-customer-fields">
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Nome do Cliente (opcional)</mat-label>
+                  <input matInput [(ngModel)]="customerName">
+                  <mat-icon matSuffix>person</mat-icon>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Telefone (opcional)</mat-label>
+                  <input matInput [(ngModel)]="customerPhone">
+                  <mat-icon matSuffix>phone</mat-icon>
+                </mat-form-field>
+              </div>
             </div>
 
             <!-- Total -->

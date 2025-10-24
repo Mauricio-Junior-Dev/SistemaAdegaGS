@@ -456,3 +456,136 @@ h1 {
     text-align: right;
   }
 }
+
+/* Customer Search Styles */
+.customer-search-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.customer-search-header h4 {
+  margin: 0;
+  color: #333;
+  font-weight: 500;
+}
+
+.customer-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.customer-search {
+  margin-bottom: 16px;
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.customer-results {
+  max-height: 200px;
+  overflow-y: auto;
+  margin-top: 8px;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  background: white;
+}
+
+.customer-result {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #f1f3f4;
+  transition: background-color 0.2s ease;
+}
+
+.customer-result:hover {
+  background-color: #f8f9fa;
+}
+
+.customer-result:last-child {
+  border-bottom: none;
+}
+
+.customer-result .customer-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.customer-result .name {
+  font-weight: 500;
+  color: #333;
+  font-size: 0.9rem;
+}
+
+.customer-result .email {
+  font-size: 0.8rem;
+  color: #666;
+}
+
+.customer-result .phone {
+  font-size: 0.8rem;
+  color: #666;
+}
+
+.customer-result mat-icon {
+  color: #28a745;
+  font-size: 1.2rem;
+  width: 1.2rem;
+  height: 1.2rem;
+}
+
+.selected-customer {
+  margin-bottom: 16px;
+  padding: 12px;
+  background: #e8f5e8;
+  border: 1px solid #c3e6c3;
+  border-radius: 8px;
+}
+
+.customer-details {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.customer-details mat-icon {
+  color: #28a745;
+  font-size: 1.5rem;
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.customer-data {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.customer-data .name {
+  font-weight: 500;
+  color: #333;
+  font-size: 0.9rem;
+}
+
+.customer-data .email {
+  font-size: 0.8rem;
+  color: #666;
+}
+
+.customer-data .phone {
+  font-size: 0.8rem;
+  color: #666;
+}
+
+.manual-customer-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}

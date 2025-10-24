@@ -94,8 +94,21 @@ export interface CreateOrderRequest {
   payment_method: PaymentMethod;
   customer_name?: string;
   customer_phone?: string;
+  customer_email?: string;
+  customer_document?: string;
   received_amount?: number;
   change_amount?: number;
+  delivery?: {
+    address?: string;
+    number?: string;
+    complement?: string;
+    neighborhood?: string;
+    city?: string;
+    state?: string;
+    zipcode?: string;
+    phone?: string;
+    instructions?: string;
+  };
 }
 
 export interface CreateOrderResponse extends Order {
@@ -200,6 +213,15 @@ export class OrderService {
     );
   }
 
+  createManualOrder(order: CreateOrderRequest): Observable<CreateOrderResponse> {
+    return this.http.post<CreateOrderResponse>(`${this.apiUrl}/manual`, order).pipe(
+      tap(() => {
+        // Recarregar a lista de pedidos após criar um novo
+        this.fetchOrders().subscribe();
+      })
+    );
+  }
+
   getOrdersSummary(): Observable<OrderSummary> {
     // Se tiver endpoint específico:
     // return this.http.get<OrderSummary>(`${this.apiUrl}/summary`);
@@ -288,4 +310,54 @@ export class OrderService {
     };
     return methods[method] || method;
   }
+
+  searchCustomers(searchTerm: string): Observable<Customer[]> {
+    return this.http.get<{customers: Customer[]}>(`${this.apiUrl.replace('/orders', '')}/customers/search`, {
+      params: { search: searchTerm }
+    }).pipe(
+      map(response => response.customers)
+    );
+  }
+
+  createQuickCustomer(customerData: QuickCustomerRequest): Observable<Customer> {
+    return this.http.post<{customer: Customer}>(`${this.apiUrl.replace('/orders', '')}/customers/quick`, customerData).pipe(
+      map(response => response.customer)
+    );
+  }
+
+}
+
+export interface Customer {
+  id: number;
+  name: string;
+  email: string;
+  phone?: string;
+  document_number?: string;
+  addresses: CustomerAddress[];
+}
+
+export interface CustomerAddress {
+  id: number;
+  name?: string;
+  full_address: string;
+  short_address: string;
+  is_default: boolean;
+}
+
+export interface QuickCustomerRequest {
+  name: string;
+  phone?: string;
+  email?: string;
+  document_number?: string;
+  address?: {
+    name: string;
+    street: string;
+    number: string;
+    complement?: string;
+    neighborhood: string;
+    city: string;
+    state: string;
+    zipcode?: string;
+    notes?: string;
+  };
 }

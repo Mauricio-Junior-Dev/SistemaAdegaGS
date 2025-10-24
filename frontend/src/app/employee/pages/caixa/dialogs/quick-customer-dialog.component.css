@@ -1,0 +1,223 @@
+.quick-customer-dialog {
+  width: 100%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow: hidden;
+}
+
+.dialog-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 24px;
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+  color: white;
+  margin: -24px -24px 0 -24px;
+}
+
+.dialog-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 500;
+}
+
+.dialog-content {
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 24px 0;
+}
+
+.customer-form-card {
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  border: none;
+}
+
+.customer-form-card mat-card-header {
+  background: #f8f9fa;
+  border-radius: 12px 12px 0 0;
+  margin: -16px -16px 16px -16px;
+  padding: 16px;
+}
+
+.customer-form-card mat-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: #495057;
+}
+
+.customer-form-card mat-card-subtitle {
+  color: #6c757d;
+  font-size: 0.9rem;
+}
+
+.form-row {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.form-row .full-width {
+  flex: 1;
+}
+
+.form-row mat-form-field {
+  flex: 1;
+}
+
+.info-section {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 20px;
+  padding: 16px;
+  background: #e3f2fd;
+  border: 1px solid #bbdefb;
+  border-radius: 8px;
+}
+
+.info-section mat-icon {
+  color: #1976d2;
+  font-size: 1.2rem;
+  width: 1.2rem;
+  height: 1.2rem;
+  margin-top: 2px;
+}
+
+.info-text p {
+  margin: 0 0 8px 0;
+  font-size: 0.9rem;
+  color: #1976d2;
+  line-height: 1.4;
+}
+
+.info-text p:last-child {
+  margin-bottom: 0;
+}
+
+.info-text strong {
+  font-weight: 600;
+}
+
+/* Address Section Styles */
+.address-section {
+  margin-top: 20px;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.address-section h4 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 16px 0;
+  color: #495057;
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+
+.address-section mat-icon {
+  color: #28a745;
+  font-size: 1.2rem;
+  width: 1.2rem;
+  height: 1.2rem;
+}
+
+/* CEP Field Styles */
+.cep-field {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  flex: 1;
+}
+
+.cep-input {
+  flex: 1;
+}
+
+.cep-button {
+  min-width: 120px;
+  height: 56px;
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cep-button mat-spinner {
+  margin-right: 0;
+}
+
+.cep-button:disabled {
+  opacity: 0.6;
+}
+
+/* Dialog Actions */
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 24px;
+  background: #f8f9fa;
+  margin: 0 -24px -24px -24px;
+  border-top: 1px solid #dee2e6;
+}
+
+.dialog-actions button {
+  min-width: 120px;
+}
+
+/* Loading States */
+mat-spinner {
+  margin-right: 8px;
+}
+
+/* Error States */
+.mat-error {
+  font-size: 0.75rem;
+}
+
+/* Success States */
+.mat-form-field.mat-focused .mat-form-field-label {
+  color: #28a745;
+}
+
+.mat-form-field.mat-focused .mat-form-field-ripple {
+  background-color: #28a745;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .quick-customer-dialog {
+    max-width: 95vw;
+  }
+  
+  .form-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .cep-field {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .cep-button {
+    width: 100%;
+    margin-top: 0;
+  }
+  
+  .dialog-actions {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .dialog-actions button {
+    width: 100%;
+  }
+}

@@ -1,0 +1,296 @@
+<div class="create-order-dialog">
+  <div mat-dialog-title class="dialog-header">
+    <mat-icon>add_shopping_cart</mat-icon>
+    <h2>Criar Pedido Manual</h2>
+  </div>
+
+  <div mat-dialog-content class="dialog-content">
+    <form [formGroup]="orderForm" (ngSubmit)="onSubmit()">
+      <mat-stepper #stepper>
+        <!-- Passo 1: Informações do Cliente -->
+        <mat-step label="Cliente">
+          <div class="step-content">
+            <mat-card class="customer-card">
+              <mat-card-header>
+                <mat-card-title>
+                  <mat-icon>person</mat-icon>
+                  Informações do Cliente
+                </mat-card-title>
+              </mat-card-header>
+              <mat-card-content>
+                <div class="form-row">
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Nome do Cliente *</mat-label>
+                    <input matInput formControlName="customer_name" placeholder="Nome completo">
+                    <mat-error *ngIf="orderForm.get('customer_name')?.hasError('required')">
+                      Nome é obrigatório
+                    </mat-error>
+                  </mat-form-field>
+                </div>
+
+                <div class="form-row">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Telefone</mat-label>
+                    <input matInput formControlName="customer_phone" placeholder="(11) 99999-9999">
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline">
+                    <mat-label>Email</mat-label>
+                    <input matInput type="email" formControlName="customer_email" placeholder="cliente@email.com">
+                  </mat-form-field>
+                </div>
+
+                <div class="form-row">
+                  <mat-form-field appearance="outline">
+                    <mat-label>CPF/CNPJ</mat-label>
+                    <input matInput formControlName="customer_document" placeholder="000.000.000-00">
+                  </mat-form-field>
+                </div>
+              </mat-card-content>
+            </mat-card>
+          </div>
+        </mat-step>
+
+        <!-- Passo 2: Produtos -->
+        <mat-step label="Produtos">
+          <div class="step-content">
+            <mat-card class="products-card">
+              <mat-card-header>
+                <mat-card-title>
+                  <mat-icon>inventory</mat-icon>
+                  Selecionar Produtos
+                </mat-card-title>
+              </mat-card-header>
+              <mat-card-content>
+                <!-- Busca de Produtos -->
+                <div class="product-search" [formGroup]="searchForm">
+                  <mat-form-field appearance="outline" class="search-field">
+                    <mat-label>Buscar produtos...</mat-label>
+                    <input matInput 
+                           formControlName="searchTerm"
+                           placeholder="Nome ou SKU do produto">
+                    <mat-icon matSuffix>search</mat-icon>
+                  </mat-form-field>
+                </div>
+
+                <!-- Lista de Produtos Disponíveis -->
+                <div class="products-grid" *ngIf="filteredProducts.length > 0">
+                  <div class="product-item" *ngFor="let product of filteredProducts" 
+                       (click)="addProduct(product)">
+                    <div class="product-info">
+                      <h4>{{product.name}}</h4>
+                      <p class="product-sku" *ngIf="product.sku">SKU: {{product.sku}}</p>
+                      <p class="product-stock">Estoque: {{product.current_stock}}</p>
+                      <p class="product-price">{{formatCurrency(product.price)}}</p>
+                    </div>
+                    <mat-icon class="add-icon">add_circle</mat-icon>
+                  </div>
+                </div>
+
+                <div *ngIf="filteredProducts.length === 0" class="no-products">
+                  <mat-icon>inventory_2</mat-icon>
+                  <p>Nenhum produto encontrado</p>
+                </div>
+              </mat-card-content>
+            </mat-card>
+
+            <!-- Produtos Selecionados -->
+            <mat-card class="selected-products-card" *ngIf="selectedProducts.length > 0">
+              <mat-card-header>
+                <mat-card-title>
+                  <mat-icon>shopping_cart</mat-icon>
+                  Produtos Selecionados
+                </mat-card-title>
+              </mat-card-header>
+              <mat-card-content>
+                <div class="selected-products-list">
+                  <div class="selected-product" *ngFor="let item of selectedProducts; let i = index">
+                    <div class="product-details">
+                      <h4>{{item.product.name}}</h4>
+                      <p>{{formatCurrency(item.product.price)}} cada</p>
+                    </div>
+                    <div class="quantity-controls">
+                      <button mat-icon-button (click)="updateQuantity(i, item.quantity - 1)">
+                        <mat-icon>remove</mat-icon>
+                      </button>
+                      <span class="quantity">{{item.quantity}}</span>
+                      <button mat-icon-button (click)="updateQuantity(i, item.quantity + 1)">
+                        <mat-icon>add</mat-icon>
+                      </button>
+                    </div>
+                    <div class="product-total">
+                      {{formatCurrency(item.product.price * item.quantity)}}
+                    </div>
+                    <button mat-icon-button color="warn" (click)="removeProduct(i)">
+                      <mat-icon>delete</mat-icon>
+                    </button>
+                  </div>
+                </div>
+
+                <mat-divider></mat-divider>
+                <div class="total-section">
+                  <h3>Total: {{formatCurrency(total)}}</h3>
+                </div>
+              </mat-card-content>
+            </mat-card>
+          </div>
+        </mat-step>
+
+        <!-- Passo 3: Pagamento -->
+        <mat-step label="Pagamento">
+          <div class="step-content">
+            <mat-card class="payment-card">
+              <mat-card-header>
+                <mat-card-title>
+                  <mat-icon>payment</mat-icon>
+                  Informações de Pagamento
+                </mat-card-title>
+              </mat-card-header>
+              <mat-card-content>
+                <div class="form-row">
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Forma de Pagamento *</mat-label>
+                    <mat-select formControlName="payment_method">
+                      <mat-option *ngFor="let method of paymentMethods" [value]="method">
+                        {{getPaymentMethodLabel(method)}}
+                      </mat-option>
+                    </mat-select>
+                  </mat-form-field>
+                </div>
+
+                <!-- Campos específicos para pagamento em dinheiro -->
+                <div *ngIf="orderForm.get('payment_method')?.value === 'dinheiro'" class="cash-payment">
+                  <div class="form-row">
+                    <mat-form-field appearance="outline">
+                      <mat-label>Valor Recebido *</mat-label>
+                      <input matInput 
+                             type="number" 
+                             step="0.01"
+                             formControlName="received_amount"
+                             placeholder="0,00">
+                      <mat-error *ngIf="orderForm.get('received_amount')?.hasError('required')">
+                        Valor recebido é obrigatório
+                      </mat-error>
+                      <mat-error *ngIf="orderForm.get('received_amount')?.hasError('min')">
+                        Valor deve ser maior que zero
+                      </mat-error>
+                    </mat-form-field>
+
+                    <mat-form-field appearance="outline">
+                      <mat-label>Troco</mat-label>
+                      <input matInput 
+                             type="number" 
+                             step="0.01"
+                             formControlName="change_amount"
+                             readonly>
+                    </mat-form-field>
+                  </div>
+
+                  <div class="change-info" *ngIf="changeAmount > 0">
+                    <mat-icon>monetization_on</mat-icon>
+                    <span>Troco: {{formatCurrency(changeAmount)}}</span>
+                  </div>
+                </div>
+
+                <div class="total-display">
+                  <h3>Total do Pedido: {{formatCurrency(total)}}</h3>
+                </div>
+              </mat-card-content>
+            </mat-card>
+          </div>
+        </mat-step>
+
+        <!-- Passo 4: Entrega (Opcional) -->
+        <mat-step label="Entrega" [optional]="true">
+          <div class="step-content">
+            <mat-card class="delivery-card">
+              <mat-card-header>
+                <mat-card-title>
+                  <mat-icon>local_shipping</mat-icon>
+                  Endereço de Entrega (Opcional)
+                </mat-card-title>
+              </mat-card-header>
+              <mat-card-content>
+                <div formGroupName="delivery">
+                  <div class="form-row">
+                    <mat-form-field appearance="outline" class="full-width">
+                      <mat-label>Endereço</mat-label>
+                      <input matInput formControlName="address" placeholder="Rua, Avenida, etc.">
+                    </mat-form-field>
+                  </div>
+
+                  <div class="form-row">
+                    <mat-form-field appearance="outline">
+                      <mat-label>Número</mat-label>
+                      <input matInput formControlName="number" placeholder="123">
+                    </mat-form-field>
+
+                    <mat-form-field appearance="outline">
+                      <mat-label>Complemento</mat-label>
+                      <input matInput formControlName="complement" placeholder="Apto, Bloco, etc.">
+                    </mat-form-field>
+                  </div>
+
+                  <div class="form-row">
+                    <mat-form-field appearance="outline">
+                      <mat-label>Bairro</mat-label>
+                      <input matInput formControlName="neighborhood" placeholder="Centro">
+                    </mat-form-field>
+
+                    <mat-form-field appearance="outline">
+                      <mat-label>Cidade</mat-label>
+                      <input matInput formControlName="city" placeholder="São Paulo">
+                    </mat-form-field>
+
+                    <mat-form-field appearance="outline">
+                      <mat-label>Estado</mat-label>
+                      <input matInput formControlName="state" placeholder="SP" maxlength="2">
+                    </mat-form-field>
+                  </div>
+
+                  <div class="form-row">
+                    <mat-form-field appearance="outline">
+                      <mat-label>CEP</mat-label>
+                      <input matInput formControlName="zipcode" placeholder="00000-000">
+                    </mat-form-field>
+
+                    <mat-form-field appearance="outline">
+                      <mat-label>Telefone de Contato</mat-label>
+                      <input matInput formControlName="phone" placeholder="(11) 99999-9999">
+                    </mat-form-field>
+                  </div>
+
+                  <div class="form-row">
+                    <mat-form-field appearance="outline" class="full-width">
+                      <mat-label>Instruções de Entrega</mat-label>
+                      <textarea matInput 
+                                formControlName="instructions" 
+                                placeholder="Instruções especiais para entrega..."
+                                rows="3"></textarea>
+                    </mat-form-field>
+                  </div>
+                </div>
+              </mat-card-content>
+            </mat-card>
+          </div>
+        </mat-step>
+      </mat-stepper>
+    </form>
+  </div>
+
+  <div mat-dialog-actions class="dialog-actions">
+    <button mat-button (click)="onCancel()" [disabled]="loading">
+      <mat-icon>cancel</mat-icon>
+      Cancelar
+    </button>
+    
+    <button mat-raised-button 
+            color="primary" 
+            (click)="onSubmit()" 
+            [disabled]="orderForm.invalid || selectedProducts.length === 0 || loading">
+      <mat-spinner *ngIf="loading" diameter="20"></mat-spinner>
+      <mat-icon *ngIf="!loading">check</mat-icon>
+      {{loading ? 'Criando...' : 'Criar Pedido'}}
+    </button>
+  </div>
+</div>

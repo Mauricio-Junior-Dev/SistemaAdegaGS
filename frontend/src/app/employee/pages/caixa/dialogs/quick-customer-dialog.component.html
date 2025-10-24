@@ -1,0 +1,202 @@
+<div class="quick-customer-dialog">
+  <div mat-dialog-title class="dialog-header">
+    <mat-icon>person_add</mat-icon>
+    <h2>Novo Cliente</h2>
+  </div>
+
+  <div mat-dialog-content class="dialog-content">
+    <form [formGroup]="customerForm" (ngSubmit)="onSubmit()">
+      <mat-card class="customer-form-card">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>person</mat-icon>
+            Dados do Cliente
+          </mat-card-title>
+          <mat-card-subtitle>Preencha os dados básicos do cliente</mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="form-row">
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Nome Completo *</mat-label>
+              <input matInput 
+                     formControlName="name" 
+                     placeholder="Nome completo do cliente">
+              <mat-icon matSuffix>person</mat-icon>
+              <mat-error *ngIf="customerForm.get('name')?.hasError('required')">
+                Nome é obrigatório
+              </mat-error>
+              <mat-error *ngIf="customerForm.get('name')?.hasError('minlength')">
+                Nome deve ter pelo menos 2 caracteres
+              </mat-error>
+            </mat-form-field>
+          </div>
+
+          <div class="form-row">
+            <mat-form-field appearance="outline">
+              <mat-label>Telefone</mat-label>
+              <input matInput 
+                     formControlName="phone" 
+                     placeholder="(11) 99999-9999">
+              <mat-icon matSuffix>phone</mat-icon>
+            </mat-form-field>
+
+            <mat-form-field appearance="outline">
+              <mat-label>Email</mat-label>
+              <input matInput 
+                     type="email"
+                     formControlName="email" 
+                     placeholder="cliente@email.com">
+              <mat-icon matSuffix>email</mat-icon>
+              <mat-error *ngIf="customerForm.get('email')?.hasError('email')">
+                Email inválido
+              </mat-error>
+            </mat-form-field>
+          </div>
+
+          <div class="form-row">
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>CPF/CNPJ</mat-label>
+              <input matInput 
+                     formControlName="document_number" 
+                     placeholder="000.000.000-00">
+              <mat-icon matSuffix>badge</mat-icon>
+            </mat-form-field>
+          </div>
+
+          <!-- Seção de Endereço -->
+          <mat-divider style="margin: 20px 0;"></mat-divider>
+          
+          <div class="address-section">
+            <h4>
+              <mat-icon>location_on</mat-icon>
+              Endereço de Entrega
+            </h4>
+            
+            <div class="form-row">
+              <mat-form-field appearance="outline">
+                <mat-label>Nome do Endereço</mat-label>
+                <input matInput 
+                       formControlName="address_name" 
+                       placeholder="Casa, Trabalho, etc.">
+                <mat-icon matSuffix>home</mat-icon>
+              </mat-form-field>
+
+              <div class="cep-field">
+                <mat-form-field appearance="outline" class="cep-input">
+                  <mat-label>CEP</mat-label>
+                  <input matInput 
+                         formControlName="zipcode" 
+                         placeholder="00000-000"
+                         (input)="formatZipcode($event); clearCepError()">
+                  <mat-icon matSuffix>location_on</mat-icon>
+                  <mat-error *ngIf="customerForm.get('zipcode')?.errors?.['required']">CEP é obrigatório</mat-error>
+                  <mat-error *ngIf="customerForm.get('zipcode')?.errors?.['pattern']">CEP inválido</mat-error>
+                </mat-form-field>
+                <button mat-raised-button 
+                        color="primary" 
+                        (click)="searchCep()" 
+                        [disabled]="!customerForm.get('zipcode')?.value || customerForm.get('zipcode')?.errors || cepLoading"
+                        class="cep-button">
+                  <mat-spinner *ngIf="cepLoading" diameter="20"></mat-spinner>
+                  <mat-icon *ngIf="!cepLoading">search</mat-icon>
+                  <span *ngIf="!cepLoading">Buscar</span>
+                  <span *ngIf="cepLoading">Buscando...</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Rua/Avenida</mat-label>
+                <input matInput 
+                       formControlName="street" 
+                       placeholder="Nome da rua ou avenida">
+                <mat-icon matSuffix>streetview</mat-icon>
+              </mat-form-field>
+            </div>
+
+            <div class="form-row">
+              <mat-form-field appearance="outline">
+                <mat-label>Número</mat-label>
+                <input matInput 
+                       formControlName="number" 
+                       placeholder="123">
+                <mat-icon matSuffix>numbers</mat-icon>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Complemento</mat-label>
+                <input matInput 
+                       formControlName="complement" 
+                       placeholder="Apto 45, Bloco A">
+                <mat-icon matSuffix>home_work</mat-icon>
+              </mat-form-field>
+            </div>
+
+            <div class="form-row">
+              <mat-form-field appearance="outline">
+                <mat-label>Bairro</mat-label>
+                <input matInput 
+                       formControlName="neighborhood" 
+                       placeholder="Centro, Vila Madalena">
+                <mat-icon matSuffix>location_city</mat-icon>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Cidade</mat-label>
+                <input matInput 
+                       formControlName="city" 
+                       placeholder="São Paulo">
+                <mat-icon matSuffix>location_city</mat-icon>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Estado</mat-label>
+                <input matInput 
+                       formControlName="state" 
+                       placeholder="SP">
+                <mat-icon matSuffix>map</mat-icon>
+              </mat-form-field>
+            </div>
+
+            <div class="form-row">
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Observações (opcional)</mat-label>
+                <textarea matInput 
+                          formControlName="notes" 
+                          placeholder="Instruções especiais para entrega"
+                          rows="2"></textarea>
+                <mat-icon matSuffix>note</mat-icon>
+              </mat-form-field>
+            </div>
+          </div>
+
+          <div class="info-section">
+            <mat-icon>info</mat-icon>
+            <div class="info-text">
+              <p><strong>Dica:</strong> Use o botão "Buscar" no CEP para preencher automaticamente o endereço!</p>
+              <p><strong>Importante:</strong> Se o cliente já existir (mesmo email ou CPF), será usado o cadastro existente.</p>
+              <p><strong>WhatsApp:</strong> Ideal para atendimento via WhatsApp - cliente fica cadastrado com endereço para futuras compras.</p>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </form>
+  </div>
+
+  <div mat-dialog-actions class="dialog-actions">
+    <button mat-button (click)="onCancel()" [disabled]="loading">
+      <mat-icon>cancel</mat-icon>
+      Cancelar
+    </button>
+    
+    <button mat-raised-button 
+            color="primary" 
+            (click)="onSubmit()" 
+            [disabled]="customerForm.invalid || loading">
+      <mat-spinner *ngIf="loading" diameter="20"></mat-spinner>
+      <mat-icon *ngIf="!loading">person_add</mat-icon>
+      {{loading ? 'Criando...' : 'Criar Cliente'}}
+    </button>
+  </div>
+</div>

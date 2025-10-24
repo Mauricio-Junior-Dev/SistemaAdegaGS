@@ -123,6 +123,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/orders/{order}', [OrderController::class, 'show']);
         Route::patch('/orders/{order}/status', [OrderController::class, 'updateStatus']);
         Route::post('/orders/create', [OrderController::class, 'store']);
+        Route::post('/orders/manual', [OrderController::class, 'createManualOrder']);
+        Route::get('/customers/search', [OrderController::class, 'searchCustomers']);
+        Route::post('/customers/quick', [OrderController::class, 'createQuickCustomer']);
 
         // Estoque
         Route::get('/stock', [StockController::class, 'index']);
