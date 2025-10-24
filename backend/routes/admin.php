@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\Admin\ProductController;
 use App\Http\Controllers\Api\Admin\UserController;
 use App\Http\Controllers\Api\Admin\ReportController;
 use App\Http\Controllers\Api\Admin\SettingController;
+use App\Http\Controllers\DeliveryZoneController;
 
 Route::middleware(['admin'])->group(function () {
     // Categorias
@@ -85,6 +86,13 @@ Route::middleware(['admin'])->group(function () {
     Route::delete('/admin/banners/{banner}', [App\Http\Controllers\BannerController::class, 'destroy']);
     Route::post('/admin/banners/upload', [App\Http\Controllers\BannerController::class, 'upload']);
     Route::post('/admin/banners/reorder', [App\Http\Controllers\BannerController::class, 'reorder']);
+
+    // Delivery Zones (Bairros)
+    Route::get('/admin/delivery-zones', [DeliveryZoneController::class, 'adminIndex']);
+    Route::get('/admin/delivery-zones/{deliveryZone}', [DeliveryZoneController::class, 'show']);
+    Route::post('/admin/delivery-zones', [DeliveryZoneController::class, 'store']);
+    Route::put('/admin/delivery-zones/{deliveryZone}', [DeliveryZoneController::class, 'update']);
+    Route::delete('/admin/delivery-zones/{deliveryZone}', [DeliveryZoneController::class, 'destroy']);
     
     // Endpoint de teste para debug
     Route::post('/admin/settings/test', function(\Illuminate\Http\Request $request) {

@@ -8,12 +8,14 @@ use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\StockController;
 use App\Http\Controllers\Api\AddressController;
+use App\Http\Controllers\DeliveryZoneController;
 
 // Rotas públicas
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/auth/social', [SocialAuthController::class, 'socialAuth']);
 Route::get('/products', [ProductController::class, 'index']);
+Route::get('/products/suggestions', [ProductController::class, 'suggestions']);
 Route::get('/products/{product}', [ProductController::class, 'show']);
 Route::get('/categories', [CategoryController::class, 'index']);
 Route::get('/categories/{category}', [CategoryController::class, 'show']);
@@ -24,11 +26,16 @@ Route::get('/public/settings', [App\Http\Controllers\Api\Admin\SettingController
 // Banners públicos (sem autenticação)
 Route::get('/banners/active', [App\Http\Controllers\BannerController::class, 'active']);
 
+// Delivery zones públicas (sem autenticação)
+Route::get('/delivery-zones', [DeliveryZoneController::class, 'index']);
+Route::get('/frete', [DeliveryZoneController::class, 'calculateFrete']);
+
 
 // Endpoint de teste sem middleware
 Route::get('/test-no-auth', function () {
     return response()->json(['message' => 'Endpoint funcionando sem autenticação']);
 });
+
 
 // Rotas protegidas
 Route::middleware('auth:sanctum')->group(function () {

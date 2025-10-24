@@ -1,0 +1,59 @@
+<div class="product-suggestions" *ngIf="suggestions.length > 0">
+  <div class="suggestions-header">
+    <h3>
+      <mat-icon>shopping_bag</mat-icon>
+      Produtos que você pode gostar
+    </h3>
+    <p>Complete seu pedido com estes produtos complementares</p>
+  </div>
+
+  <div class="suggestions-grid" *ngIf="!loading; else loadingTemplate">
+    <div class="suggestion-card" *ngFor="let product of suggestions">
+      <div class="product-image">
+        <img [src]="getImageUrl(product)" [alt]="product.name" loading="lazy">
+        <div class="offer-badge" *ngIf="hasOffer(product)">
+          <span>-{{ getDiscountPercentage(product) }}%</span>
+        </div>
+      </div>
+      
+      <div class="product-info">
+        <h4 class="product-name">{{ product.name }}</h4>
+        <p class="product-category">{{ product.category?.name || 'Categoria' }}</p>
+        
+        <div class="product-price">
+          <span class="current-price">R$ {{ product.price | number:'1.2-2' }}</span>
+          <span class="original-price" *ngIf="hasOffer(product)">
+            R$ {{ getOriginalPrice(product) | number:'1.2-2' }}
+          </span>
+        </div>
+        
+        <div class="product-stock" [class.low-stock]="product.current_stock <= 5">
+          <mat-icon>inventory</mat-icon>
+          <span *ngIf="product.current_stock > 5">Em estoque</span>
+          <span *ngIf="product.current_stock <= 5 && product.current_stock > 0">
+            Últimas {{ product.current_stock }} unidades
+          </span>
+          <span *ngIf="product.current_stock === 0" class="out-of-stock">Indisponível</span>
+        </div>
+      </div>
+      
+      <div class="product-actions">
+        <button 
+          mat-raised-button 
+          color="primary" 
+          class="add-button"
+          (click)="addToCart(product)"
+          [disabled]="product.current_stock === 0">
+          Adicionar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <ng-template #loadingTemplate>
+    <div class="loading-container">
+      <mat-spinner diameter="40"></mat-spinner>
+      <p>Carregando sugestões...</p>
+    </div>
+  </ng-template>
+</div>

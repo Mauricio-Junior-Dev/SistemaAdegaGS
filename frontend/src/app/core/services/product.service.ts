@@ -98,4 +98,14 @@ export class ProductService {
   getLowStock(product: Product): boolean {
     return product.current_stock <= product.min_stock;
   }
+
+  getSuggestions(cartIds: number[], limit: number = 6): Observable<Product[]> {
+    // Construir parâmetros manualmente para garantir formato correto
+    const cartIdsParam = cartIds.map(id => `cart_ids[]=${id}`).join('&');
+    const url = `${this.apiUrl}/products/suggestions?${cartIdsParam}&limit=${limit}`;
+    
+    return this.http.get<{suggestions: Product[], total: number}>(url).pipe(
+      map(response => response.suggestions)
+    );
+  }
 }

@@ -790,3 +790,83 @@
     align-self: center;
   }
 }
+
+/* Delivery Fee Section */
+.delivery-fee-section {
+  margin-top: 1.5rem;
+}
+
+.fee-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.fee-card:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
+}
+
+.fee-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.fee-header mat-icon {
+  color: #3b82f6;
+  font-size: 1.5rem;
+}
+
+.fee-header h4 {
+  margin: 0;
+  color: #1a202c;
+  font-weight: 600;
+}
+
+.fee-details {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.fee-amount {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.fee-label {
+  color: #64748b;
+  font-weight: 500;
+}
+
+.fee-value {
+  color: #059669;
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.delivery-time {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #3b82f6;
+  font-weight: 500;
+}
+
+.delivery-time mat-icon {
+  font-size: 1.2rem;
+}
+
+@media (max-width: 768px) {
+  .fee-details {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

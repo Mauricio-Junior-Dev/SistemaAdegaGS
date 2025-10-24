@@ -59,4 +59,87 @@ class ProductController extends Controller
             ->findOrFail($id);
         return response()->json($product);
     }
+
+    /**
+     * Get product suggestions based on cart items
+     */
+    public function suggestions(Request $request)
+    {
+        $request->validate([
+            'cart_ids' => 'required|array',
+            'cart_ids.*' => 'integer|exists:products,id',
+            'limit' => 'integer|min:1|max:8'
+        ]);
+
+        $cartIds = $request->cart_ids;
+        $limit = $request->get('limit', 6);
+
+        // Buscar produtos do carrinho para obter suas categorias
+        $cartProducts = Product::whereIn('id', $cartIds)->get();
+        $cartCategories = $cartProducts->pluck('category_id')->unique()->filter();
+
+        // Buscar produtos populares primeiro
+        $suggestions = Product::with('category')
+            ->where('is_active', true)
+            ->where('current_stock', '>', 0)
+            ->where('popular', true) // Priorizar produtos populares
+            ->whereNotIn('id', $cartIds) // Excluir produtos já no carrinho
+            ->orderBy('price', 'asc') // Dentro dos populares, priorizar menor preço
+            ->limit($limit)
+            ->get();
+
+        // Se não encontrou produtos populares suficientes, buscar produtos da mesma categoria
+        if ($suggestions->count() < $limit) {
+            $categorySuggestions = Product::with('category')
+                ->where('is_active', true)
+                ->where('current_stock', '>', 0)
+                ->whereNotIn('id', $cartIds)
+                ->whereNotIn('id', $suggestions->pluck('id'))
+                ->where(function($query) use ($cartCategories) {
+                    // Buscar produtos da mesma categoria
+                    if ($cartCategories->isNotEmpty()) {
+                        $query->whereIn('category_id', $cartCategories);
+                    }
+                })
+                ->orderBy('price', 'asc')
+                ->limit($limit - $suggestions->count())
+                ->get();
+
+            $suggestions = $suggestions->merge($categorySuggestions);
+        }
+
+        // Se ainda não tem produtos suficientes, buscar produtos de baixo valor
+        if ($suggestions->count() < $limit) {
+            $lowValueSuggestions = Product::with('category')
+                ->where('is_active', true)
+                ->where('current_stock', '>', 0)
+                ->whereNotIn('id', $cartIds)
+                ->whereNotIn('id', $suggestions->pluck('id'))
+                ->where('price', '<=', 50) // Produtos de baixo valor (snacks, drinks, etc.)
+                ->orderBy('price', 'asc')
+                ->limit($limit - $suggestions->count())
+                ->get();
+
+            $suggestions = $suggestions->merge($lowValueSuggestions);
+        }
+
+        // Se ainda não tem produtos suficientes, buscar qualquer produto disponível
+        if ($suggestions->count() < $limit) {
+            $finalSuggestions = Product::with('category')
+                ->where('is_active', true)
+                ->where('current_stock', '>', 0)
+                ->whereNotIn('id', $cartIds)
+                ->whereNotIn('id', $suggestions->pluck('id'))
+                ->orderBy('price', 'asc')
+                ->limit($limit - $suggestions->count())
+                ->get();
+
+            $suggestions = $suggestions->merge($finalSuggestions);
+        }
+
+        return response()->json([
+            'suggestions' => $suggestions,
+            'total' => $suggestions->count()
+        ]);
+    }
 }

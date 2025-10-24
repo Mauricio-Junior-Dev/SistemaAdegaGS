@@ -1,0 +1,72 @@
+<div class="dialog-container">
+  <div class="dialog-header">
+    <h2 mat-dialog-title>
+      <mat-icon>{{ isEdit ? 'edit_location' : 'add_location' }}</mat-icon>
+      {{ isEdit ? 'Editar Zona de Entrega' : 'Nova Zona de Entrega' }}
+    </h2>
+    <button mat-icon-button mat-dialog-close class="close-button">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <mat-dialog-content>
+    <form [formGroup]="form" class="delivery-zone-form">
+      <div class="form-row">
+        <mat-form-field class="full-width">
+          <mat-label>Nome do Bairro</mat-label>
+          <input matInput formControlName="nome_bairro" placeholder="Ex: Centro, Jardins, etc">
+          <mat-error *ngIf="form.get('nome_bairro')?.invalid && form.get('nome_bairro')?.touched">
+            {{ getErrorMessage('nome_bairro') }}
+          </mat-error>
+        </mat-form-field>
+      </div>
+
+      <div class="form-row">
+        <mat-form-field class="half-width">
+          <mat-label>Valor do Frete (R$)</mat-label>
+          <input matInput 
+                 formControlName="valor_frete" 
+                 type="number" 
+                 step="0.01" 
+                 min="0"
+                 placeholder="0.00">
+          <mat-error *ngIf="form.get('valor_frete')?.invalid && form.get('valor_frete')?.touched">
+            {{ getErrorMessage('valor_frete') }}
+          </mat-error>
+        </mat-form-field>
+
+        <mat-form-field class="half-width">
+          <mat-label>Tempo Estimado</mat-label>
+          <input matInput formControlName="tempo_estimado" placeholder="Ex: 30-45 min">
+          <mat-hint>Tempo estimado de entrega (opcional)</mat-hint>
+          <mat-error *ngIf="form.get('tempo_estimado')?.invalid && form.get('tempo_estimado')?.touched">
+            {{ getErrorMessage('tempo_estimado') }}
+          </mat-error>
+        </mat-form-field>
+      </div>
+
+      <div class="form-row">
+        <mat-checkbox formControlName="ativo" class="status-checkbox">
+          <span class="checkbox-label">
+            <mat-icon>check_circle</mat-icon>
+            Zona ativa (disponível para entrega)
+          </span>
+        </mat-checkbox>
+      </div>
+    </form>
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end">
+    <button mat-button (click)="onCancel()" [disabled]="loading">
+      Cancelar
+    </button>
+    <button mat-raised-button 
+            color="primary" 
+            (click)="onSubmit()" 
+            [disabled]="form.invalid || loading">
+      <mat-spinner *ngIf="loading" diameter="20" style="display: inline-block; margin-right: 8px;"></mat-spinner>
+      <mat-icon *ngIf="!loading">{{ isEdit ? 'save' : 'add' }}</mat-icon>
+      {{ isEdit ? 'Salvar Alterações' : 'Criar Zona' }}
+    </button>
+  </mat-dialog-actions>
+</div>

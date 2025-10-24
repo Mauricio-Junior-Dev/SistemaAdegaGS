@@ -182,7 +182,12 @@
 
                       <mat-form-field>
                         <mat-label>Bairro</mat-label>
-                        <input matInput formControlName="neighborhood" placeholder="Seu bairro">
+                        <mat-select formControlName="neighborhood" (selectionChange)="onNeighborhoodChange()" [(ngModel)]="selectedNeighborhood">
+                          <mat-option value="">Selecione seu bairro</mat-option>
+                          <mat-option *ngFor="let zone of deliveryZones" [value]="zone.nome_bairro">
+                            {{ zone.nome_bairro }}
+                          </mat-option>
+                        </mat-select>
                         <mat-error *ngIf="deliveryForm.get('neighborhood')?.errors?.['required']">Bairro é obrigatório</mat-error>
                       </mat-form-field>
 
@@ -209,6 +214,26 @@
                         <mat-label>Instruções para entrega</mat-label>
                         <textarea matInput formControlName="instructions" placeholder="Instruções especiais para entrega"></textarea>
                       </mat-form-field>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Seção de Frete -->
+                <div class="delivery-fee-section" *ngIf="selectedNeighborhood">
+                  <div class="fee-card">
+                    <div class="fee-header">
+                      <mat-icon>local_shipping</mat-icon>
+                      <h4>Frete para {{ selectedNeighborhood }}</h4>
+                    </div>
+                    <div class="fee-details">
+                      <div class="fee-amount">
+                        <span class="fee-label">Valor do frete:</span>
+                        <span class="fee-value">R$ {{ deliveryFee | number:'1.2-2' }}</span>
+                      </div>
+                      <div class="delivery-time" *ngIf="estimatedTime">
+                        <mat-icon>schedule</mat-icon>
+                        <span>{{ estimatedTime }}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -346,13 +371,17 @@
             </div>
             <div class="total-row">
               <span>Taxa de entrega</span>
-              <span class="free-delivery">Grátis</span>
+              <span *ngIf="deliveryFee > 0">R$ {{ deliveryFee | number:'1.2-2' }}</span>
+              <span *ngIf="deliveryFee === 0" class="free-delivery">Grátis</span>
             </div>
             <div class="total-final">
               <span>Total</span>
-              <span>R$ {{ cartTotal$ | async | number:'1.2-2' }}</span>
+              <span>R$ {{ ((cartTotal$ | async) || 0) + deliveryFee | number:'1.2-2' }}</span>
             </div>
           </div>
+
+          <!-- Produtos Complementares -->
+          <app-product-suggestions [cartItems$]="cartItems$"></app-product-suggestions>
 
           <!-- Garantias e Segurança -->
           <div class="security-badges">

@@ -1,0 +1,134 @@
+<div class="delivery-zones-page">
+  <div class="page-header">
+    <div class="header-content">
+      <div class="title-section">
+        <h1>Zonas de Entrega</h1>
+        <p>Gerencie os bairros e valores de frete para entrega</p>
+      </div>
+      <button mat-raised-button color="primary" (click)="openFormDialog()">
+        <mat-icon>add</mat-icon>
+        Nova Zona de Entrega
+      </button>
+    </div>
+  </div>
+
+  <div class="page-content">
+    <mat-card class="main-card">
+      <!-- Filtros -->
+      <div class="filters-section">
+        <div class="filters-row">
+          <mat-form-field class="search-field">
+            <mat-label>Buscar bairros</mat-label>
+            <input matInput [(ngModel)]="searchTerm" (input)="onSearchChange()" placeholder="Digite o nome do bairro">
+            <mat-icon matSuffix>search</mat-icon>
+          </mat-form-field>
+
+          <mat-form-field class="status-filter">
+            <mat-label>Status</mat-label>
+            <mat-select [(ngModel)]="statusFilter" (selectionChange)="onStatusFilterChange()">
+              <mat-option value="all">Todos</mat-option>
+              <mat-option value="active">Ativos</mat-option>
+              <mat-option value="inactive">Inativos</mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+      </div>
+
+      <!-- Loading -->
+      <div *ngIf="loading" class="loading-container">
+        <mat-spinner diameter="40"></mat-spinner>
+        <p>Carregando zonas de entrega...</p>
+      </div>
+
+      <!-- Tabela -->
+      <div *ngIf="!loading" class="table-container">
+        <table mat-table [dataSource]="filteredZones" class="delivery-zones-table">
+          
+          <!-- Nome do Bairro -->
+          <ng-container matColumnDef="nome_bairro">
+            <th mat-header-cell *matHeaderCellDef>Bairro</th>
+            <td mat-cell *matCellDef="let zone">
+              <div class="bairro-cell">
+                <span class="bairro-name">{{ zone.nome_bairro }}</span>
+              </div>
+            </td>
+          </ng-container>
+
+          <!-- Valor do Frete -->
+          <ng-container matColumnDef="valor_frete">
+            <th mat-header-cell *matHeaderCellDef>Valor do Frete</th>
+            <td mat-cell *matCellDef="let zone">
+              <span class="frete-value">{{ formatCurrency(zone.valor_frete) }}</span>
+            </td>
+          </ng-container>
+
+          <!-- Tempo Estimado -->
+          <ng-container matColumnDef="tempo_estimado">
+            <th mat-header-cell *matHeaderCellDef>Tempo Estimado</th>
+            <td mat-cell *matCellDef="let zone">
+              <span class="tempo-estimado" *ngIf="zone.tempo_estimado">{{ zone.tempo_estimado }}</span>
+              <span class="no-tempo" *ngIf="!zone.tempo_estimado">Não informado</span>
+            </td>
+          </ng-container>
+
+          <!-- Status -->
+          <ng-container matColumnDef="ativo">
+            <th mat-header-cell *matHeaderCellDef>Status</th>
+            <td mat-cell *matCellDef="let zone">
+              <mat-chip [color]="zone.ativo ? 'primary' : 'warn'" class="status-chip">
+                <mat-icon>{{ zone.ativo ? 'check_circle' : 'cancel' }}</mat-icon>
+                {{ zone.ativo ? 'Ativo' : 'Inativo' }}
+              </mat-chip>
+            </td>
+          </ng-container>
+
+          <!-- Ações -->
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef>Ações</th>
+            <td mat-cell *matCellDef="let zone">
+              <div class="actions-cell">
+                <button mat-icon-button 
+                        (click)="openFormDialog(zone)"
+                        matTooltip="Editar">
+                  <mat-icon>edit</mat-icon>
+                </button>
+                
+                <button mat-icon-button 
+                        [color]="zone.ativo ? 'warn' : 'primary'"
+                        (click)="toggleStatus(zone)"
+                        [matTooltip]="zone.ativo ? 'Desativar' : 'Ativar'">
+                  <mat-icon>{{ zone.ativo ? 'visibility_off' : 'visibility' }}</mat-icon>
+                </button>
+                
+                <button mat-icon-button 
+                        color="warn"
+                        (click)="deleteDeliveryZone(zone)"
+                        matTooltip="Excluir">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+        </table>
+
+        <!-- Mensagem quando não há dados -->
+        <div *ngIf="filteredZones.length === 0" class="no-data">
+          <mat-icon>location_off</mat-icon>
+          <h3>Nenhuma zona de entrega encontrada</h3>
+          <p *ngIf="searchTerm || statusFilter !== 'all'">
+            Tente ajustar os filtros ou <button mat-button color="primary" (click)="searchTerm = ''; statusFilter = 'all'; applyFilters()">limpar filtros</button>
+          </p>
+          <p *ngIf="!searchTerm && statusFilter === 'all'">
+            <button mat-raised-button color="primary" (click)="openFormDialog()">
+              <mat-icon>add</mat-icon>
+              Criar primeira zona de entrega
+            </button>
+          </p>
+        </div>
+      </div>
+    </mat-card>
+  </div>
+</div>

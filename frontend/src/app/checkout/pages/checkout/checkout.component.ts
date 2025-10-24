@@ -13,6 +13,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatSelectModule } from '@angular/material/select';
 import { FormsModule } from '@angular/forms';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
@@ -21,9 +22,12 @@ import { AuthService } from '../../../core/services/auth.service';
 import { OrderService } from '../../../core/services/order.service';
 import { CepService } from '../../../core/services/cep.service';
 import { AddressService, Address } from '../../../core/services/address.service';
+import { DeliveryZoneService } from '../../../services/delivery-zone.service';
 import { CartItem } from '../../../core/models/cart.model';
 import { User } from '../../../core/models/auth.model';
 import { Product } from '../../../core/models/product.model';
+import { DeliveryZone } from '../../../models/delivery-zone.model';
+import { ProductSuggestionsComponent } from '../../components/product-suggestions/product-suggestions.component';
 import { environment } from '../../../../environments/environment';
 
 @Component({
@@ -46,7 +50,9 @@ import { environment } from '../../../../environments/environment';
     MatCardModule,
     MatChipsModule,
     MatDividerModule,
-    MatSnackBarModule
+    MatSnackBarModule,
+    MatSelectModule,
+    ProductSuggestionsComponent
   ]
 })
 export class CheckoutComponent implements OnInit {
@@ -64,6 +70,13 @@ export class CheckoutComponent implements OnInit {
   useSavedAddress = false;
   loadingAddresses = false;
   
+  // Delivery Zones
+  deliveryZones: DeliveryZone[] = [];
+  selectedNeighborhood = '';
+  deliveryFee = 0;
+  estimatedTime = '';
+  loadingDeliveryZones = false;
+  
   // Controle de Steps
   currentStep = 1;
 
@@ -74,6 +87,7 @@ export class CheckoutComponent implements OnInit {
     private orderService: OrderService,
     private cepService: CepService,
     private addressService: AddressService,
+    private deliveryZoneService: DeliveryZoneService,
     private snackBar: MatSnackBar,
     private router: Router,
     private cdr: ChangeDetectorRef
@@ -115,6 +129,9 @@ export class CheckoutComponent implements OnInit {
 
     // Carregar endereços salvos
     this.loadAddresses();
+    
+    // Carregar zonas de entrega
+    this.loadDeliveryZones();
   }
 
   loadAddresses(): void {
@@ -283,6 +300,48 @@ export class CheckoutComponent implements OnInit {
     this.error = null;
   }
 
+  /**
+   * Carrega as zonas de entrega disponíveis
+   */
+  loadDeliveryZones(): void {
+    this.loadingDeliveryZones = true;
+    this.deliveryZoneService.getDeliveryZones().subscribe({
+      next: (zones) => {
+        this.deliveryZones = zones;
+        this.loadingDeliveryZones = false;
+      },
+      error: (error) => {
+        console.error('Erro ao carregar zonas de entrega:', error);
+        this.loadingDeliveryZones = false;
+      }
+    });
+  }
+
+  /**
+   * Calcula o frete quando o bairro é selecionado
+   */
+  onNeighborhoodChange(): void {
+    if (this.selectedNeighborhood) {
+      this.deliveryZoneService.calculateFrete(this.selectedNeighborhood).subscribe({
+        next: (response) => {
+          this.deliveryFee = response.valor_frete;
+          this.estimatedTime = response.tempo_estimado || '';
+        },
+        error: (error) => {
+          console.error('Erro ao calcular frete:', error);
+          this.deliveryFee = 0;
+          this.estimatedTime = '';
+          if (error.status === 404) {
+            this.snackBar.open('Entre em contato para verificar disponibilidade para este bairro', 'Fechar', { duration: 5000 });
+          }
+        }
+      });
+    } else {
+      this.deliveryFee = 0;
+      this.estimatedTime = '';
+    }
+  }
+
   // Controle de Steps
   nextStep(): void {
     if (this.currentStep < 4) {
@@ -359,7 +418,8 @@ export class CheckoutComponent implements OnInit {
         items: items.map(item => ({
           product_id: item.product.id,
           quantity: item.quantity
-        }))
+        })),
+        delivery_fee: this.deliveryFee
       };
 
       console.log('Enviando pedido:', orderData);

@@ -64,6 +64,10 @@ import { Subscription } from 'rxjs';
             <mat-icon>settings</mat-icon>
             <span>Configurações</span>
           </a>
+          <a routerLink="/admin/delivery-zones" routerLinkActive="active" class="nav-item">
+            <mat-icon>local_shipping</mat-icon>
+            <span>Zonas de Entrega</span>
+          </a>
         </nav>
 
         <div class="sidenav-footer">

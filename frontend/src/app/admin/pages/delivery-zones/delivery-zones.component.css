@@ -1,0 +1,199 @@
+.delivery-zones-page {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.page-header {
+  margin-bottom: 2rem;
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.title-section h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1a202c;
+  margin: 0 0 0.5rem 0;
+}
+
+.title-section p {
+  color: #64748b;
+  margin: 0;
+}
+
+.main-card {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+}
+
+.filters-section {
+  padding: 1.5rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.filters-row {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.search-field {
+  flex: 1;
+  min-width: 250px;
+}
+
+.status-filter {
+  min-width: 150px;
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  gap: 1rem;
+}
+
+.loading-container p {
+  color: #64748b;
+  margin: 0;
+}
+
+.table-container {
+  overflow-x: auto;
+}
+
+.delivery-zones-table {
+  width: 100%;
+}
+
+.delivery-zones-table th {
+  font-weight: 600;
+  color: #374151;
+  background-color: #f9fafb;
+}
+
+.bairro-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.bairro-name {
+  font-weight: 500;
+  color: #1a202c;
+}
+
+.frete-value {
+  font-weight: 600;
+  color: #059669;
+  font-size: 1.1rem;
+}
+
+.tempo-estimado {
+  color: #3b82f6;
+  font-weight: 500;
+}
+
+.no-tempo {
+  color: #9ca3af;
+  font-style: italic;
+}
+
+.status-chip {
+  font-weight: 500;
+}
+
+.actions-cell {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.no-data {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem;
+  text-align: center;
+  gap: 1rem;
+}
+
+.no-data mat-icon {
+  font-size: 4rem;
+  width: 4rem;
+  height: 4rem;
+  color: #9ca3af;
+}
+
+.no-data h3 {
+  color: #374151;
+  margin: 0;
+  font-size: 1.5rem;
+}
+
+.no-data p {
+  color: #6b7280;
+  margin: 0;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .delivery-zones-page {
+    padding: 1rem;
+  }
+  
+  .header-content {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .filters-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .search-field,
+  .status-filter {
+    min-width: auto;
+  }
+  
+  .actions-cell {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .delivery-zones-table {
+    font-size: 0.875rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .title-section h1 {
+    font-size: 1.5rem;
+  }
+  
+  .delivery-zones-table {
+    font-size: 0.75rem;
+  }
+  
+  .actions-cell button {
+    min-width: 32px;
+    width: 32px;
+    height: 32px;
+  }
+  
+  .actions-cell button mat-icon {
+    font-size: 1rem;
+  }
+}

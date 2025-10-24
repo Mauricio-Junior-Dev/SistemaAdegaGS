@@ -114,6 +114,10 @@ export const routes: Routes = [
       {
         path: 'configuracoes',
         loadComponent: () => import('./admin/pages/configuracoes/configuracoes.component').then(m => m.ConfiguracoesComponent)
+      },
+      {
+        path: 'delivery-zones',
+        loadComponent: () => import('./admin/pages/delivery-zones/delivery-zones.component').then(m => m.DeliveryZonesComponent)
       }
     ]
   }

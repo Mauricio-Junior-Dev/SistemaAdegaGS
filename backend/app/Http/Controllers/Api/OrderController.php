@@ -8,6 +8,7 @@ use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\Address;
 use App\Models\User;
+use App\Models\DeliveryZone;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
@@ -169,12 +170,24 @@ class OrderController extends Controller
                 $total += $subtotal;
             }
 
-            // Atualizar total do pedido
-            $order->update(['total' => $total]);
+            // Calcular frete baseado no bairro
+            $frete = 0;
+            if ($request->has('delivery') && isset($delivery['neighborhood'])) {
+                $deliveryZone = DeliveryZone::ativo()
+                    ->where('nome_bairro', 'LIKE', '%' . $delivery['neighborhood'] . '%')
+                    ->first();
+                
+                if ($deliveryZone) {
+                    $frete = $deliveryZone->valor_frete;
+                }
+            }
+
+            // Atualizar total do pedido (subtotal + frete)
+            $order->update(['total' => $total + $frete]);
 
             // Criar pagamento
             $order->payment()->create([
-                'amount' => $total,
+                'amount' => $total + $frete,
                 'payment_method' => $request->payment_method,
                 'status' => 'completed'
             ]);
@@ -319,12 +332,24 @@ class OrderController extends Controller
                 $total += $subtotal;
             }
 
-            // Atualizar total do pedido
-            $order->update(['total' => $total]);
+            // Calcular frete baseado no bairro
+            $frete = 0;
+            if ($request->has('delivery') && isset($delivery['neighborhood'])) {
+                $deliveryZone = DeliveryZone::ativo()
+                    ->where('nome_bairro', 'LIKE', '%' . $delivery['neighborhood'] . '%')
+                    ->first();
+                
+                if ($deliveryZone) {
+                    $frete = $deliveryZone->valor_frete;
+                }
+            }
+
+            // Atualizar total do pedido (subtotal + frete)
+            $order->update(['total' => $total + $frete]);
 
             // Criar pagamento
             $paymentData = [
-                'amount' => $total,
+                'amount' => $total + $frete,
                 'payment_method' => $request->payment_method,
                 'status' => 'completed'
             ];
@@ -537,5 +562,34 @@ class OrderController extends Controller
         }
 
         return response()->json($order->load(['items.product', 'user', 'payment']));
+    }
+
+    /**
+     * Calculate delivery fee for a specific neighborhood
+     */
+    public function calculateFrete(Request $request)
+    {
+        $validated = $request->validate([
+            'bairro' => 'required|string'
+        ]);
+
+        $deliveryZone = DeliveryZone::ativo()
+            ->where('nome_bairro', 'LIKE', '%' . $validated['bairro'] . '%')
+            ->first();
+
+        if (!$deliveryZone) {
+            return response()->json([
+                'error' => 'Bairro não encontrado',
+                'message' => 'Entre em contato para verificar disponibilidade',
+                'valor_frete' => null,
+                'tempo_estimado' => null
+            ], 404);
+        }
+
+        return response()->json([
+            'valor_frete' => $deliveryZone->valor_frete,
+            'tempo_estimado' => $deliveryZone->tempo_estimado,
+            'nome_bairro' => $deliveryZone->nome_bairro
+        ]);
     }
 }
