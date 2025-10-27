@@ -20,8 +20,9 @@ return new class extends Migration
         Schema::create('order_items', function (Blueprint $table) {
             $table->id();
             $table->foreignId('order_id')->constrained()->onDelete('cascade');
-            $table->foreignId('product_id')->constrained()->onDelete('cascade');
+            $table->foreignId('product_id')->nullable()->constrained()->onDelete('cascade');
             $table->integer('quantity');
+            $table->enum('sale_type', ['dose', 'garrafa'])->default('garrafa');
             $table->decimal('price', 10, 2);
             $table->decimal('subtotal', 10, 2);
             $table->timestamps();

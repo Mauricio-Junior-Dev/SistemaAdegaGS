@@ -12,7 +12,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('order_items', function (Blueprint $table) {
-            $table->enum('sale_type', ['dose', 'garrafa'])->default('garrafa')->after('quantity');
+            $table->foreignId('combo_id')->nullable()->constrained()->onDelete('cascade');
+            $table->boolean('is_combo')->default(false);
         });
     }
 
@@ -22,7 +23,8 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('order_items', function (Blueprint $table) {
-            $table->dropColumn('sale_type');
+            $table->dropForeign(['combo_id']);
+            $table->dropColumn(['combo_id', 'is_combo']);
         });
     }
 };

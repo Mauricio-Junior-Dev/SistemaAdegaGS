@@ -2,10 +2,13 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { ProductService } from '../../../core/services/product.service';
+import { ComboService } from '../../../core/services/combo.service';
 import { CartService } from '../../../core/services/cart.service';
 import { Product, Category } from '../../../core/models/product.model';
+import { Combo } from '../../../core/models/combo.model';
 import { BannerCarouselComponent, Banner } from '../../../shared/components/banner-carousel/banner-carousel.component';
 import { BannerService } from '../../../core/services/banner.service';
+import { ComboCardComponent } from '../../../shared/components/combo-card/combo-card.component';
 import { environment } from '../../../../environments/environment';
 
 @Component({
@@ -13,28 +16,32 @@ import { environment } from '../../../../environments/environment';
   templateUrl: './home.component.html',
   styleUrls: ['./home.component.css'],
   standalone: true,
-  imports: [CommonModule, RouterModule, BannerCarouselComponent]
+  imports: [CommonModule, RouterModule, BannerCarouselComponent, ComboCardComponent]
 })
 export class HomeComponent implements OnInit {
   categories: Category[] = [];
   featuredProducts: Product[] = [];
   popularProducts: Product[] = [];
+  featuredCombos: Combo[] = [];
   banners: Banner[] = [];
   loading = {
     categories: true,
     featured: true,
     popular: true,
-    banners: true
+    banners: true,
+    combos: true
   };
   error = {
     categories: null as string | null,
     featured: null as string | null,
     popular: null as string | null,
-    banners: null as string | null
+    banners: null as string | null,
+    combos: null as string | null
   };
 
   constructor(
     private productService: ProductService,
+    private comboService: ComboService,
     private cartService: CartService,
     private bannerService: BannerService
   ) {}
@@ -43,6 +50,7 @@ export class HomeComponent implements OnInit {
     this.loadCategories();
     this.loadFeaturedProducts();
     this.loadPopularProducts();
+    this.loadFeaturedCombos();
     this.loadBanners();
   }
 
@@ -97,8 +105,29 @@ export class HomeComponent implements OnInit {
     });
   }
 
+  loadFeaturedCombos(): void {
+    this.loading.combos = true;
+    this.error.combos = null;
+
+    this.comboService.getFeaturedCombos().subscribe({
+      next: (combos) => {
+        this.featuredCombos = combos;
+        this.loading.combos = false;
+      },
+      error: (error) => {
+        console.error('Erro ao carregar combos em destaque:', error);
+        this.error.combos = 'Erro ao carregar combos em destaque';
+        this.loading.combos = false;
+      }
+    });
+  }
+
   addToCart(product: Product): void {
     this.cartService.addItem(product);
+  }
+
+  addComboToCart(combo: Combo): void {
+    this.cartService.addComboToCart(combo, 1);
   }
 
   trackByProductId(index: number, product: Product): number {
@@ -107,6 +136,10 @@ export class HomeComponent implements OnInit {
 
   trackByCategoryId(index: number, category: Category): number {
     return category.id;
+  }
+
+  trackByComboId(index: number, combo: Combo): number {
+    return combo.id;
   }
 
   getCategoryImage(category: Category): string {

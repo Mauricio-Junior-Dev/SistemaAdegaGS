@@ -24,13 +24,22 @@ export class CartComponent {
   }
 
   updateQuantity(item: CartItem, newQuantity: number): void {
-    if (newQuantity > 0 && newQuantity <= item.product.current_stock) {
-      this.cartService.updateQuantity(item.product.id, newQuantity);
+    if (newQuantity > 0) {
+      // Para combos, não verificar estoque
+      if (item.isCombo) {
+        this.cartService.updateQuantity(item.id, newQuantity);
+      } else if (item.product && newQuantity <= item.product.current_stock) {
+        this.cartService.updateQuantity(item.product.id, newQuantity);
+      }
     }
   }
 
   removeItem(item: CartItem): void {
-    this.cartService.removeItem(item.product.id);
+    this.cartService.removeItem(item.id);
+  }
+
+  isCombo(item: CartItem): boolean {
+    return item.isCombo || false;
   }
 
   getTotal(): number {
@@ -45,15 +54,34 @@ export class CartComponent {
     this.router.navigate(['/loja']);
   }
 
-  getImageUrl(product: Product): string {
-    const imageUrl = product.image_url;
-    if (!imageUrl) return 'assets/images/no-image.png';
-    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) return `${imageUrl}?v=${encodeURIComponent(product.updated_at || '')}`;
-    if (imageUrl.startsWith('/storage/') || imageUrl.startsWith('storage/')) {
-      const base = environment.apiUrl.replace(/\/api$/, '');
-      const path = imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
-      return `${base}${path}?v=${encodeURIComponent(product.updated_at || '')}`;
+  getImageUrl(item: CartItem): string {
+    if (item.isCombo && item.combo) {
+      // Para combos, usar a primeira imagem ou imagem padrão
+      if (item.combo.images && item.combo.images.length > 0) {
+        return item.combo.images[0];
+      }
+      return 'assets/images/default-combo.jpg';
+    } else if (item.product) {
+      // Para produtos
+      const imageUrl = item.product.image_url;
+      if (!imageUrl) return 'assets/images/no-image.png';
+      if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) return `${imageUrl}?v=${encodeURIComponent(item.product.updated_at || '')}`;
+      if (imageUrl.startsWith('/storage/') || imageUrl.startsWith('storage/')) {
+        const base = environment.apiUrl.replace(/\/api$/, '');
+        const path = imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
+        return `${base}${path}?v=${encodeURIComponent(item.product.updated_at || '')}`;
+      }
+      return `${imageUrl}?v=${encodeURIComponent(item.product.updated_at || '')}`;
     }
-    return `${imageUrl}?v=${encodeURIComponent(product.updated_at || '')}`;
+    return 'assets/images/no-image.png';
+  }
+
+  getItemName(item: CartItem): string {
+    if (item.isCombo && item.combo) {
+      return item.combo.name;
+    } else if (item.product) {
+      return item.product.name;
+    }
+    return 'Item';
   }
 }

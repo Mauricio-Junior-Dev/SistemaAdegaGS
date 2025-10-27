@@ -66,7 +66,7 @@
             <mat-icon>visibility</mat-icon>
             Ver Detalhes
           </button>
-          <button mat-button *ngIf="order.status === 'pending' || order.status === 'processing'">
+          <button mat-button *ngIf="order.status === 'pending' || order.status === 'delivering'">
             <mat-icon>help</mat-icon>
             <a href="https://wa.me/5511999999999?text=Olá, estou precisando de ajuda com o pedido #{{ order.order_number }}" style="text-decoration: none; color: inherit;" target="_blank">
               Ajuda

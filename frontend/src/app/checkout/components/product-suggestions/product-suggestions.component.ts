@@ -60,7 +60,9 @@ export class ProductSuggestionsComponent implements OnInit, OnDestroy {
         return;
       }
 
-      const cartIds = cartItems.map(item => item.product.id);
+      const cartIds = cartItems
+        .filter(item => item.product && !item.isCombo)
+        .map(item => item.product!.id);
       
       this.productService.getSuggestions(cartIds, 6).subscribe({
         next: (suggestions) => {

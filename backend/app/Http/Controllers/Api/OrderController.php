@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
+use App\Models\Combo;
 use App\Models\Address;
 use App\Models\User;
 use App\Models\DeliveryZone;
@@ -19,7 +20,7 @@ class OrderController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Order::with(['items.product', 'user', 'payment', 'deliveryAddress']);
+        $query = Order::with(['items.product', 'items.combo', 'user', 'payment', 'deliveryAddress']);
 
         // Filtros
         if ($request->has('status') && $request->status !== 'all') {
@@ -46,8 +47,6 @@ class OrderController extends Controller
         $perPage = $request->get('per_page', 15);
         $orders = $query->paginate($perPage);
 
-        Log::info('OrderController@index - Orders found: ' . $orders->total());
-
         return response()->json([
             'data' => $orders->items(),
             'total' => $orders->total(),
@@ -59,7 +58,7 @@ class OrderController extends Controller
 
     public function myOrders(Request $request)
     {
-        $query = Order::with(['items.product', 'payment', 'deliveryAddress'])
+        $query = Order::with(['items.product', 'items.combo', 'payment'])
             ->where('user_id', Auth::id());
 
         if ($request->has('status')) {
@@ -72,25 +71,37 @@ class OrderController extends Controller
 
     public function store(Request $request)
     {
+        // Validação simplificada para debug
         $request->validate([
             'items' => 'required|array|min:1',
-            'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.sale_type' => 'required|in:dose,garrafa',
             'payment_method' => 'required|in:dinheiro,cartão de débito,cartão de crédito,pix',
             'customer_name' => 'nullable|string|max:255',
             'customer_phone' => 'nullable|string|max:20',
-            'delivery' => 'nullable|array',
-            'delivery.address' => 'nullable|string|max:255',
-            'delivery.number' => 'nullable|string|max:20',
-            'delivery.complement' => 'nullable|string|max:255',
-            'delivery.neighborhood' => 'nullable|string|max:255',
-            'delivery.city' => 'nullable|string|max:255',
-            'delivery.state' => 'nullable|string|max:2',
-            'delivery.zipcode' => 'nullable|string|max:10',
-            'delivery.phone' => 'nullable|string|max:20',
-            'delivery.instructions' => 'nullable|string|max:500'
+            'delivery' => 'nullable|array'
         ]);
+
+        // Validação customizada para garantir que cada item tenha product_id ou combo_id
+        foreach ($request->items as $index => $item) {
+            if (empty($item['product_id']) && empty($item['combo_id'])) {
+                return response()->json([
+                    'message' => 'Erro de validação',
+                    'errors' => [
+                        "items.{$index}" => ['Item deve ter product_id ou combo_id']
+                    ]
+                ], 422);
+            }
+            
+            if (!empty($item['product_id']) && !empty($item['combo_id'])) {
+                return response()->json([
+                    'message' => 'Erro de validação',
+                    'errors' => [
+                        "items.{$index}" => ['Item não pode ter product_id e combo_id ao mesmo tempo']
+                    ]
+                ], 422);
+            }
+        }
 
         try {
             DB::beginTransaction();
@@ -140,50 +151,129 @@ class OrderController extends Controller
 
             // Adicionar itens
             foreach ($request->items as $item) {
-                $product = Product::findOrFail($item['product_id']);
-                $saleType = $item['sale_type'] ?? 'garrafa';
-                
-                // Verificar disponibilidade baseada no tipo de venda
-                if ($saleType === 'garrafa') {
-                    $currentStock = (int) $product->current_stock;
-                    if ($currentStock < $item['quantity']) {
-                        throw new \Exception("Produto {$product->name} não possui estoque suficiente de garrafas");
-                    }
-                } else {
-                    // Para doses, verificar se há garrafas suficientes para converter
-                    $dosesNecessarias = $item['quantity'];
-                    $garrafasNecessarias = ceil($dosesNecessarias / $product->doses_por_garrafa);
-                    $currentStock = (int) $product->current_stock;
-                    
-                    if ($currentStock < $garrafasNecessarias) {
-                        throw new \Exception("Produto {$product->name} não possui garrafas suficientes para as doses solicitadas");
-                    }
+                // Validar se é produto ou combo
+                if (empty($item['product_id']) && empty($item['combo_id'])) {
+                    throw new \Exception('Item deve ter product_id ou combo_id');
                 }
 
-                $subtotal = $product->price * $item['quantity'];
-                OrderItem::create([
-                    'order_id' => $order->id,
-                    'product_id' => $product->id,
-                    'quantity' => $item['quantity'],
-                    'sale_type' => $saleType,
-                    'price' => $product->price,
-                    'subtotal' => $subtotal
-                ]);
+                if (!empty($item['product_id']) && !empty($item['combo_id'])) {
+                    throw new \Exception('Item não pode ter product_id e combo_id ao mesmo tempo');
+                }
 
-                // Usar a nova lógica de atualização de estoque
-                $product->atualizarEstoquePorVenda($item['quantity'], $saleType);
-                
-                // Registrar movimentação de estoque
-                $unitPrice = $saleType === 'dose' ? $product->dose_price : $product->price;
-                $product->stockMovements()->create([
-                    'user_id' => Auth::id(),
-                    'type' => 'saida',
-                    'quantity' => $item['quantity'],
-                    'description' => "Venda ({$saleType}) - Pedido #" . $order->order_number,
-                    'unit_cost' => $unitPrice
-                ]);
+                if (!empty($item['product_id'])) {
+                    // Processar produto individual
+                    $product = Product::findOrFail($item['product_id']);
+                    $saleType = $item['sale_type'] ?? 'garrafa';
+                    
+                    // Verificar disponibilidade baseada no tipo de venda
+                    if ($saleType === 'garrafa') {
+                        $currentStock = (int) $product->current_stock;
+                        if ($currentStock < $item['quantity']) {
+                            throw new \Exception("Produto {$product->name} não possui estoque suficiente de garrafas");
+                        }
+                    } else {
+                        // Para doses, verificar se há garrafas suficientes para converter
+                        $dosesNecessarias = $item['quantity'];
+                        $garrafasNecessarias = ceil($dosesNecessarias / $product->doses_por_garrafa);
+                        $currentStock = (int) $product->current_stock;
+                        
+                        if ($currentStock < $garrafasNecessarias) {
+                            throw new \Exception("Produto {$product->name} não possui garrafas suficientes para as doses solicitadas");
+                        }
+                    }
 
-                $total += $subtotal;
+                    $subtotal = $product->price * $item['quantity'];
+                    OrderItem::create([
+                        'order_id' => $order->id,
+                        'product_id' => $product->id,
+                        'combo_id' => null,
+                        'is_combo' => false,
+                        'quantity' => $item['quantity'],
+                        'sale_type' => $saleType,
+                        'price' => $product->price,
+                        'subtotal' => $subtotal
+                    ]);
+
+                    // Usar a nova lógica de atualização de estoque
+                    $product->atualizarEstoquePorVenda($item['quantity'], $saleType);
+                    
+                    // Registrar movimentação de estoque
+                    $unitPrice = $saleType === 'dose' ? $product->dose_price : $product->price;
+                    $product->stockMovements()->create([
+                        'user_id' => Auth::id(),
+                        'type' => 'saida',
+                        'quantity' => $item['quantity'],
+                        'description' => "Venda ({$saleType}) - Pedido #" . $order->order_number,
+                        'unit_cost' => $unitPrice
+                    ]);
+
+                    $total += $subtotal;
+
+                } else {
+                    // Processar combo
+                    $combo = Combo::with('products')->findOrFail($item['combo_id']);
+                    
+                    if (!$combo->is_active) {
+                        throw new \Exception("Combo {$combo->name} não está ativo");
+                    }
+
+                    // Verificar estoque de todos os produtos do combo
+                    foreach ($combo->products as $comboProduct) {
+                        $product = $comboProduct;
+                        $quantity = $comboProduct->pivot->quantity * $item['quantity'];
+                        $saleType = $comboProduct->pivot->sale_type;
+                        
+                        if ($saleType === 'garrafa') {
+                            $currentStock = (int) $product->current_stock;
+                            if ($currentStock < $quantity) {
+                                throw new \Exception("Produto {$product->name} do combo não possui estoque suficiente de garrafas");
+                            }
+                        } else {
+                            // Para doses, verificar se há garrafas suficientes para converter
+                            $dosesNecessarias = $quantity;
+                            $garrafasNecessarias = ceil($dosesNecessarias / $product->doses_por_garrafa);
+                            $currentStock = (int) $product->current_stock;
+                            
+                            if ($currentStock < $garrafasNecessarias) {
+                                throw new \Exception("Produto {$product->name} do combo não possui garrafas suficientes para as doses solicitadas");
+                            }
+                        }
+                    }
+
+                    $subtotal = $combo->price * $item['quantity'];
+                    OrderItem::create([
+                        'order_id' => $order->id,
+                        'product_id' => null,
+                        'combo_id' => $combo->id,
+                        'is_combo' => true,
+                        'quantity' => $item['quantity'],
+                        'sale_type' => $item['sale_type'] ?? 'garrafa',
+                        'price' => $combo->price,
+                        'subtotal' => $subtotal
+                    ]);
+
+                    // Atualizar estoque de todos os produtos do combo
+                    foreach ($combo->products as $comboProduct) {
+                        $product = $comboProduct;
+                        $quantity = $comboProduct->pivot->quantity * $item['quantity'];
+                        $saleType = $comboProduct->pivot->sale_type;
+                        
+                        // Usar a nova lógica de atualização de estoque
+                        $product->atualizarEstoquePorVenda($quantity, $saleType);
+                        
+                        // Registrar movimentação de estoque
+                        $unitPrice = $saleType === 'dose' ? $product->dose_price : $product->price;
+                        $product->stockMovements()->create([
+                            'user_id' => Auth::id(),
+                            'type' => 'saida',
+                            'quantity' => $quantity,
+                            'description' => "Venda Combo ({$saleType}) - Pedido #" . $order->order_number,
+                            'unit_cost' => $unitPrice
+                        ]);
+                    }
+
+                    $total += $subtotal;
+                }
             }
 
             // Calcular frete baseado no bairro
@@ -211,13 +301,20 @@ class OrderController extends Controller
             DB::commit();
 
             return response()->json(
-                $order->load(['items.product', 'user', 'payment']),
+                $order->load(['items.product', 'items.combo', 'user', 'payment']),
                 201
             );
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['message' => $e->getMessage()], 422);
+            Log::error('OrderController@store - Erro ao criar pedido:', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'data' => $request->all()
+            ]);
+            return response()->json([
+                'message' => 'Erro ao processar pedido: ' . $e->getMessage()
+            ], 500);
         }
     }
 
@@ -225,7 +322,8 @@ class OrderController extends Controller
     {
         $request->validate([
             'items' => 'required|array|min:1',
-            'items.*.product_id' => 'required|exists:products,id',
+            'items.*.product_id' => 'nullable|exists:products,id',
+            'items.*.combo_id' => 'nullable|exists:combos,id',
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.sale_type' => 'required|in:dose,garrafa',
             'payment_method' => 'required|in:dinheiro,cartão de débito,cartão de crédito,pix',
@@ -318,50 +416,129 @@ class OrderController extends Controller
 
             // Adicionar itens
             foreach ($request->items as $item) {
-                $product = Product::findOrFail($item['product_id']);
-                $saleType = $item['sale_type'] ?? 'garrafa';
-                
-                // Verificar disponibilidade baseada no tipo de venda
-                if ($saleType === 'garrafa') {
-                    $currentStock = (int) $product->current_stock;
-                    if ($currentStock < $item['quantity']) {
-                        throw new \Exception("Produto {$product->name} não possui estoque suficiente de garrafas");
-                    }
-                } else {
-                    // Para doses, verificar se há garrafas suficientes para converter
-                    $dosesNecessarias = $item['quantity'];
-                    $garrafasNecessarias = ceil($dosesNecessarias / $product->doses_por_garrafa);
-                    $currentStock = (int) $product->current_stock;
-                    
-                    if ($currentStock < $garrafasNecessarias) {
-                        throw new \Exception("Produto {$product->name} não possui garrafas suficientes para as doses solicitadas");
-                    }
+                // Validar se é produto ou combo
+                if (empty($item['product_id']) && empty($item['combo_id'])) {
+                    throw new \Exception('Item deve ter product_id ou combo_id');
                 }
 
-                $subtotal = $product->price * $item['quantity'];
-                OrderItem::create([
-                    'order_id' => $order->id,
-                    'product_id' => $product->id,
-                    'quantity' => $item['quantity'],
-                    'sale_type' => $saleType,
-                    'price' => $product->price,
-                    'subtotal' => $subtotal
-                ]);
+                if (!empty($item['product_id']) && !empty($item['combo_id'])) {
+                    throw new \Exception('Item não pode ter product_id e combo_id ao mesmo tempo');
+                }
 
-                // Usar a nova lógica de atualização de estoque
-                $product->atualizarEstoquePorVenda($item['quantity'], $saleType);
-                
-                // Registrar movimentação de estoque
-                $unitPrice = $saleType === 'dose' ? $product->dose_price : $product->price;
-                $product->stockMovements()->create([
-                    'user_id' => Auth::id(),
-                    'type' => 'saida',
-                    'quantity' => $item['quantity'],
-                    'description' => "Venda Manual ({$saleType}) - Pedido #" . $order->order_number,
-                    'unit_cost' => $unitPrice
-                ]);
+                if (!empty($item['product_id'])) {
+                    // Processar produto individual
+                    $product = Product::findOrFail($item['product_id']);
+                    $saleType = $item['sale_type'] ?? 'garrafa';
+                    
+                    // Verificar disponibilidade baseada no tipo de venda
+                    if ($saleType === 'garrafa') {
+                        $currentStock = (int) $product->current_stock;
+                        if ($currentStock < $item['quantity']) {
+                            throw new \Exception("Produto {$product->name} não possui estoque suficiente de garrafas");
+                        }
+                    } else {
+                        // Para doses, verificar se há garrafas suficientes para converter
+                        $dosesNecessarias = $item['quantity'];
+                        $garrafasNecessarias = ceil($dosesNecessarias / $product->doses_por_garrafa);
+                        $currentStock = (int) $product->current_stock;
+                        
+                        if ($currentStock < $garrafasNecessarias) {
+                            throw new \Exception("Produto {$product->name} não possui garrafas suficientes para as doses solicitadas");
+                        }
+                    }
 
-                $total += $subtotal;
+                    $subtotal = $product->price * $item['quantity'];
+                    OrderItem::create([
+                        'order_id' => $order->id,
+                        'product_id' => $product->id,
+                        'combo_id' => null,
+                        'is_combo' => false,
+                        'quantity' => $item['quantity'],
+                        'sale_type' => $saleType,
+                        'price' => $product->price,
+                        'subtotal' => $subtotal
+                    ]);
+
+                    // Usar a nova lógica de atualização de estoque
+                    $product->atualizarEstoquePorVenda($item['quantity'], $saleType);
+                    
+                    // Registrar movimentação de estoque
+                    $unitPrice = $saleType === 'dose' ? $product->dose_price : $product->price;
+                    $product->stockMovements()->create([
+                        'user_id' => Auth::id(),
+                        'type' => 'saida',
+                        'quantity' => $item['quantity'],
+                        'description' => "Venda Manual ({$saleType}) - Pedido #" . $order->order_number,
+                        'unit_cost' => $unitPrice
+                    ]);
+
+                    $total += $subtotal;
+
+                } else {
+                    // Processar combo
+                    $combo = Combo::with('products')->findOrFail($item['combo_id']);
+                    
+                    if (!$combo->is_active) {
+                        throw new \Exception("Combo {$combo->name} não está ativo");
+                    }
+
+                    // Verificar estoque de todos os produtos do combo
+                    foreach ($combo->products as $comboProduct) {
+                        $product = $comboProduct;
+                        $quantity = $comboProduct->pivot->quantity * $item['quantity'];
+                        $saleType = $comboProduct->pivot->sale_type;
+                        
+                        if ($saleType === 'garrafa') {
+                            $currentStock = (int) $product->current_stock;
+                            if ($currentStock < $quantity) {
+                                throw new \Exception("Produto {$product->name} do combo não possui estoque suficiente de garrafas");
+                            }
+                        } else {
+                            // Para doses, verificar se há garrafas suficientes para converter
+                            $dosesNecessarias = $quantity;
+                            $garrafasNecessarias = ceil($dosesNecessarias / $product->doses_por_garrafa);
+                            $currentStock = (int) $product->current_stock;
+                            
+                            if ($currentStock < $garrafasNecessarias) {
+                                throw new \Exception("Produto {$product->name} do combo não possui garrafas suficientes para as doses solicitadas");
+                            }
+                        }
+                    }
+
+                    $subtotal = $combo->price * $item['quantity'];
+                    OrderItem::create([
+                        'order_id' => $order->id,
+                        'product_id' => null,
+                        'combo_id' => $combo->id,
+                        'is_combo' => true,
+                        'quantity' => $item['quantity'],
+                        'sale_type' => $item['sale_type'] ?? 'garrafa',
+                        'price' => $combo->price,
+                        'subtotal' => $subtotal
+                    ]);
+
+                    // Atualizar estoque de todos os produtos do combo
+                    foreach ($combo->products as $comboProduct) {
+                        $product = $comboProduct;
+                        $quantity = $comboProduct->pivot->quantity * $item['quantity'];
+                        $saleType = $comboProduct->pivot->sale_type;
+                        
+                        // Usar a nova lógica de atualização de estoque
+                        $product->atualizarEstoquePorVenda($quantity, $saleType);
+                        
+                        // Registrar movimentação de estoque
+                        $unitPrice = $saleType === 'dose' ? $product->dose_price : $product->price;
+                        $product->stockMovements()->create([
+                            'user_id' => Auth::id(),
+                            'type' => 'saida',
+                            'quantity' => $quantity,
+                            'description' => "Venda Manual Combo ({$saleType}) - Pedido #" . $order->order_number,
+                            'unit_cost' => $unitPrice
+                        ]);
+                    }
+
+                    $total += $subtotal;
+                }
             }
 
             // Calcular frete baseado no bairro
@@ -399,7 +576,7 @@ class OrderController extends Controller
             DB::commit();
 
             return response()->json([
-                'order' => $order->load(['items.product', 'user', 'payment', 'deliveryAddress']),
+                'order' => $order->load(['items.product', 'items.combo', 'user', 'payment', 'deliveryAddress']),
                 'customer' => $customer,
                 'received_amount' => $request->received_amount,
                 'change_amount' => $request->change_amount
@@ -413,7 +590,7 @@ class OrderController extends Controller
 
     public function show(Order $order)
     {
-        return response()->json($order->load(['items.product', 'user', 'payment', 'deliveryAddress']));
+        return response()->json($order->load(['items.product', 'items.combo', 'user', 'payment', 'deliveryAddress']));
     }
 
     public function searchCustomers(Request $request)
@@ -575,32 +752,68 @@ class OrderController extends Controller
         // Se o pedido for cancelado, estornar o estoque
         if ($request->status === 'cancelled') {
             foreach ($order->items as $item) {
-                $saleType = $item->sale_type ?? 'garrafa';
-                
-                if ($saleType === 'garrafa') {
-                    // Estorno direto de garrafas
-                    $item->product->increment('current_stock', $item->quantity);
+                if ($item->is_combo) {
+                    // Estornar produtos do combo
+                    $combo = $item->combo;
+                    foreach ($combo->products as $comboProduct) {
+                        $product = $comboProduct;
+                        $quantity = $comboProduct->pivot->quantity * $item->quantity;
+                        $saleType = $comboProduct->pivot->sale_type;
+                        
+                        if ($saleType === 'garrafa') {
+                            // Estorno direto de garrafas
+                            $product->increment('current_stock', $quantity);
+                        } else {
+                            // Para doses, reverter a lógica
+                            // Calcular quantas garrafas foram deduzidas
+                            $garrafasDeduzidas = floor($quantity / $product->doses_por_garrafa);
+                            if ($garrafasDeduzidas > 0) {
+                                $product->increment('current_stock', $garrafasDeduzidas);
+                            }
+                            
+                            // Zerar o contador de doses vendidas
+                            $product->update(['doses_vendidas' => 0]);
+                        }
+                        
+                        // Registrar movimentação de estoque
+                        $unitPrice = $saleType === 'dose' ? $product->dose_price : $product->price;
+                        $product->stockMovements()->create([
+                            'user_id' => Auth::id(),
+                            'type' => 'entrada',
+                            'quantity' => $saleType === 'garrafa' ? $quantity : ($garrafasDeduzidas ?? 0),
+                            'description' => "Estorno Combo ({$saleType}) - Pedido #" . $order->order_number . ' cancelado',
+                            'unit_cost' => $unitPrice
+                        ]);
+                    }
                 } else {
-                    // Para doses, reverter a lógica
-                    // Calcular quantas garrafas foram deduzidas
-                    $garrafasDeduzidas = floor($item->quantity / $item->product->doses_por_garrafa);
-                    if ($garrafasDeduzidas > 0) {
-                        $item->product->increment('current_stock', $garrafasDeduzidas);
+                    // Estornar produto individual
+                    $saleType = $item->sale_type ?? 'garrafa';
+                    
+                    if ($saleType === 'garrafa') {
+                        // Estorno direto de garrafas
+                        $item->product->increment('current_stock', $item->quantity);
+                    } else {
+                        // Para doses, reverter a lógica
+                        // Calcular quantas garrafas foram deduzidas
+                        $garrafasDeduzidas = floor($item->quantity / $item->product->doses_por_garrafa);
+                        if ($garrafasDeduzidas > 0) {
+                            $item->product->increment('current_stock', $garrafasDeduzidas);
+                        }
+                        
+                        // Zerar o contador de doses vendidas
+                        $item->product->update(['doses_vendidas' => 0]);
                     }
                     
-                    // Zerar o contador de doses vendidas
-                    $item->product->update(['doses_vendidas' => 0]);
+                    // Registrar movimentação de estoque
+                    $unitPrice = $saleType === 'dose' ? $item->product->dose_price : $item->product->price;
+                    $item->product->stockMovements()->create([
+                        'user_id' => Auth::id(),
+                        'type' => 'entrada',
+                        'quantity' => $saleType === 'garrafa' ? $item->quantity : ($garrafasDeduzidas ?? 0),
+                        'description' => "Estorno ({$saleType}) - Pedido #" . $order->order_number . ' cancelado',
+                        'unit_cost' => $unitPrice
+                    ]);
                 }
-                
-                // Registrar movimentação de estoque
-                $unitPrice = $saleType === 'dose' ? $item->product->dose_price : $item->product->price;
-                $item->product->stockMovements()->create([
-                    'user_id' => Auth::id(),
-                    'type' => 'entrada',
-                    'quantity' => $saleType === 'garrafa' ? $item->quantity : ($garrafasDeduzidas ?? 0),
-                    'description' => "Estorno ({$saleType}) - Pedido #" . $order->order_number . ' cancelado',
-                    'unit_cost' => $unitPrice
-                ]);
             }
 
             // Atualizar status do pagamento
@@ -609,7 +822,7 @@ class OrderController extends Controller
             }
         }
 
-        return response()->json($order->load(['items.product', 'user', 'payment']));
+        return response()->json($order->load(['items.product', 'items.combo', 'user', 'payment']));
     }
 
     /**

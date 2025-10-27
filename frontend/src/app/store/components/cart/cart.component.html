@@ -9,14 +9,14 @@
           <div class="flex items-center">
             <!-- Imagem -->
             <img 
-              [src]="getImageUrl(item.product)"
-              [alt]="item.product.name"
+              [src]="getImageUrl(item)"
+              [alt]="getItemName(item)"
               class="w-20 h-20 object-cover rounded">
 
             <!-- Informações -->
             <div class="flex-1 ml-4">
-              <h3 class="text-lg font-semibold">{{ item.product.name }}</h3>
-              <p class="text-gray-600">{{ item.product.price | number:'1.2-2' }}</p>
+              <h3 class="text-lg font-semibold">{{ getItemName(item) }}</h3>
+              <p class="text-gray-600">{{ item.price | number:'1.2-2' }}</p>
             </div>
 
             <!-- Quantidade -->
@@ -30,7 +30,7 @@
               <button 
                 class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center"
                 (click)="updateQuantity(item, item.quantity + 1)"
-                [disabled]="item.quantity >= item.product.current_stock">
+                [disabled]="!isCombo(item) && item.product && item.quantity >= item.product.current_stock">
                 +
               </button>
             </div>
@@ -38,7 +38,7 @@
             <!-- Subtotal e Remover -->
             <div class="ml-8 text-right">
               <p class="text-lg font-semibold">
-                {{ (item.quantity * item.product.price) | number:'1.2-2' }}
+                {{ (item.quantity * item.price) | number:'1.2-2' }}
               </p>
               <button 
                 class="text-red-600 text-sm mt-2"

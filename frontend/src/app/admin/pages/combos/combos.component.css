@@ -1,0 +1,234 @@
+.combos-container {
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.title-section h1 {
+  margin: 0 0 8px 0;
+  font-size: 2rem;
+  font-weight: 500;
+  color: #333;
+}
+
+.title-section p {
+  margin: 0;
+  color: #666;
+  font-size: 1rem;
+}
+
+.actions-section {
+  display: flex;
+  gap: 12px;
+}
+
+.filters-card {
+  margin-bottom: 24px;
+}
+
+.filters-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.search-field {
+  flex: 1;
+  min-width: 300px;
+}
+
+.status-field {
+  min-width: 150px;
+}
+
+.checkbox-filters {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+
+.filter-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.table-card {
+  overflow: hidden;
+}
+
+.table-container {
+  overflow-x: auto;
+}
+
+.combos-table {
+  width: 100%;
+}
+
+.combo-name {
+  max-width: 200px;
+}
+
+.combo-name strong {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.combo-description {
+  font-size: 0.875rem;
+  color: #666;
+  line-height: 1.2;
+}
+
+.price-info {
+  text-align: right;
+}
+
+.current-price {
+  font-weight: 500;
+  color: #2e7d32;
+}
+
+.original-price {
+  font-size: 0.875rem;
+  color: #999;
+  text-decoration: line-through;
+}
+
+.no-price {
+  color: #999;
+}
+
+.discount-chip {
+  background-color: #e8f5e8 !important;
+  color: #2e7d32 !important;
+}
+
+.products-chip {
+  background-color: #e3f2fd !important;
+  color: #1976d2 !important;
+}
+
+.status-active {
+  background-color: #e8f5e8 !important;
+  color: #2e7d32 !important;
+}
+
+.status-inactive {
+  background-color: #ffebee !important;
+  color: #c62828 !important;
+}
+
+.delete-action {
+  color: #d32f2f !important;
+}
+
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px;
+  color: #666;
+}
+
+.loading-container p {
+  margin-top: 16px;
+  margin-bottom: 0;
+}
+
+.no-data {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px;
+  color: #999;
+}
+
+.no-data mat-icon {
+  font-size: 48px;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 16px;
+}
+
+.no-data p {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .combos-container {
+    padding: 16px;
+  }
+  
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  
+  .filters-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .search-field,
+  .status-field {
+    min-width: unset;
+  }
+  
+  .filter-actions {
+    margin-left: 0;
+    justify-content: center;
+  }
+  
+  .checkbox-filters {
+    justify-content: center;
+  }
+}
+
+/* Estilos para a tabela em telas pequenas */
+@media (max-width: 1024px) {
+  .combos-table {
+    font-size: 0.875rem;
+  }
+  
+  .combo-name {
+    max-width: 150px;
+  }
+}
+
+/* Estilos para chips */
+mat-chip {
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+/* Estilos para ícones */
+mat-icon {
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+}
+
+/* Estilos para botões */
+button[mat-icon-button] {
+  width: 40px;
+  height: 40px;
+}
+
+/* Estilos para paginação */
+mat-paginator {
+  border-top: 1px solid #e0e0e0;
+}

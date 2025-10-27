@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { Product } from '../models/product.model';
+import { Combo } from '../models/combo.model';
 import { AuthService } from './auth.service';
 import { HttpClient } from '@angular/common/http';
 
@@ -112,6 +113,57 @@ export class CartService {
       isOpen: true
     };
     console.log('New state:', newState);
+
+    this.cartState.next(newState);
+    this.saveCart();
+    
+    // Disparar animação
+    this.itemAdded$.next(true);
+    setTimeout(() => this.itemAdded$.next(false), 300);
+
+    // Se estiver autenticado, sincronizar com o servidor
+    if (this.authService.isLoggedIn()) {
+      // TODO: Implementar sincronização com o servidor
+    }
+  }
+
+  addComboToCart(combo: Combo, quantity: number = 1): void {
+    console.log('CartService.addComboToCart:', { combo, quantity });
+    
+    const currentState = this.cartState.value || this.initialState;
+    const items = currentState.items || [];
+    const existingItem = items.find(item => item.id === combo.id && item.isCombo);
+    
+    let updatedItems;
+    if (existingItem) {
+      console.log('Updating existing combo item');
+      updatedItems = items.map(item => 
+        item.id === combo.id && item.isCombo
+          ? { ...item, quantity: item.quantity + quantity }
+          : item
+      );
+    } else {
+      console.log('Adding new combo item');
+      const newItem: CartItem = {
+        id: combo.id,
+        combo,
+        quantity,
+        price: combo.price,
+        isCombo: true
+      };
+      updatedItems = [...items, newItem];
+    }
+
+    console.log('Updated items:', updatedItems);
+    const total = this.calculateTotal(updatedItems);
+    console.log('New total:', total);
+
+    const newState = {
+      ...currentState,
+      items: updatedItems,
+      total,
+      isOpen: true
+    };
 
     this.cartState.next(newState);
     this.saveCart();

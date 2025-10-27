@@ -12,12 +12,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('orders', function (Blueprint $table) {
-            if (!Schema::hasColumn('orders', 'delivery_address_id')) {
-                $table->foreignId('delivery_address_id')->nullable()->constrained('addresses')->onDelete('set null');
-            }
-            if (!Schema::hasColumn('orders', 'delivery_notes')) {
-                $table->text('delivery_notes')->nullable(); // Observações específicas para este pedido
-            }
+            $table->foreignId('delivery_address_id')->nullable()->constrained('addresses')->onDelete('set null');
+            $table->text('delivery_notes')->nullable();
         });
     }
 

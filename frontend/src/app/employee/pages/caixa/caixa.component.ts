@@ -28,7 +28,9 @@ import { PrintConfirmationDialogComponent } from './dialogs/print-confirmation-d
 import { CloseCashDialogComponent } from './dialogs/close-cash-dialog.component';
 
 interface CartItem {
-  product: Product;
+  product?: Product;
+  combo?: any; // Combo interface
+  is_combo?: boolean;
   quantity: number;
   sale_type: 'dose' | 'garrafa';
   subtotal: number;
@@ -314,7 +316,7 @@ export class CaixaComponent implements OnInit, OnDestroy {
 
     // Verificar se já existe item com mesmo produto e tipo de venda
     const existingItem = this.cartItems.find(item => 
-      item.product.id === this.selectedProduct!.id && item.sale_type === this.saleType
+      item.product?.id === this.selectedProduct!.id && item.sale_type === this.saleType
     );
 
     if (existingItem) {
@@ -367,20 +369,22 @@ export class CaixaComponent implements OnInit, OnDestroy {
 
     // Verificar disponibilidade baseada no tipo de venda
     if (item.sale_type === 'garrafa') {
-      if (newQuantity > item.product.current_stock) {
+      if (item.product && newQuantity > item.product.current_stock) {
         return;
       }
     } else {
       // Para doses, verificar se há garrafas suficientes para converter
-      const dosesNecessarias = newQuantity;
-      const garrafasNecessarias = Math.ceil(dosesNecessarias / item.product.doses_por_garrafa);
-      if (item.product.current_stock < garrafasNecessarias) {
-        return;
+      if (item.product) {
+        const dosesNecessarias = newQuantity;
+        const garrafasNecessarias = Math.ceil(dosesNecessarias / item.product.doses_por_garrafa);
+        if (item.product.current_stock < garrafasNecessarias) {
+          return;
+        }
       }
     }
 
     item.quantity = newQuantity;
-    item.subtotal = newQuantity * this.getProductPrice(item.product, item.sale_type);
+    item.subtotal = newQuantity * this.getProductPrice(item.product || item.combo, item.sale_type);
     this.updateTotal();
   }
 
@@ -452,10 +456,11 @@ export class CaixaComponent implements OnInit, OnDestroy {
 
     const order: CreateOrderRequest = {
       items: this.cartItems.map(item => ({
-        product_id: item.product.id,
+        product_id: item.product?.id,
+        combo_id: item.combo?.id,
         quantity: item.quantity,
         sale_type: item.sale_type,
-        price: item.product.price
+        price: item.product?.price || item.combo?.price || 0
       })),
       total: this.total,
       payment_method: paymentMethod,
@@ -650,7 +655,7 @@ export class CaixaComponent implements OnInit, OnDestroy {
               ${order.items.map(item => `
                 <div class="item">
                   <span class="quantity">${item.quantity}x</span>
-                  <span class="name">${item.product.name}</span>
+                  <span class="name">${item.is_combo && item.combo ? item.combo.name : (item.product?.name || 'Produto não encontrado')}</span>
                   <span class="price">R$ ${safeNumber(item.subtotal).toFixed(2)}</span>
                 </div>
               `).join('')}

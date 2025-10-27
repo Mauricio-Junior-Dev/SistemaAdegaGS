@@ -182,8 +182,15 @@
                   <ng-container *ngFor="let item of order.items.slice(0, 2)">
                     <div class="item-detail">
                       <span class="item-quantity">{{item.quantity}}x</span>
-                      <span class="item-name">{{item.product.name}}</span>
-                      <span class="item-price">{{formatCurrency(item.price)}}</span>
+                      <span class="item-name">
+                        <ng-container *ngIf="item.is_combo && item.combo; else productName">
+                          {{item.combo.name}}
+                        </ng-container>
+                        <ng-template #productName>
+                          {{item.product?.name || 'Produto não encontrado'}}
+                        </ng-template>
+                      </span>
+                      <span class="item-price">{{formatCurrency(item.price || item.unit_price)}}</span>
                     </div>
                   </ng-container>
                   <small *ngIf="order.items.length > 2" class="more-items">+{{order.items.length - 2}} mais...</small>

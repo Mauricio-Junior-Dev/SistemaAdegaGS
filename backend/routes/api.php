@@ -18,6 +18,8 @@ Route::post('/auth/social', [SocialAuthController::class, 'socialAuth']);
 Route::get('/products', [ProductController::class, 'index']);
 Route::get('/products/suggestions', [ProductController::class, 'suggestions']);
 Route::get('/products/{product}', [ProductController::class, 'show']);
+Route::get('/combos', [App\Http\Controllers\Api\Admin\ComboController::class, 'publicIndex']);
+Route::get('/combos/{combo}', [App\Http\Controllers\Api\Admin\ComboController::class, 'publicShow']);
 Route::get('/categories', [CategoryController::class, 'index']);
 Route::get('/categories/{category}', [CategoryController::class, 'show']);
 

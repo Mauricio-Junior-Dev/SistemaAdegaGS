@@ -177,13 +177,13 @@ class ProductController extends Controller
         // Criar movimento de estoque se a quantidade mudou
         if ($oldStock != $newStock) {
             $difference = $newStock - $oldStock;
-            $type = $difference > 0 ? 'in' : 'out';
-            $reason = $difference > 0 ? 'Ajuste de estoque (entrada)' : 'Ajuste de estoque (saída)';
+            $type = $difference > 0 ? 'entrada' : 'saida';
+            $description = $difference > 0 ? 'Ajuste de estoque (entrada)' : 'Ajuste de estoque (saída)';
 
             $product->stockMovements()->create([
                 'type' => $type,
                 'quantity' => abs($difference),
-                'reason' => $reason,
+                'description' => $description,
                 'user_id' => auth()->id()
             ]);
         }

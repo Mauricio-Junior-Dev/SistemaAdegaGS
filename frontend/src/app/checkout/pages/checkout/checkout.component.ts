@@ -415,14 +415,28 @@ export class CheckoutComponent implements OnInit {
         payment_method: paymentMethodMap[this.paymentForm.value.method] || 'pix',
         customer_name: deliveryData.address,
         customer_phone: deliveryData.phone,
-        items: items.map(item => ({
-          product_id: item.product.id,
-          quantity: item.quantity
-        })),
+        items: items.map(item => {
+          if (item.isCombo && item.combo) {
+            return {
+              combo_id: item.combo.id,
+              quantity: item.quantity,
+              sale_type: 'garrafa' // Default para combos
+            };
+          } else if (item.product) {
+            return {
+              product_id: item.product.id,
+              quantity: item.quantity,
+              sale_type: 'garrafa' // Default para produtos
+            };
+          }
+          return null;
+        }).filter(item => item !== null),
         delivery_fee: this.deliveryFee
       };
 
       console.log('Enviando pedido:', orderData);
+      console.log('Items processados:', orderData.items);
+      console.log('Items originais:', items);
 
       // Enviar pedido para o backend
       this.orderService.createOrder(orderData).subscribe({
@@ -464,15 +478,43 @@ export class CheckoutComponent implements OnInit {
     }
   }
 
-  getImageUrl(product: Product): string {
-    const imageUrl = product.image_url;
-    if (!imageUrl) return 'assets/images/no-image.png';
-    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) return `${imageUrl}?v=${encodeURIComponent(product.updated_at || '')}`;
-    if (imageUrl.startsWith('/storage/') || imageUrl.startsWith('storage/')) {
-      const base = environment.apiUrl.replace(/\/api$/, '');
-      const path = imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
-      return `${base}${path}?v=${encodeURIComponent(product.updated_at || '')}`;
+  getImageUrl(item: CartItem): string {
+    if (item.isCombo && item.combo) {
+      // Para combos, usar a primeira imagem ou imagem padrão
+      if (item.combo.images && item.combo.images.length > 0) {
+        return item.combo.images[0];
+      }
+      return 'assets/images/default-combo.jpg';
+    } else if (item.product) {
+      // Para produtos
+      const imageUrl = item.product.image_url;
+      if (!imageUrl) return 'assets/images/no-image.png';
+      if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) return `${imageUrl}?v=${encodeURIComponent(item.product.updated_at || '')}`;
+      if (imageUrl.startsWith('/storage/') || imageUrl.startsWith('storage/')) {
+        const base = environment.apiUrl.replace(/\/api$/, '');
+        const path = imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
+        return `${base}${path}?v=${encodeURIComponent(item.product.updated_at || '')}`;
+      }
+      return `${imageUrl}?v=${encodeURIComponent(item.product.updated_at || '')}`;
     }
-    return `${imageUrl}?v=${encodeURIComponent(product.updated_at || '')}`;
+    return 'assets/images/no-image.png';
+  }
+
+  getItemName(item: CartItem): string {
+    if (item.isCombo && item.combo) {
+      return item.combo.name;
+    } else if (item.product) {
+      return item.product.name;
+    }
+    return 'Item';
+  }
+
+  getItemCategory(item: CartItem): string {
+    if (item.isCombo && item.combo) {
+      return 'Combo';
+    } else if (item.product && item.product.category) {
+      return item.product.category.name;
+    }
+    return 'Categoria';
   }
 }

@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Product;
+use App\Models\Combo;
 use App\Models\StockMovement;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -101,9 +102,69 @@ class StockService
     {
         return [
             'total_products' => Product::where('is_active', true)->count(),
+            'total_combos' => Combo::where('is_active', true)->count(),
             'low_stock_count' => Product::where('is_active', true)->whereRaw('current_stock <= min_stock')->count(),
             'out_of_stock_count' => Product::where('is_active', true)->where('current_stock', 0)->count(),
             'total_stock_value' => Product::where('is_active', true)->sum(DB::raw('current_stock * cost_price'))
         ];
+    }
+
+    public function getComboStockInfo(int $comboId): array
+    {
+        $combo = Combo::with('products')->findOrFail($comboId);
+        
+        $productsInfo = [];
+        $canSell = true;
+        $lowStockProducts = [];
+        
+        foreach ($combo->products as $product) {
+            $quantity = $product->pivot->quantity;
+            $saleType = $product->pivot->sale_type;
+            
+            $availableStock = $product->current_stock;
+            $requiredStock = $saleType === 'dose' ? 
+                ceil($quantity / $product->doses_por_garrafa) : 
+                $quantity;
+            
+            $productsInfo[] = [
+                'product' => $product,
+                'required_quantity' => $quantity,
+                'sale_type' => $saleType,
+                'available_stock' => $availableStock,
+                'required_stock' => $requiredStock,
+                'can_sell' => $availableStock >= $requiredStock,
+                'is_low_stock' => $availableStock <= $product->min_stock
+            ];
+            
+            if ($availableStock < $requiredStock) {
+                $canSell = false;
+            }
+            
+            if ($availableStock <= $product->min_stock) {
+                $lowStockProducts[] = $product->name;
+            }
+        }
+        
+        return [
+            'combo' => $combo,
+            'products_info' => $productsInfo,
+            'can_sell' => $canSell,
+            'low_stock_products' => $lowStockProducts
+        ];
+    }
+
+    public function getAllCombosStockInfo(): Collection
+    {
+        $combos = Combo::where('is_active', true)->with('products')->get();
+        
+        return $combos->map(function ($combo) {
+            $stockInfo = $this->getComboStockInfo($combo->id);
+            return [
+                'combo' => $combo,
+                'can_sell' => $stockInfo['can_sell'],
+                'low_stock_products' => $stockInfo['low_stock_products'],
+                'products_count' => $combo->products->count()
+            ];
+        });
     }
 }

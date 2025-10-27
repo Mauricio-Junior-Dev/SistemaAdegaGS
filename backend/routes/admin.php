@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\Admin\CategoryController;
 use App\Http\Controllers\Api\Admin\ProductController;
+use App\Http\Controllers\Api\Admin\ComboController;
 use App\Http\Controllers\Api\Admin\UserController;
 use App\Http\Controllers\Api\Admin\ReportController;
 use App\Http\Controllers\Api\Admin\SettingController;
@@ -41,6 +42,21 @@ Route::middleware(['admin'])->group(function () {
     Route::get('/admin/products/validate-barcode', [ProductController::class, 'validateBarcode']);
     Route::post('/admin/products/import', [ProductController::class, 'import']);
     Route::get('/admin/products/export', [ProductController::class, 'export']);
+
+    // Combos
+    Route::get('/admin/combos', [ComboController::class, 'index']);
+    Route::get('/admin/combos/generate-sku', [ComboController::class, 'generateSku']);
+    Route::get('/admin/combos/validate-sku', [ComboController::class, 'validateSku']);
+    Route::get('/admin/combos/validate-barcode', [ComboController::class, 'validateBarcode']);
+    Route::get('/admin/combos/products', [ComboController::class, 'getProducts']);
+    Route::post('/admin/combos/calculate-price', [ComboController::class, 'calculatePrice']);
+    Route::get('/admin/combos/{combo}', [ComboController::class, 'show']);
+    Route::post('/admin/combos', [ComboController::class, 'store']);
+    Route::put('/admin/combos/{combo}', [ComboController::class, 'update']);
+    Route::delete('/admin/combos/{combo}', [ComboController::class, 'destroy']);
+    Route::patch('/admin/combos/{combo}/toggle-status', [ComboController::class, 'toggleStatus']);
+    Route::post('/admin/combos/{combo}/image', [ComboController::class, 'uploadImage']);
+    Route::delete('/admin/combos/{combo}/image', [ComboController::class, 'deleteImage']);
 
     // Usuários
     Route::get('/admin/users', [UserController::class, 'index']);

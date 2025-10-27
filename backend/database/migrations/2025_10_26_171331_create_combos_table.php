@@ -11,33 +11,20 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('products', function (Blueprint $table) {
+        Schema::create('combos', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('category_id')->constrained();
             $table->string('name');
             $table->string('slug')->unique();
             $table->text('description')->nullable();
             $table->decimal('price', 10, 2);
             $table->decimal('original_price', 10, 2)->nullable();
-            $table->decimal('cost_price', 10, 2);
-            
-            // Campos de estoque
-            $table->integer('current_stock')->default(0);
-            $table->integer('min_stock')->default(5);
-            
-            // Campos de dose (consolidados)
-            $table->integer('doses_por_garrafa')->default(5)->after('current_stock');
-            $table->integer('doses_vendidas')->default(0)->after('doses_por_garrafa');
-            $table->boolean('can_sell_by_dose')->default(false)->after('doses_vendidas');
-            $table->decimal('dose_price', 10, 2)->nullable()->after('can_sell_by_dose');
-            
+            $table->decimal('discount_percentage', 5, 2)->nullable();
             $table->string('sku')->unique();
-            $table->string('barcode')->nullable();
+            $table->string('barcode')->nullable()->unique();
             $table->boolean('is_active')->default(true);
             $table->boolean('featured')->default(false);
             $table->boolean('offers')->default(false);
             $table->boolean('popular')->default(false);
-            $table->string('image_url')->nullable();
             $table->json('images')->nullable();
             $table->timestamps();
         });
@@ -48,6 +35,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('products_table_consolidated');
+        Schema::dropIfExists('combos');
     }
 };

@@ -61,12 +61,12 @@
               <div class="cart-items-list">
                 <div *ngFor="let item of cartItems$ | async" class="cart-item-modern">
                   <div class="item-image">
-                    <img [src]="getImageUrl(item.product)" [alt]="item.product.name">
+                    <img [src]="getImageUrl(item)" [alt]="getItemName(item)">
                     <div class="quantity-badge">{{ item.quantity }}</div>
                   </div>
                   <div class="item-details">
-                    <h4 class="item-name">{{ item.product.name }}</h4>
-                    <p class="item-category">{{ item.product.category?.name || 'Categoria' }}</p>
+                    <h4 class="item-name">{{ getItemName(item) }}</h4>
+                    <p class="item-category">{{ getItemCategory(item) }}</p>
                     <div class="item-price">
                       <span class="unit-price">R$ {{ item.price | number:'1.2-2' }} cada</span>
                       <span class="total-price">R$ {{ (item.price * item.quantity) | number:'1.2-2' }}</span>
@@ -352,10 +352,10 @@
           <div class="cart-items">
             <div *ngFor="let item of cartItems$ | async" class="cart-item">
               <div class="item-image">
-                <img [src]="getImageUrl(item.product)" [alt]="item.product.name">
+                <img [src]="getImageUrl(item)" [alt]="getItemName(item)">
               </div>
               <div class="item-details">
-                <h4 class="item-name">{{ item.product.name }}</h4>
+                <h4 class="item-name">{{ getItemName(item) }}</h4>
                 <div class="item-info">
                   <span class="item-quantity">Qtd: {{ item.quantity }}</span>
                   <span class="item-price">R$ {{ item.price | number:'1.2-2' }}</span>

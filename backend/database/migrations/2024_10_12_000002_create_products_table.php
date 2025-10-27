@@ -48,6 +48,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('products_table_consolidated');
+        Schema::dropIfExists('products');
     }
 };

@@ -58,7 +58,14 @@ import { Order, OrderStatus } from '../../../services/order.service';
           <div *ngFor="let item of data.order.items" class="item">
             <div class="item-details">
               <span class="quantity">{{item.quantity}}x</span>
-              <span class="name">{{item.product.name}}</span>
+              <span class="name">
+                <ng-container *ngIf="item.is_combo && item.combo; else productName">
+                  {{item.combo.name}}
+                </ng-container>
+                <ng-template #productName>
+                  {{item.product?.name || 'Produto não encontrado'}}
+                </ng-template>
+              </span>
               <span class="price">{{data.formatCurrency(item.price)}}</span>
             </div>
             <div class="subtotal">

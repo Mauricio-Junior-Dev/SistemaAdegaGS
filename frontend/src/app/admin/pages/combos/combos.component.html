@@ -1,0 +1,222 @@
+<div class="combos-container">
+  <!-- Cabeçalho -->
+  <div class="header">
+    <div class="title-section">
+      <h1>Combos</h1>
+      <p>Gerencie os combos de produtos</p>
+    </div>
+    <div class="actions-section">
+      <button mat-raised-button color="primary" routerLink="/admin/combos/novo">
+        <mat-icon>add</mat-icon>
+        Novo Combo
+      </button>
+    </div>
+  </div>
+
+  <!-- Filtros -->
+  <mat-card class="filters-card">
+    <mat-card-content>
+      <div class="filters-row">
+        <mat-form-field appearance="outline" class="search-field">
+          <mat-label>Buscar combos</mat-label>
+          <input matInput [(ngModel)]="searchTerm" (keyup.enter)="onSearch()" placeholder="Nome, SKU ou código de barras">
+          <mat-icon matSuffix>search</mat-icon>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="status-field">
+          <mat-label>Status</mat-label>
+          <mat-select [(ngModel)]="statusFilter" (selectionChange)="onFilterChange()">
+            <mat-option value="all">Todos</mat-option>
+            <mat-option value="active">Ativos</mat-option>
+            <mat-option value="inactive">Inativos</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <div class="checkbox-filters">
+          <mat-checkbox [(ngModel)]="featuredFilter" (change)="onFilterChange()">
+            Destaque
+          </mat-checkbox>
+          <mat-checkbox [(ngModel)]="offersFilter" (change)="onFilterChange()">
+            Ofertas
+          </mat-checkbox>
+        </div>
+
+        <div class="filter-actions">
+          <button mat-button (click)="onSearch()">
+            <mat-icon>search</mat-icon>
+            Buscar
+          </button>
+          <button mat-button (click)="clearFilters()">
+            <mat-icon>clear</mat-icon>
+            Limpar
+          </button>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Tabela -->
+  <mat-card class="table-card">
+    <mat-card-content>
+      <div class="table-container">
+        <table mat-table [dataSource]="dataSource" class="combos-table">
+          <!-- Nome -->
+          <ng-container matColumnDef="name">
+            <th mat-header-cell *matHeaderCellDef>Nome</th>
+            <td mat-cell *matCellDef="let combo">
+              <div class="combo-name">
+                <strong>{{ combo.name }}</strong>
+                <div class="combo-description" *ngIf="combo.description">
+                  {{ combo.description | slice:0:50 }}{{ combo.description && combo.description.length > 50 ? '...' : '' }}
+                </div>
+              </div>
+            </td>
+          </ng-container>
+
+          <!-- SKU -->
+          <ng-container matColumnDef="sku">
+            <th mat-header-cell *matHeaderCellDef>SKU</th>
+            <td mat-cell *matCellDef="let combo">{{ combo.sku }}</td>
+          </ng-container>
+
+          <!-- Preço -->
+          <ng-container matColumnDef="price">
+            <th mat-header-cell *matHeaderCellDef>Preço</th>
+            <td mat-cell *matCellDef="let combo">
+              <div class="price-info">
+                <div class="current-price">{{ formatPrice(combo.price) }}</div>
+                <div class="original-price" *ngIf="combo.original_price && combo.original_price > combo.price">
+                  {{ formatPrice(combo.original_price) }}
+                </div>
+              </div>
+            </td>
+          </ng-container>
+
+          <!-- Preço Original -->
+          <ng-container matColumnDef="original_price">
+            <th mat-header-cell *matHeaderCellDef>Preço Original</th>
+            <td mat-cell *matCellDef="let combo">
+              <span *ngIf="combo.original_price">{{ formatPrice(combo.original_price) }}</span>
+              <span *ngIf="!combo.original_price" class="no-price">-</span>
+            </td>
+          </ng-container>
+
+          <!-- Desconto -->
+          <ng-container matColumnDef="discount">
+            <th mat-header-cell *matHeaderCellDef>Desconto</th>
+            <td mat-cell *matCellDef="let combo">
+              <mat-chip *ngIf="combo.original_price && combo.original_price > combo.price" 
+                         [class]="'discount-chip'">
+                {{ getDiscountText(combo) }}
+              </mat-chip>
+              <span *ngIf="!combo.original_price || combo.original_price <= combo.price">-</span>
+            </td>
+          </ng-container>
+
+          <!-- Produtos -->
+          <ng-container matColumnDef="products_count">
+            <th mat-header-cell *matHeaderCellDef>Produtos</th>
+            <td mat-cell *matCellDef="let combo">
+              <mat-chip class="products-chip">
+                {{ getProductsCount(combo) }} produto(s)
+              </mat-chip>
+            </td>
+          </ng-container>
+
+          <!-- Status -->
+          <ng-container matColumnDef="status">
+            <th mat-header-cell *matHeaderCellDef>Status</th>
+            <td mat-cell *matCellDef="let combo">
+              <mat-chip [class]="combo.is_active ? 'status-active' : 'status-inactive'">
+                {{ combo.is_active ? 'Ativo' : 'Inativo' }}
+              </mat-chip>
+            </td>
+          </ng-container>
+
+          <!-- Destaque -->
+          <ng-container matColumnDef="featured">
+            <th mat-header-cell *matHeaderCellDef>Destaque</th>
+            <td mat-cell *matCellDef="let combo">
+              <mat-icon *ngIf="combo.featured" color="primary">star</mat-icon>
+              <mat-icon *ngIf="!combo.featured" color="disabled">star_border</mat-icon>
+            </td>
+          </ng-container>
+
+          <!-- Ofertas -->
+          <ng-container matColumnDef="offers">
+            <th mat-header-cell *matHeaderCellDef>Ofertas</th>
+            <td mat-cell *matCellDef="let combo">
+              <mat-icon *ngIf="combo.offers" color="accent">local_offer</mat-icon>
+              <mat-icon *ngIf="!combo.offers" color="disabled">local_offer</mat-icon>
+            </td>
+          </ng-container>
+
+          <!-- Popular -->
+          <ng-container matColumnDef="popular">
+            <th mat-header-cell *matHeaderCellDef>Popular</th>
+            <td mat-cell *matCellDef="let combo">
+              <mat-icon *ngIf="combo.popular" color="warn">whatshot</mat-icon>
+              <mat-icon *ngIf="!combo.popular" color="disabled">whatshot</mat-icon>
+            </td>
+          </ng-container>
+
+          <!-- Ações -->
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef>Ações</th>
+            <td mat-cell *matCellDef="let combo">
+              <button mat-icon-button [matMenuTriggerFor]="menu" [matMenuTriggerData]="{combo: combo}">
+                <mat-icon>more_vert</mat-icon>
+              </button>
+              <mat-menu #menu="matMenu">
+                <ng-template matMenuContent let-combo="combo">
+                  <button mat-menu-item [routerLink]="['/admin/combos', combo.id]">
+                    <mat-icon>visibility</mat-icon>
+                    <span>Ver</span>
+                  </button>
+                  <button mat-menu-item [routerLink]="['/admin/combos', combo.id, 'editar']">
+                    <mat-icon>edit</mat-icon>
+                    <span>Editar</span>
+                  </button>
+                  <button mat-menu-item (click)="toggleStatus(combo)">
+                    <mat-icon>{{ combo.is_active ? 'visibility_off' : 'visibility' }}</mat-icon>
+                    <span>{{ combo.is_active ? 'Desativar' : 'Ativar' }}</span>
+                  </button>
+                  <button mat-menu-item (click)="deleteCombo(combo)" class="delete-action">
+                    <mat-icon>delete</mat-icon>
+                    <span>Excluir</span>
+                  </button>
+                </ng-template>
+              </mat-menu>
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+        </table>
+
+        <!-- Loading -->
+        <div *ngIf="loading" class="loading-container">
+          <mat-spinner diameter="50"></mat-spinner>
+          <p>Carregando combos...</p>
+        </div>
+
+        <!-- Sem dados -->
+        <div *ngIf="!loading && dataSource.length === 0" class="no-data">
+          <mat-icon>inbox</mat-icon>
+          <p>Nenhum combo encontrado</p>
+        </div>
+      </div>
+
+      <!-- Paginação -->
+      <mat-paginator
+        *ngIf="!loading && dataSource.length > 0"
+        [length]="totalItems"
+        [pageSize]="pageSize"
+        [pageIndex]="currentPage"
+        [pageSizeOptions]="[5, 10, 25, 50]"
+        (page)="onPageChange($event)"
+        showFirstLastButtons>
+      </mat-paginator>
+    </mat-card-content>
+  </mat-card>
+</div>

@@ -1,0 +1,98 @@
+<div class="combo-detail-page">
+  <div class="container">
+    <!-- Loading State -->
+    <div *ngIf="loading" class="loading-container">
+      <div class="loading-spinner"></div>
+      <p>Carregando combo...</p>
+    </div>
+
+    <!-- Error State -->
+    <div *ngIf="error" class="error-message">
+      {{ error }}
+    </div>
+
+    <!-- Combo Detail -->
+    <div *ngIf="!loading && !error && combo" class="combo-detail">
+      <!-- Breadcrumb -->
+      <nav class="breadcrumb">
+        <a routerLink="/">Home</a>
+        <span>></span>
+        <a routerLink="/combos">Combos</a>
+        <span>></span>
+        <span>{{ combo.name }}</span>
+      </nav>
+
+      <div class="combo-content">
+        <!-- Imagem -->
+        <div class="combo-image-section">
+          <div *ngIf="getDiscountPercentage(combo) > 0" class="discount-badge">
+            -{{ getDiscountPercentage(combo) }}%
+          </div>
+          <img [src]="getComboImage(combo)" [alt]="combo.name" class="combo-image">
+        </div>
+
+        <!-- Informações -->
+        <div class="combo-info-section">
+          <h1 class="combo-title">{{ combo.name }}</h1>
+          
+          <p *ngIf="combo.description" class="combo-description">
+            {{ combo.description }}
+          </p>
+
+          <!-- Produtos do Combo -->
+          <div class="combo-products-section">
+            <h3>Produtos Inclusos:</h3>
+            <div class="products-list">
+              <div *ngFor="let product of combo.products" class="product-item">
+                <div class="product-info">
+                  <h4>{{ product.name || product.product?.name || 'Produto' }}</h4>
+                  <p class="product-quantity">
+                    Quantidade: {{ product.pivot?.quantity || product.quantity }} 
+                    {{ (product.pivot?.sale_type || product.sale_type) === 'dose' ? 'dose(s)' : 'unidade(s)' }}
+                  </p>
+                </div>
+                <div class="product-price">
+                  {{ formatPrice(product.price || product.product?.price || 0) }}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Preços -->
+          <div class="combo-prices-section">
+            <div *ngIf="combo.original_price && combo.original_price > combo.price" class="original-price">
+              De: {{ formatPrice(combo.original_price) }}
+            </div>
+            <div class="current-price">
+              Por: {{ formatPrice(combo.price) }}
+            </div>
+            <div *ngIf="combo.original_price && combo.original_price > combo.price" class="savings">
+              Você economiza: {{ formatPrice(combo.original_price - combo.price) }}
+            </div>
+          </div>
+
+          <!-- Controles de Quantidade e Adicionar ao Carrinho -->
+          <div class="combo-actions-section">
+            <div class="quantity-controls">
+              <label for="quantity">Quantidade:</label>
+              <div class="quantity-input">
+                <button (click)="decrementQuantity()" type="button" class="quantity-btn">-</button>
+                <input 
+                  type="number" 
+                  id="quantity"
+                  [(ngModel)]="quantity" 
+                  min="1" 
+                  class="quantity-field">
+                <button (click)="incrementQuantity()" type="button" class="quantity-btn">+</button>
+              </div>
+            </div>
+
+            <button (click)="onAddToCart()" class="add-to-cart-btn">
+              Adicionar ao Carrinho
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,56 @@
+<div class="combo-card">
+  <!-- Badge de Desconto -->
+  <div *ngIf="getDiscountPercentage(combo) > 0" class="discount-badge">
+    -{{ getDiscountPercentage(combo) }}%
+  </div>
+
+  <!-- Imagem do Combo -->
+  <div class="combo-image-container">
+    <img [src]="getComboImage(combo)" [alt]="combo.name" class="combo-image">
+  </div>
+
+  <!-- Informações do Combo -->
+  <div class="combo-info">
+    <h3 class="combo-name">{{ combo.name }}</h3>
+    
+    <p *ngIf="combo.description" class="combo-description">
+      {{ combo.description }}
+    </p>
+
+    <!-- Produtos do Combo -->
+    <div class="combo-products" *ngIf="combo.products && combo.products.length > 0">
+      <span class="products-label">Inclui:</span>
+      <div class="products-list">
+        <span *ngFor="let product of combo.products; let last = last" class="product-item">
+          {{ product.name }}<span *ngIf="!last">, </span>
+        </span>
+      </div>
+    </div>
+
+    <!-- Preços -->
+    <div class="combo-prices">
+      <div *ngIf="combo.original_price && combo.original_price > combo.price" class="original-price">
+        {{ formatPrice(combo.original_price) }}
+      </div>
+      <div class="current-price">
+        {{ formatPrice(combo.price) }}
+      </div>
+    </div>
+
+    <!-- Botões de Ação -->
+    <div class="combo-actions">
+      <button 
+        class="btn-details" 
+        [routerLink]="['/combos', combo.id]"
+        type="button">
+        Ver Detalhes
+      </button>
+      <button 
+        class="btn-add-cart" 
+        (click)="onAddToCart()"
+        type="button">
+        Adicionar ao Carrinho
+      </button>
+    </div>
+  </div>
+</div>

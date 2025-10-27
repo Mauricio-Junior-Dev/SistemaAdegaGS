@@ -51,6 +51,15 @@
 
       <!-- Categories Grid -->
       <div *ngIf="!loading.categories && !error.categories" class="categories-grid">
+        <!-- Categoria Combos -->
+        <a routerLink="/combos" class="category-card combo-category">
+          <div class="category-icon">
+            <div class="combo-icon">📦</div>
+          </div>
+          <span class="category-name">Combos</span>
+        </a>
+        
+        <!-- Outras Categorias -->
         <a *ngFor="let category of categories; trackBy: trackByCategoryId" 
            [routerLink]="['/produtos']" 
            [queryParams]="{categoria: category.id}" 
@@ -118,6 +127,35 @@
       <div *ngIf="!loading.featured && !error.featured && featuredProducts.length === 0" 
            class="empty-state">
         Nenhum produto em destaque disponível.
+      </div>
+    </div>
+  </section>
+
+  <!-- Combos em Destaque -->
+  <section class="featured-combos" *ngIf="featuredCombos.length > 0">
+    <div class="container">
+      <div class="section-header">
+        <h2>Combos Especiais</h2>
+        <a routerLink="/combos" class="view-all">Ver Todos</a>
+      </div>
+
+      <!-- Loading State -->
+      <div *ngIf="loading.combos" class="loading-container">
+        <div class="loading-spinner"></div>
+      </div>
+
+      <!-- Error State -->
+      <div *ngIf="error.combos" class="error-message">
+        {{ error.combos }}
+      </div>
+
+      <!-- Combos Grid -->
+      <div *ngIf="!loading.combos && !error.combos" class="combos-grid">
+        <app-combo-card 
+          *ngFor="let combo of featuredCombos; trackBy: trackByComboId"
+          [combo]="combo"
+          (addToCart)="addComboToCart($event)">
+        </app-combo-card>
       </div>
     </div>
   </section>

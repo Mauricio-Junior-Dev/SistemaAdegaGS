@@ -66,6 +66,13 @@ class Product extends Model
         return $this->hasMany(StockMovement::class);
     }
 
+    public function combos()
+    {
+        return $this->belongsToMany(Combo::class, 'combo_products')
+                    ->withPivot(['quantity', 'sale_type'])
+                    ->withTimestamps();
+    }
+
     public function getLowStockAttribute(): bool
     {
         $currentStock = $this->current_stock;

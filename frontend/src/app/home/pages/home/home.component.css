@@ -172,6 +172,25 @@
   font-weight: 500;
 }
 
+/* Categoria Combos */
+.combo-category {
+  background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+  color: white;
+}
+
+.combo-category .category-name {
+  color: white;
+}
+
+.combo-icon {
+  font-size: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
 /* Produtos */
 .featured-products,
 .popular-products {
@@ -183,6 +202,22 @@
 
 .featured-products {
   background-color: var(--background);
+}
+
+/* Combos */
+.featured-combos {
+  padding: 4rem 0;
+  background-color: white;
+}
+
+.combos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 2rem;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  justify-items: center;
 }
 
 .products-grid {

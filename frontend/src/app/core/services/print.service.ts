@@ -137,7 +137,7 @@ export class PrintService {
             ${order.items.map(item => `
               <div class="item">
                 <span class="quantity">${item.quantity}x</span>
-                <span class="name">${item.product.name}</span>
+                <span class="name">${item.is_combo && item.combo ? item.combo.name : (item.product?.name || 'Produto não encontrado')}</span>
                 <span class="price">${formatCurrency(item.price * item.quantity)}</span>
               </div>
             `).join('')}

@@ -48,6 +48,10 @@ import { Subscription } from 'rxjs';
             <mat-icon>inventory_2</mat-icon>
             <span>Produtos</span>
           </a>
+          <a routerLink="/admin/combos" routerLinkActive="active" class="nav-item">
+            <mat-icon>inventory</mat-icon>
+            <span>Combos</span>
+          </a>
           <a routerLink="/admin/categorias" routerLinkActive="active" class="nav-item">
             <mat-icon>category</mat-icon>
             <span>Categorias</span>

@@ -157,12 +157,15 @@ export class PedidosComponent implements OnInit, OnDestroy {
       search: this.searchTerm || undefined
     };
 
+
     this.orderService.fetchOrders(params).subscribe({
       next: (response: OrderResponse) => {
+        
         this.orders = response.data;
         this.totalItems = response.total;
         this.loading = false;
         this.searching = false;
+        
       },
       error: (error: Error) => {
         console.error('Erro ao carregar pedidos:', error);
@@ -192,9 +195,6 @@ export class PedidosComponent implements OnInit, OnDestroy {
           }
           
           completedRequests++;
-          if (completedRequests === statuses.length) {
-            console.log('Estatísticas carregadas:', this.stats);
-          }
         },
         error: (error: Error) => {
           console.error(`Erro ao carregar estatísticas para ${status}:`, error);
@@ -282,13 +282,16 @@ export class PedidosComponent implements OnInit, OnDestroy {
   }
 
   getStatusLabel(status: OrderStatus): string {
+    if (!status) {
+      return 'Status inválido';
+    }
     const labels = {
       pending: 'Pendente',
       delivering: 'Em Entrega',
       completed: 'Concluído',
       cancelled: 'Cancelado'
     };
-    return labels[status];
+    return labels[status] || 'Status desconhecido';
   }
 
   // Métodos computados para contagem de pedidos por status
@@ -309,6 +312,9 @@ export class PedidosComponent implements OnInit, OnDestroy {
   }
 
   formatCurrency(value: number): string {
+    if (value === null || value === undefined) {
+      return 'R$ 0,00';
+    }
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL'
@@ -316,6 +322,9 @@ export class PedidosComponent implements OnInit, OnDestroy {
   }
 
   formatDate(date: string): string {
+    if (!date) {
+      return 'Data inválida';
+    }
     return new Date(date).toLocaleString('pt-BR', {
       day: '2-digit',
       month: '2-digit',

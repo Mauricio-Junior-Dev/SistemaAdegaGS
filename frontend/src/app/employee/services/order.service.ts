@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, BehaviorSubject, interval } from 'rxjs';
-import { switchMap, tap, map } from 'rxjs/operators';
+import { Observable, BehaviorSubject, interval, Subject } from 'rxjs';
+import { switchMap, tap, map, takeUntil } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import { Product as CoreProduct } from '../../core/models/product.model';
 
@@ -31,7 +31,12 @@ export interface Product extends CoreProduct {
 
 export interface OrderItem {
   id: number;
-  product: Product;
+  order_id: number;
+  product_id?: number;
+  combo_id?: number;
+  is_combo?: boolean;
+  product?: Product;
+  combo?: any; // Combo interface
   quantity: number;
   sale_type: 'dose' | 'garrafa';
   price: number;
@@ -87,7 +92,8 @@ export interface Order {
 
 export interface CreateOrderRequest {
   items: {
-    product_id: number;
+    product_id?: number;
+    combo_id?: number;
     quantity: number;
     sale_type: 'dose' | 'garrafa';
     price: number;
@@ -126,18 +132,20 @@ export class OrderService {
   private apiUrl = `${environment.apiUrl}/orders`;
   private ordersSubject = new BehaviorSubject<Order[]>([]);
   private autoRefreshInterval = 15000; // 15 segundos
+  private destroy$ = new Subject<void>();
 
   orders$ = this.ordersSubject.asObservable();
 
   constructor(private http: HttpClient) {
-    // Iniciar atualização automática
+    // Iniciar atualização automática com lógica inteligente
     this.startAutoRefresh();
   }
 
   private startAutoRefresh() {
     interval(this.autoRefreshInterval)
       .pipe(
-        switchMap(() => this.fetchOrders())
+        switchMap(() => this.fetchOrders({ status: 'pending' })), // Só buscar pendentes
+        takeUntil(this.destroy$)
       )
       .subscribe();
   }
@@ -258,7 +266,7 @@ export class OrderService {
         <hr>
         ${order.items.map(item => `
           <div>
-            ${item.quantity}x ${item.product.name}
+            ${item.quantity}x ${item.is_combo && item.combo ? item.combo.name : (item.product?.name || 'Produto não encontrado')}
             <span style="float: right">R$ ${(item.price * item.quantity).toFixed(2)}</span>
           </div>
         `).join('')}

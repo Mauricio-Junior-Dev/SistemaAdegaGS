@@ -146,11 +146,18 @@
             <div class="cart-items" *ngIf="cartItems.length > 0">
               <div *ngFor="let item of cartItems; let i = index" class="cart-item">
                 <div class="item-info">
-                  <span class="name">{{item.product.name}}</span>
+                  <span class="name">
+                    <ng-container *ngIf="item.is_combo && item.combo; else productName">
+                      {{item.combo.name}}
+                    </ng-container>
+                    <ng-template #productName>
+                      {{item.product?.name || 'Produto não encontrado'}}
+                    </ng-template>
+                  </span>
                   <span class="sale-type" [class.dose]="item.sale_type === 'dose'" [class.garrafa]="item.sale_type === 'garrafa'">
                     {{item.sale_type === 'dose' ? 'Dose' : 'Garrafa'}}
                   </span>
-                  <span class="price">{{formatCurrency(getProductPrice(item.product, item.sale_type))}}</span>
+                  <span class="price">{{formatCurrency(getProductPrice(item.product || item.combo, item.sale_type))}}</span>
                 </div>
                 <div class="item-controls">
                   <div class="quantity-control">
@@ -162,7 +169,7 @@
                     <span class="quantity">{{item.quantity}}</span>
                     <button mat-icon-button 
                             (click)="updateQuantity(i, 1)"
-                            [disabled]="item.product.current_stock === 0 || (item.sale_type === 'garrafa' ? item.quantity >= item.product.current_stock : false)">
+                            [disabled]="(item.product?.current_stock || 0) === 0 || (item.sale_type === 'garrafa' ? item.quantity >= (item.product?.current_stock || 0) : false)">
                       <mat-icon>add</mat-icon>
                     </button>
                   </div>

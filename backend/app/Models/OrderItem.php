@@ -10,6 +10,8 @@ class OrderItem extends Model
     protected $fillable = [
         'order_id',
         'product_id',
+        'combo_id',
+        'is_combo',
         'quantity',
         'sale_type',
         'price',
@@ -19,6 +21,7 @@ class OrderItem extends Model
     protected $casts = [
         'price' => 'decimal:2',
         'subtotal' => 'decimal:2',
+        'is_combo' => 'boolean',
     ];
 
     public function order(): BelongsTo
@@ -29,6 +32,11 @@ class OrderItem extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function combo(): BelongsTo
+    {
+        return $this->belongsTo(Combo::class);
     }
 
     protected static function boot()

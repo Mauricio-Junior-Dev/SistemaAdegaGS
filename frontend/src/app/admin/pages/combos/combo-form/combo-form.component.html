@@ -1,0 +1,232 @@
+<div class="combo-form-container">
+  <div class="form-header">
+    <h1>{{ isEdit ? 'Editar Combo' : 'Novo Combo' }}</h1>
+    <p>{{ isEdit ? 'Atualize as informações do combo' : 'Preencha as informações para criar um novo combo' }}</p>
+  </div>
+
+  <form [formGroup]="comboForm" (ngSubmit)="onSubmit()" class="combo-form">
+    <!-- Informações Básicas -->
+    <mat-card class="form-section">
+      <mat-card-header>
+        <mat-card-title>Informações Básicas</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="form-row">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Nome do Combo</mat-label>
+            <input matInput formControlName="name" placeholder="Ex: Combo Premium">
+            <mat-error *ngIf="comboForm.get('name')?.hasError('required')">
+              Nome é obrigatório
+            </mat-error>
+            <mat-error *ngIf="comboForm.get('name')?.hasError('maxlength')">
+              Nome deve ter no máximo 255 caracteres
+            </mat-error>
+          </mat-form-field>
+        </div>
+
+        <div class="form-row">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Descrição</mat-label>
+            <textarea matInput formControlName="description" rows="3" placeholder="Descreva o combo..."></textarea>
+          </mat-form-field>
+        </div>
+
+        <div class="form-row">
+          <mat-form-field appearance="outline" class="sku-field">
+            <mat-label>SKU</mat-label>
+            <input matInput formControlName="sku" placeholder="Ex: COMBO001">
+            <mat-error *ngIf="comboForm.get('sku')?.hasError('required')">
+              SKU é obrigatório
+            </mat-error>
+          </mat-form-field>
+          <button type="button" mat-stroked-button (click)="generateSku()" class="generate-btn">
+            <mat-icon>refresh</mat-icon>
+            Gerar SKU
+          </button>
+        </div>
+
+        <div class="form-row">
+          <mat-form-field appearance="outline" class="barcode-field">
+            <mat-label>Código de Barras</mat-label>
+            <input matInput formControlName="barcode" placeholder="Opcional">
+          </mat-form-field>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Produtos do Combo -->
+    <mat-card class="form-section">
+      <mat-card-header>
+        <mat-card-title>Produtos do Combo</mat-card-title>
+        <mat-card-subtitle>Adicione os produtos que compõem este combo</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <!-- Campo de pesquisa -->
+        <div class="search-section">
+          <mat-form-field appearance="outline" class="search-field">
+            <mat-label>Pesquisar produtos</mat-label>
+            <input matInput 
+                   formControlName="productSearchTerm" 
+                   (input)="filterProducts()"
+                   placeholder="Digite o nome ou SKU do produto...">
+            <mat-icon matSuffix>search</mat-icon>
+          </mat-form-field>
+        </div>
+
+        <div formArrayName="products">
+          <div *ngFor="let productGroup of productsArray.controls; let i = index" 
+               [formGroupName]="i" 
+               class="product-item">
+            <div class="product-form">
+              <mat-form-field appearance="outline" class="product-select">
+                <mat-label>Produto</mat-label>
+                <mat-select formControlName="product_id" (selectionChange)="calculatePrice()">
+                  <mat-option *ngFor="let product of filteredProducts" [value]="product.id">
+                    {{ product.name }} - {{ formatPrice(product.price) }}
+                    <span *ngIf="product.sku" class="product-sku">({{ product.sku }})</span>
+                  </mat-option>
+                </mat-select>
+                <mat-error *ngIf="productGroup.get('product_id')?.hasError('required')">
+                  Produto é obrigatório
+                </mat-error>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="quantity-field">
+                <mat-label>Quantidade</mat-label>
+                <input matInput type="number" formControlName="quantity" 
+                       (input)="calculatePrice()" min="1">
+                <mat-error *ngIf="productGroup.get('quantity')?.hasError('required')">
+                  Quantidade é obrigatória
+                </mat-error>
+                <mat-error *ngIf="productGroup.get('quantity')?.hasError('min')">
+                  Quantidade deve ser pelo menos 1
+                </mat-error>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline" class="sale-type-field">
+                <mat-label>Tipo de Venda</mat-label>
+                <mat-select formControlName="sale_type" (selectionChange)="calculatePrice()">
+                  <mat-option value="garrafa">Garrafa</mat-option>
+                  <mat-option value="dose">Dose</mat-option>
+                </mat-select>
+              </mat-form-field>
+
+              <button type="button" mat-icon-button color="warn" 
+                      (click)="removeProduct(i)" 
+                      [disabled]="productsArray.length === 1"
+                      matTooltip="Remover produto">
+                <mat-icon>delete</mat-icon>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <button type="button" mat-stroked-button (click)="addProduct()" class="add-product-btn">
+          <mat-icon>add</mat-icon>
+          Adicionar Produto
+        </button>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Preços e Descontos -->
+    <mat-card class="form-section">
+      <mat-card-header>
+        <mat-card-title>Preços e Descontos</mat-card-title>
+        <mat-card-subtitle>Configure os preços e descontos do combo</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="price-calculation" *ngIf="originalPrice > 0">
+          <div class="price-info">
+            <div class="price-item">
+              <span class="price-label">Preço Original:</span>
+              <span class="price-value">{{ formatPrice(originalPrice) }}</span>
+            </div>
+            <div class="price-item" *ngIf="discountAmount > 0">
+              <span class="price-label">Desconto:</span>
+              <span class="price-value discount">{{ formatPrice(discountAmount) }}</span>
+            </div>
+            <div class="price-item total">
+              <span class="price-label">Preço Final:</span>
+              <span class="price-value">{{ formatPrice(calculatedPrice) }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <mat-form-field appearance="outline" class="price-field">
+            <mat-label>Preço Original</mat-label>
+            <input matInput type="number" formControlName="original_price" 
+                   step="0.01" min="0" (input)="calculatePrice()">
+            <span matPrefix>R$&nbsp;</span>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="price-field">
+            <mat-label>Preço de Venda</mat-label>
+            <input matInput type="number" formControlName="price" 
+                   step="0.01" min="0" required>
+            <span matPrefix>R$&nbsp;</span>
+            <mat-error *ngIf="comboForm.get('price')?.hasError('required')">
+              Preço é obrigatório
+            </mat-error>
+            <mat-error *ngIf="comboForm.get('price')?.hasError('min')">
+              Preço deve ser maior que zero
+            </mat-error>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="discount-field">
+            <mat-label>Desconto (%)</mat-label>
+            <input matInput type="number" formControlName="discount_percentage" 
+                   step="0.01" min="0" max="100" (input)="calculatePrice()">
+            <span matSuffix>%</span>
+          </mat-form-field>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Configurações -->
+    <mat-card class="form-section">
+      <mat-card-header>
+        <mat-card-title>Configurações</mat-card-title>
+        <mat-card-subtitle>Configure as opções de exibição do combo</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="checkbox-group">
+          <mat-checkbox formControlName="is_active">
+            Combo Ativo
+          </mat-checkbox>
+          <mat-checkbox formControlName="featured">
+            Em Destaque
+          </mat-checkbox>
+          <mat-checkbox formControlName="offers">
+            Oferta
+          </mat-checkbox>
+          <mat-checkbox formControlName="popular">
+            Popular
+          </mat-checkbox>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Botões de Ação -->
+    <div class="form-actions">
+      <!-- Debug Info -->
+      <div class="debug-info" style="background: #f5f5f5; padding: 10px; margin: 10px 0; border-radius: 4px; font-size: 12px;">
+        <strong>Debug:</strong><br>
+        Formulário válido: {{ comboForm.valid }}<br>
+        Produtos válidos: {{ hasValidProducts() }}<br>
+        Loading: {{ loading }}<br>
+        Erros: {{ getFormErrors() | json }}
+      </div>
+      
+      <button type="button" mat-stroked-button (click)="onCancel()" [disabled]="loading">
+        Cancelar
+      </button>
+      <button type="submit" mat-raised-button color="primary" 
+              [disabled]="loading || !comboForm.valid || !hasValidProducts()">
+        <mat-spinner *ngIf="loading" diameter="20"></mat-spinner>
+        <mat-icon *ngIf="!loading">{{ isEdit ? 'save' : 'add' }}</mat-icon>
+        {{ isEdit ? 'Atualizar' : 'Criar' }} Combo
+      </button>
+    </div>
+  </form>
+</div>

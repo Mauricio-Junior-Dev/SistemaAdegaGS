@@ -25,6 +25,14 @@ export const routes: Routes = [
         loadComponent: () => import('./products/pages/product-list-page/product-list-page.component').then(m => m.ProductListPageComponent)
       },
       {
+        path: 'combos',
+        loadComponent: () => import('./combos/pages/combos-page/combos-page.component').then(m => m.CombosPageComponent)
+      },
+      {
+        path: 'combos/:id',
+        loadComponent: () => import('./combos/pages/combo-detail/combo-detail.component').then(m => m.ComboDetailComponent)
+      },
+      {
         path: 'ofertas',
         loadComponent: () => import('./offers/pages/offers/offers.component').then(m => m.OffersComponent)
       },
@@ -98,6 +106,22 @@ export const routes: Routes = [
       {
         path: 'produtos',
         loadComponent: () => import('./admin/pages/produtos/produtos.component').then(m => m.ProdutosComponent)
+      },
+      {
+        path: 'combos',
+        loadComponent: () => import('./admin/pages/combos/combos.component').then(m => m.CombosComponent)
+      },
+      {
+        path: 'combos/novo',
+        loadComponent: () => import('./admin/pages/combos/combo-form/combo-form.component').then(m => m.ComboFormComponent)
+      },
+      {
+        path: 'combos/:id',
+        loadComponent: () => import('./admin/pages/combos/combo-form/combo-form.component').then(m => m.ComboFormComponent)
+      },
+      {
+        path: 'combos/:id/editar',
+        loadComponent: () => import('./admin/pages/combos/combo-form/combo-form.component').then(m => m.ComboFormComponent)
       },
       {
         path: 'categorias',

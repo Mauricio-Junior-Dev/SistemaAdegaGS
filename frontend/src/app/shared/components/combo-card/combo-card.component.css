@@ -1,0 +1,167 @@
+.combo-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  transition: transform 0.2s, box-shadow 0.2s;
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.combo-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.discount-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: var(--primary);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  z-index: 2;
+}
+
+.combo-image-container {
+  width: 100%;
+  height: 200px;
+  overflow: hidden;
+  position: relative;
+}
+
+.combo-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.2s;
+}
+
+.combo-card:hover .combo-image {
+  transform: scale(1.05);
+}
+
+.combo-info {
+  padding: 1rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.combo-name {
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: var(--secondary);
+  margin: 0 0 0.5rem 0;
+  line-height: 1.3;
+}
+
+.combo-description {
+  color: #666;
+  font-size: 0.9rem;
+  margin: 0 0 1rem 0;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.combo-products {
+  margin-bottom: 1rem;
+}
+
+.products-label {
+  font-size: 0.8rem;
+  color: #888;
+  font-weight: 500;
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.products-list {
+  font-size: 0.85rem;
+  color: #666;
+  line-height: 1.3;
+}
+
+.product-item {
+  display: inline;
+}
+
+.combo-prices {
+  margin-bottom: 1rem;
+}
+
+.original-price {
+  font-size: 0.9rem;
+  color: #999;
+  text-decoration: line-through;
+  margin-bottom: 0.25rem;
+}
+
+.current-price {
+  font-size: 1.25rem;
+  font-weight: bold;
+  color: var(--primary);
+}
+
+.combo-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: auto;
+}
+
+.btn-details,
+.btn-add-cart {
+  flex: 1;
+  padding: 0.75rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-details {
+  background: transparent;
+  color: var(--primary);
+  border: 1px solid var(--primary);
+}
+
+.btn-details:hover {
+  background: var(--primary);
+  color: white;
+}
+
+.btn-add-cart {
+  background: var(--primary);
+  color: white;
+}
+
+.btn-add-cart:hover {
+  background: var(--primary-dark);
+  transform: translateY(-1px);
+}
+
+.btn-add-cart:active {
+  transform: translateY(0);
+}
+
+/* Responsividade */
+@media (max-width: 768px) {
+  .combo-actions {
+    flex-direction: column;
+  }
+  
+  .btn-details,
+  .btn-add-cart {
+    width: 100%;
+  }
+}

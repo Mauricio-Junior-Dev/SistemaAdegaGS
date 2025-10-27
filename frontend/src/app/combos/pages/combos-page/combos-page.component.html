@@ -1,0 +1,62 @@
+<div class="combos-page">
+  <div class="container">
+    <!-- Header -->
+    <div class="page-header">
+      <h1>Combos Especiais</h1>
+      <p>Economize com nossos combos selecionados</p>
+    </div>
+
+    <!-- Filtros e Busca -->
+    <div class="filters-section">
+      <div class="search-box">
+        <input 
+          type="text" 
+          [(ngModel)]="searchTerm"
+          (keyup.enter)="onSearch()"
+          placeholder="Buscar combos..."
+          class="search-input">
+        <button (click)="onSearch()" class="search-button">
+          <span>🔍</span>
+        </button>
+      </div>
+
+      <div class="sort-controls">
+        <select [(ngModel)]="sortBy" (change)="onSortChange()" class="sort-select">
+          <option value="name">Nome</option>
+          <option value="price">Preço</option>
+          <option value="created_at">Mais Recentes</option>
+        </select>
+        
+        <select [(ngModel)]="sortOrder" (change)="onSortChange()" class="sort-select">
+          <option value="asc">Crescente</option>
+          <option value="desc">Decrescente</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Loading State -->
+    <div *ngIf="loading" class="loading-container">
+      <div class="loading-spinner"></div>
+      <p>Carregando combos...</p>
+    </div>
+
+    <!-- Error State -->
+    <div *ngIf="error" class="error-message">
+      {{ error }}
+    </div>
+
+    <!-- Combos Grid -->
+    <div *ngIf="!loading && !error" class="combos-grid">
+      <div *ngIf="combos.length === 0" class="no-combos">
+        <h3>Nenhum combo encontrado</h3>
+        <p>Tente ajustar os filtros de busca.</p>
+      </div>
+
+      <app-combo-card 
+        *ngFor="let combo of combos; trackBy: trackByComboId"
+        [combo]="combo"
+        (addToCart)="onAddToCart($event)">
+      </app-combo-card>
+    </div>
+  </div>
+</div>

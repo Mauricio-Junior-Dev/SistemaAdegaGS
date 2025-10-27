@@ -45,4 +45,21 @@ class Handler extends ExceptionHandler
             //
         });
     }
+
+    /**
+     * Handle unauthenticated users.
+     */
+    protected function unauthenticated($request, \Illuminate\Auth\AuthenticationException $exception)
+    {
+        // Para requisições da API, sempre retornar JSON
+        if ($request->is('api/*')) {
+            return response()->json([
+                'message' => 'Unauthenticated.',
+                'error' => 'Token de autenticação necessário'
+            ], 401);
+        }
+
+        // Para outras requisições, usar o comportamento padrão
+        return redirect()->guest(route('login'));
+    }
 }
