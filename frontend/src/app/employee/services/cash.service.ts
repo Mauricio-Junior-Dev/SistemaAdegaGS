@@ -25,8 +25,8 @@ export class CashService {
     this.loadFromStorage();
   }
 
-  // Mock implementation until backend is ready
-  private useMock = true;
+  // Desativar mock para usar API real
+  private useMock = false;
 
   private loadFromStorage(): void {
     try {

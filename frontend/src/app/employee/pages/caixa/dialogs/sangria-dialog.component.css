@@ -1,0 +1,37 @@
+.sangria-dialog {
+  width: 100%;
+  max-width: 480px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 0 8px 0;
+}
+
+.header h2 {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 600;
+}
+
+.content {
+  padding: 0 0 8px 0;
+}
+
+.hint {
+  margin: 0 0 12px 0;
+  color: #6c757d;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 8px;
+}

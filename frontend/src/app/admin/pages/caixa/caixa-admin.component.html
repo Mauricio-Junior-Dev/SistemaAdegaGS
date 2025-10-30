@@ -1,0 +1,80 @@
+<mat-card>
+  <mat-card-header>
+    <mat-card-title>Histórico de Caixa</mat-card-title>
+  </mat-card-header>
+  <mat-card-content>
+    <div class="filters">
+      <mat-form-field appearance="outline">
+        <mat-label>Data (YYYY-MM-DD)</mat-label>
+        <input matInput [(ngModel)]="filterDate" placeholder="2025-10-30">
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Status</mat-label>
+        <mat-select [(ngModel)]="filterOpen">
+          <mat-option value="all">Todos</mat-option>
+          <mat-option value="true">Abertos</mat-option>
+          <mat-option value="false">Fechados</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <button mat-raised-button color="primary" (click)="load()">
+        <mat-icon>search</mat-icon>
+        Buscar
+      </button>
+    </div>
+
+    <div class="table-wrapper" *ngIf="!loading; else loadingTpl">
+      <table mat-table [dataSource]="rows" class="full-width">
+        <ng-container matColumnDef="opened_at">
+          <th mat-header-cell *matHeaderCellDef> Abertura </th>
+          <td mat-cell *matCellDef="let row"> {{row.opened_at | date:'short'}} </td>
+        </ng-container>
+        <ng-container matColumnDef="opened_by">
+          <th mat-header-cell *matHeaderCellDef> Funcionário </th>
+          <td mat-cell *matCellDef="let row"> {{row.opened_by || '-'}} </td>
+        </ng-container>
+        <ng-container matColumnDef="initial_amount">
+          <th mat-header-cell *matHeaderCellDef> Saldo Inicial </th>
+          <td mat-cell *matCellDef="let row"> {{row.initial_amount | currency:'BRL'}} </td>
+        </ng-container>
+        <ng-container matColumnDef="current_amount">
+          <th mat-header-cell *matHeaderCellDef> Saldo Atual/Final </th>
+          <td mat-cell *matCellDef="let row"> {{row.current_amount | currency:'BRL'}} </td>
+        </ng-container>
+        <ng-container matColumnDef="total_income">
+          <th mat-header-cell *matHeaderCellDef> Entradas </th>
+          <td mat-cell *matCellDef="let row"> {{row.total_income | currency:'BRL'}} </td>
+        </ng-container>
+        <ng-container matColumnDef="total_outcome">
+          <th mat-header-cell *matHeaderCellDef> Saídas </th>
+          <td mat-cell *matCellDef="let row"> {{row.total_outcome | currency:'BRL'}} </td>
+        </ng-container>
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef> Status </th>
+          <td mat-cell *matCellDef="let row"> {{statusText(row)}} </td>
+        </ng-container>
+        <ng-container matColumnDef="actions">
+          <th mat-header-cell *matHeaderCellDef> Ações </th>
+          <td mat-cell *matCellDef="let row">
+            <a mat-button color="primary" [routerLink]="['/admin/caixa', row.id]">
+              <mat-icon>list</mat-icon>
+              Detalhes
+            </a>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+      </table>
+
+      <mat-paginator [length]="total" [pageSize]="perPage" [pageIndex]="page"
+                      (page)="load($event)" [pageSizeOptions]="[10,25,50]"></mat-paginator>
+    </div>
+    <ng-template #loadingTpl>
+      <div class="loading">
+        <mat-icon>hourglass_top</mat-icon> Carregando...
+      </div>
+    </ng-template>
+  </mat-card-content>
+</mat-card>
+
+

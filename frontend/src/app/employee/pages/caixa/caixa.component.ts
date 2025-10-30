@@ -24,6 +24,7 @@ import { QuickCustomerDialogComponent } from './dialogs/quick-customer-dialog.co
 import { CashStatus, CashTransaction } from '../../models/cash.model';
 import { SettingsService, SystemSettings } from '../../../admin/services/settings.service';
 import { OpenCashDialogComponent } from './dialogs/open-cash-dialog.component';
+import { SangriaDialogComponent, SangriaResult } from './dialogs/sangria-dialog.component';
 import { PrintConfirmationDialogComponent } from './dialogs/print-confirmation-dialog.component';
 import { CloseCashDialogComponent } from './dialogs/close-cash-dialog.component';
 
@@ -132,6 +133,39 @@ export class CaixaComponent implements OnInit, OnDestroy {
       } else {
         this.customerSearchResults = [];
       }
+    });
+  }
+
+  openSangriaDialog(): void {
+    if (!this.cashStatus) {
+      this.snackBar.open('Caixa não está aberto', 'Fechar', { duration: 3000 });
+      return;
+    }
+
+    const dialogRef = this.dialog.open(SangriaDialogComponent, {
+      width: '420px',
+      data: { currentAmount: this.cashStatus.current_amount }
+    });
+
+    dialogRef.afterClosed().subscribe((result: SangriaResult | undefined) => {
+      if (!result) return;
+
+      this.cashService.addTransaction({
+        type: 'saida',
+        amount: result.amount,
+        description: `Sangria: ${result.description}`
+      }).subscribe({
+        next: () => {
+          // Atualiza saldo em memória
+          if (this.cashStatus) {
+            this.cashStatus.current_amount = Math.max(0, this.cashStatus.current_amount - result.amount);
+          }
+          this.snackBar.open('Sangria registrada com sucesso', 'Fechar', { duration: 3000 });
+        },
+        error: () => {
+          this.snackBar.open('Erro ao registrar sangria', 'Fechar', { duration: 3000 });
+        }
+      });
     });
   }
 

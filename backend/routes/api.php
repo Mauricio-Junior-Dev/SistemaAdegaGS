@@ -9,7 +9,9 @@ use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\StockController;
 use App\Http\Controllers\Api\AddressController;
+use App\Http\Controllers\Api\CashController;
 use App\Http\Controllers\DeliveryZoneController;
+use Illuminate\Support\Facades\Auth;
 
 // Rotas públicas
 Route::post('/register', [AuthController::class, 'register']);
@@ -58,7 +60,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Endpoint de teste simples (sem middleware admin)
     Route::get('/test-auth', function (Request $request) {
         return response()->json([
-            'authenticated' => auth()->check(),
+            'authenticated' => Auth::check(),
             'user' => $request->user(),
             'token_valid' => $request->user() !== null
         ]);
@@ -83,7 +85,7 @@ Route::middleware('auth:sanctum')->group(function () {
                 'type' => $user->type,
                 'is_admin' => $user->isAdmin()
             ] : null,
-            'auth_check' => auth()->check()
+            'auth_check' => Auth::check()
         ]);
     });
     
@@ -130,6 +132,13 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Rotas de funcionário e admin
     Route::middleware('employee')->group(function () {
+        // Caixa
+        Route::get('/cash/status', [CashController::class, 'status']);
+        Route::post('/cash/open', [CashController::class, 'open']);
+        Route::post('/cash/close', [CashController::class, 'close']);
+        Route::get('/cash/today', [CashController::class, 'today']);
+        Route::post('/cash/transaction', [CashController::class, 'transaction']);
+        Route::get('/cash/report', [CashController::class, 'report']);
         // Pedidos
         Route::get('/orders', [OrderController::class, 'index']);
         Route::get('/orders/{order}', [OrderController::class, 'show']);
@@ -150,4 +159,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Rotas administrativas
     require __DIR__.'/admin.php';
+    Route::middleware('admin')->group(function () {
+        Route::get('/admin/cash/sessions', [CashController::class, 'sessions']);
+        Route::get('/admin/cash/sessions/{session}', [CashController::class, 'sessionDetail']);
+        Route::get('/admin/cash/transactions', [CashController::class, 'transactions']);
+    });
 });

@@ -2,26 +2,6 @@
   <div class="produtos-header">
     <h1>Produtos</h1>
     <div class="header-actions">
-      <button mat-raised-button [matMenuTriggerFor]="exportMenu">
-        <mat-icon>file_download</mat-icon>
-        Exportar
-      </button>
-      <mat-menu #exportMenu="matMenu">
-        <button mat-menu-item (click)="exportProducts('xlsx')">
-          <mat-icon>description</mat-icon>
-          Excel (XLSX)
-        </button>
-        <button mat-menu-item (click)="exportProducts('csv')">
-          <mat-icon>insert_drive_file</mat-icon>
-          CSV
-        </button>
-      </mat-menu>
-
-      <button mat-raised-button color="primary" (click)="openImportDialog()">
-        <mat-icon>file_upload</mat-icon>
-        Importar
-      </button>
-
       <button mat-raised-button color="accent" (click)="openProductDialog()">
         <mat-icon>add</mat-icon>
         Novo Produto

@@ -117,7 +117,7 @@ export class ProdutosComponent implements OnInit, OnDestroy {
       per_page: this.pageSize,
       search: this.searchTerm || undefined,
       category_id: this.selectedCategory || undefined,
-      is_active: this.showInactive ? undefined : true,
+      is_active: this.showInactive ? false : true,
       low_stock: this.showLowStock || undefined,
       sort_by: this.sort?.active,
       sort_order: this.sort?.direction || undefined

@@ -78,7 +78,7 @@ export class UsuariosComponent implements OnInit {
       per_page: this.pageSize,
       search: this.searchTerm,
       type: this.selectedType,
-      is_active: this.showInactive ? undefined : true
+      is_active: this.showInactive ? false : true
     }).subscribe({
       next: (response) => {
         this.users = response.data;

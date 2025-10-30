@@ -33,6 +33,12 @@ h1 {
   border-bottom: 1px solid #e0e0e0;
 }
 
+.cash-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .cash-info {
   display: flex;
   align-items: center;

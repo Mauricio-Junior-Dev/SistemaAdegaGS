@@ -21,12 +21,18 @@
           <mat-icon>{{showCashValue ? 'visibility_off' : 'visibility'}}</mat-icon>
         </button>
       </div>
+      <div class="cash-actions">
+        <button mat-raised-button color="warn" (click)="openSangriaDialog()" matTooltip="Sangria de Caixa">
+          <mat-icon>money_off</mat-icon>
+          Sangria
+        </button>
       <button mat-icon-button 
               class="close-cash-button"
               (click)="showCloseCashConfirmation()"
               matTooltip="Fechar Caixa">
         <mat-icon>lock</mat-icon>
       </button>
+      </div>
     </div>
     
     <div class="caixa-grid">

@@ -2,26 +2,6 @@
   <div class="usuarios-header">
     <h1>Usuários</h1>
     <div class="header-actions">
-      <button mat-raised-button [matMenuTriggerFor]="exportMenu">
-        <mat-icon>file_download</mat-icon>
-        Exportar
-      </button>
-      <mat-menu #exportMenu="matMenu">
-        <button mat-menu-item (click)="exportUsers('xlsx')">
-          <mat-icon>description</mat-icon>
-          Excel (XLSX)
-        </button>
-        <button mat-menu-item (click)="exportUsers('csv')">
-          <mat-icon>insert_drive_file</mat-icon>
-          CSV
-        </button>
-      </mat-menu>
-
-      <button mat-raised-button color="primary" (click)="openImportDialog()">
-        <mat-icon>file_upload</mat-icon>
-        Importar
-      </button>
-
       <button mat-raised-button color="accent" (click)="openUserDialog()">
         <mat-icon>person_add</mat-icon>
         Novo Usuário

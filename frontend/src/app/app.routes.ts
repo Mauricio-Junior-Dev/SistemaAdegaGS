@@ -13,6 +13,10 @@ export const routes: Routes = [
         loadComponent: () => import('./home/pages/home/home.component').then(m => m.HomeComponent)
       },
       {
+        path: 'caixa',
+        loadComponent: () => import('./admin/pages/caixa/caixa-admin.component').then(m => m.CaixaAdminComponent)
+      },
+      {
         path: 'login',
         loadComponent: () => import('./auth/pages/login/login.component').then(m => m.LoginComponent)
       },
@@ -134,6 +138,10 @@ export const routes: Routes = [
       {
         path: 'relatorios',
         loadComponent: () => import('./admin/pages/relatorios/relatorios.component').then(m => m.RelatoriosComponent)
+      },
+      {
+        path: 'caixa',
+        loadComponent: () => import('./admin/pages/caixa/caixa-admin.component').then(m => m.CaixaAdminComponent)
       },
       {
         path: 'configuracoes',
