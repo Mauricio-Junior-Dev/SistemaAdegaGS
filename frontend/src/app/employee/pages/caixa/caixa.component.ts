@@ -480,7 +480,9 @@ export class CaixaComponent implements OnInit, OnDestroy {
     }
 
     // Se for pagamento em dinheiro, verificar se tem troco
-    if (paymentMethod === 'dinheiro') {
+    const isCashPayment = paymentMethod.toLowerCase() === 'dinheiro';
+    
+    if (isCashPayment) {
       if (this.receivedAmount < this.total) {
         this.snackBar.open('Valor recebido insuficiente', 'Fechar', { duration: 3000 });
         return;
@@ -502,8 +504,8 @@ export class CaixaComponent implements OnInit, OnDestroy {
       customer_phone: this.customerPhone || undefined,
       customer_email: this.customerEmail || undefined,
       customer_document: this.customerDocument || undefined,
-      received_amount: paymentMethod === 'dinheiro' ? this.receivedAmount : undefined,
-      change_amount: paymentMethod === 'dinheiro' ? this.changeAmount : undefined
+      received_amount: isCashPayment ? this.receivedAmount : undefined,
+      change_amount: isCashPayment ? this.changeAmount : undefined
     };
 
     this.orderService.createOrder(order)
@@ -533,13 +535,15 @@ export class CaixaComponent implements OnInit, OnDestroy {
   }
 
   showPrintConfirmation(response: CreateOrderResponse, paymentMethod: PaymentMethod): void {
+    const isCashPayment = paymentMethod.toLowerCase() === 'dinheiro';
+    
     const dialogData = {
       orderNumber: response.order_number,
       total: response.total,
       paymentMethod: paymentMethod,
       customerName: response.customer_name,
-      changeAmount: paymentMethod === 'dinheiro' ? this.changeAmount : undefined,
-      receivedAmount: paymentMethod === 'dinheiro' ? this.receivedAmount : undefined
+      changeAmount: isCashPayment ? this.changeAmount : undefined,
+      receivedAmount: isCashPayment ? this.receivedAmount : undefined
     };
 
     const dialogRef = this.dialog.open(PrintConfirmationDialogComponent, {

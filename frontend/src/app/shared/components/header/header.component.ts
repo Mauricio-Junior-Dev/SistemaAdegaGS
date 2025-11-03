@@ -7,6 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { CartService } from '../../../core/services/cart.service';
 import { AuthService } from '../../../core/services/auth.service';
+import { OrderPollingService } from '../../../core/services/order-polling.service';
 import { PublicSettingsService, PublicSettings } from '../../../core/services/public-settings.service';
 import { CartItem } from '../../../core/models/cart.model';
 import { User } from '../../../core/models/auth.model';
@@ -35,6 +36,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
   
   private cartService = inject(CartService);
   private authService = inject(AuthService);
+  private orderPollingService = inject(OrderPollingService);
   private publicSettingsService = inject(PublicSettingsService);
   private router = inject(Router);
 
@@ -106,6 +108,9 @@ export class HeaderComponent implements OnInit, OnDestroy {
     this.authService.logout().subscribe({
       next: () => {
         console.log('Logout bem sucedido');
+        // Parar polling de pedidos
+        this.orderPollingService.stopPolling();
+        this.orderPollingService.clearPrintedCache();
         // Limpar o carrinho ao fazer logout
         this.cartService.clearCart();
         
@@ -118,6 +123,9 @@ export class HeaderComponent implements OnInit, OnDestroy {
       },
       error: (error) => {
         console.error('Erro ao fazer logout:', error);
+        // Parar polling de pedidos mesmo com erro
+        this.orderPollingService.stopPolling();
+        this.orderPollingService.clearPrintedCache();
         // Mesmo com erro, vamos limpar o estado local
         localStorage.removeItem('user');
         localStorage.removeItem('token');

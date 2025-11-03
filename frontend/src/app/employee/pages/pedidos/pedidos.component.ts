@@ -15,7 +15,7 @@ import { MatPaginatorModule, MatPaginator, PageEvent } from '@angular/material/p
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { FormsModule } from '@angular/forms';
-import { Subject, takeUntil, interval, debounceTime, distinctUntilChanged } from 'rxjs';
+import { Subject, takeUntil, debounceTime, distinctUntilChanged } from 'rxjs';
 
 import { OrderService, Order, OrderStatus, OrderResponse } from '../../services/order.service';
 import { PrintService } from '../../../core/services/print.service';
@@ -70,6 +70,7 @@ export class PedidosComponent implements OnInit, OnDestroy {
     cancelled: 0
   };
   
+  
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   private destroy$ = new Subject<void>();
   private searchSubject = new Subject<string>();
@@ -95,9 +96,6 @@ export class PedidosComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.loadOrders();
     this.loadStats();
-    
-    // Configurar verificação periódica de novos pedidos
-    this.setupOrderNotifications();
   }
 
   ngOnDestroy(): void {
@@ -105,47 +103,8 @@ export class PedidosComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  setupOrderNotifications(): void {
-    // Verificar novos pedidos a cada 10 segundos
-    interval(10000)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(() => {
-        this.checkForNewOrders();
-      });
-  }
-
-  checkForNewOrders(): void {
-    this.orderService.fetchOrders({ page: 1, per_page: 1 })
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (response: OrderResponse) => {
-          const currentOrderCount = response.total;
-          
-          if (this.lastOrderCount > 0 && currentOrderCount > this.lastOrderCount) {
-            const newOrderCount = currentOrderCount - this.lastOrderCount;
-            this.hasNewOrders = true;
-            
-            // Mostrar notificação
-            this.snackBar.open(
-              `🎉 ${newOrderCount} novo${newOrderCount > 1 ? 's' : ''} pedido${newOrderCount > 1 ? 's' : ''} recebido${newOrderCount > 1 ? 's' : ''}!`,
-              'Ver Pedidos',
-              {
-                duration: 5000,
-                panelClass: ['success-snackbar']
-              }
-            );
-            
-            // Recarregar dados
-            this.loadOrders();
-          }
-          
-          this.lastOrderCount = currentOrderCount;
-        },
-        error: (error: any) => {
-          console.error('Erro ao verificar novos pedidos:', error);
-        }
-      });
-  }
+  // Método removido: A impressão automática agora é feita pelo OrderPollingService
+  // que roda globalmente quando o funcionário está logado
 
   loadOrders(): void {
     this.loading = true;

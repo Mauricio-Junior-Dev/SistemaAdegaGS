@@ -4,6 +4,7 @@ import { RouterModule, Router, ActivatedRoute } from '@angular/router';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthService } from '../../../core/services/auth.service';
 import { SocialAuthService } from '../../../core/services/social-auth.service';
+import { OrderPollingService } from '../../../core/services/order-polling.service';
 
 @Component({
   selector: 'app-login',
@@ -22,6 +23,7 @@ export class LoginComponent implements OnInit, OnDestroy {
     private fb: FormBuilder,
     private authService: AuthService,
     private socialAuthService: SocialAuthService,
+    private orderPollingService: OrderPollingService,
     private router: Router,
     private route: ActivatedRoute
   ) {
@@ -74,6 +76,12 @@ export class LoginComponent implements OnInit, OnDestroy {
     // Salvar dados de autenticação
     this.authService.saveAuth(authResponse);
     
+    // Iniciar polling de pedidos se for funcionário ou admin
+    if (authResponse.user.type === 'employee' || authResponse.user.type === 'admin') {
+      console.log('[LoginComponent] Iniciando polling de pedidos para funcionário/admin (social auth)');
+      this.orderPollingService.startPolling();
+    }
+    
     // Redirecionar baseado no tipo de usuário
     const userType = authResponse.user.type;
     let targetRoute = this.returnUrl;
@@ -120,6 +128,12 @@ export class LoginComponent implements OnInit, OnDestroy {
           // Salvar dados de autenticação
           this.authService.saveAuth(authResponse);
           
+          // Iniciar polling de pedidos se for funcionário ou admin
+          if (authResponse.user.type === 'employee' || authResponse.user.type === 'admin') {
+            console.log('[LoginComponent] Iniciando polling de pedidos para funcionário/admin (Google)');
+            this.orderPollingService.startPolling();
+          }
+          
           // Redirecionar baseado no tipo de usuário
           const userType = authResponse.user.type;
           let targetRoute = this.returnUrl;
@@ -164,6 +178,12 @@ export class LoginComponent implements OnInit, OnDestroy {
 
      this.authService.login(this.loginForm.value).subscribe({
        next: (response) => {
+         // Iniciar polling de pedidos se for funcionário ou admin
+         if (response.user.type === 'employee' || response.user.type === 'admin') {
+           console.log('[LoginComponent] Iniciando polling de pedidos para funcionário/admin');
+           this.orderPollingService.startPolling();
+         }
+         
          // Redirecionar baseado no tipo de usuário
          const userType = response.user.type;
          let targetRoute = this.returnUrl;

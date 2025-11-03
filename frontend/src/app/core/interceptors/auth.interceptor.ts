@@ -9,24 +9,28 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
   const router = inject(Router);
   const token = authService.getToken();
 
-  // Clonar a requisição e adicionar o header de autorização se houver token
+  // Verificar se é FormData (não definir Content-Type para permitir multipart/form-data)
+  const isFormData = req.body instanceof FormData;
+  
+  const headers: Record<string, string> = {
+    'Accept': 'application/json'
+  };
+
+  // Adicionar token se existir
   if (token) {
-    req = req.clone({
-      setHeaders: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      }
-    });
-  } else {
-    // Adicionar headers básicos mesmo sem token
-    req = req.clone({
-      setHeaders: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      }
-    });
+    headers['Authorization'] = `Bearer ${token}`;
   }
+
+  // Não definir Content-Type para FormData (o navegador define automaticamente com boundary)
+  // Apenas definir Content-Type para requisições JSON
+  if (!isFormData) {
+    headers['Content-Type'] = 'application/json';
+  }
+
+  // Clonar a requisição e adicionar os headers
+  req = req.clone({
+    setHeaders: headers
+  });
 
   // Passar a requisição para o próximo handler
   return next(req).pipe(

@@ -489,8 +489,26 @@ export class ProductFormDialogComponent implements OnInit {
   onSubmit(): void {
     if (this.productForm.valid) {
       this.loading = true;
+      
+      // Garantir que todos os campos do formulário sejam incluídos
+      const formValue = this.productForm.value;
       const productData: CreateProductDTO = {
-        ...this.productForm.value
+        name: formValue.name ?? '',
+        description: formValue.description ?? '',
+        category_id: formValue.category_id,
+        sku: formValue.sku ?? '',
+        barcode: formValue.barcode ?? null,
+        price: formValue.price,
+        original_price: formValue.original_price ?? null,
+        current_stock: formValue.current_stock,
+        min_stock: formValue.min_stock,
+        doses_por_garrafa: formValue.doses_por_garrafa ?? 5,
+        can_sell_by_dose: formValue.can_sell_by_dose ?? false,
+        dose_price: formValue.dose_price ?? null,
+        is_active: formValue.is_active ?? true,
+        featured: formValue.featured ?? false,
+        offers: formValue.offers ?? false,
+        popular: formValue.popular ?? false
       };
 
       if (this.imageFile) {
@@ -507,7 +525,34 @@ export class ProductFormDialogComponent implements OnInit {
         },
         error: (error) => {
           console.error('Erro ao salvar produto:', error);
-          this.snackBar.open('Erro ao salvar produto', 'Fechar', { duration: 3000 });
+          console.error('Resposta completa:', error.error);
+          console.error('Dados enviados:', productData);
+          
+          let errorMessage = 'Erro ao salvar produto';
+          
+          if (error.error) {
+            if (error.error.message) {
+              errorMessage = error.error.message;
+            } else if (error.error.errors) {
+              // Erros de validação do Laravel - mostrar todos os erros
+              const validationErrors = error.error.errors;
+              const errorMessages: string[] = [];
+              
+              Object.entries(validationErrors).forEach(([field, messages]) => {
+                if (Array.isArray(messages)) {
+                  errorMessages.push(`${field}: ${messages.join(', ')}`);
+                }
+              });
+              
+              if (errorMessages.length > 0) {
+                errorMessage = errorMessages.join(' | ');
+              } else {
+                errorMessage = 'Erro de validação. Verifique os dados.';
+              }
+            }
+          }
+          
+          this.snackBar.open(errorMessage, 'Fechar', { duration: 7000 });
           this.loading = false;
         }
       });

@@ -8,6 +8,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { AuthService } from '../../../core/services/auth.service';
+import { OrderPollingService } from '../../../core/services/order-polling.service';
 import { SettingsService, SystemSettings } from '../../services/settings.service';
 import { Subscription } from 'rxjs';
 
@@ -216,6 +217,7 @@ export class AdminLayoutComponent implements OnInit, OnDestroy {
 
   constructor(
     private authService: AuthService,
+    private orderPollingService: OrderPollingService,
     private settingsService: SettingsService
   ) {
     const user = this.authService.getUser();
@@ -264,10 +266,16 @@ export class AdminLayoutComponent implements OnInit, OnDestroy {
   logout(): void {
     this.authService.logout().subscribe({
       next: () => {
+        // Parar polling de pedidos
+        this.orderPollingService.stopPolling();
+        this.orderPollingService.clearPrintedCache();
         window.location.href = '/login';
       },
       error: (error) => {
         console.error('Erro ao fazer logout:', error);
+        // Parar polling mesmo com erro
+        this.orderPollingService.stopPolling();
+        this.orderPollingService.clearPrintedCache();
         window.location.href = '/login';
       }
     });

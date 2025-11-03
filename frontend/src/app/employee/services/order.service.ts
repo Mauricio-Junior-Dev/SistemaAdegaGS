@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, BehaviorSubject, interval, Subject } from 'rxjs';
+import { Observable, BehaviorSubject, interval, Subject, forkJoin } from 'rxjs';
 import { switchMap, tap, map, takeUntil } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import { Product as CoreProduct } from '../../core/models/product.model';
@@ -48,6 +48,8 @@ export interface Payment {
   payment_method: PaymentMethod;
   status: PaymentStatus;
   amount: number;
+  received_amount?: number;
+  change_amount?: number;
   created_at: string;
 }
 
@@ -210,6 +212,13 @@ export class OrderService {
     );
   }
 
+  /**
+   * Imprime um pedido automaticamente via backend
+   */
+  printOrderAutomatically(orderId: number): Observable<{success: boolean, message: string}> {
+    return this.http.post<{success: boolean, message: string}>(`${this.apiUrl}/${orderId}/print`, {});
+  }
+
   completeOrder(orderId: number): Observable<Order> {
     return this.updateOrderStatus(orderId, 'completed');
   }
@@ -233,18 +242,48 @@ export class OrderService {
   }
 
   getOrdersSummary(): Observable<OrderSummary> {
-    // Se tiver endpoint específico:
-    // return this.http.get<OrderSummary>(`${this.apiUrl}/summary`);
+    // Fazer chamadas reais à API para obter os totais atualizados por status
+    // Similar ao que o componente de pedidos faz no método loadStats()
+    const pendingRequest = this.fetchOrders({ page: 1, per_page: 1, status: 'pending' });
+    const deliveringRequest = this.fetchOrders({ page: 1, per_page: 1, status: 'delivering' });
+    const completedRequest = this.fetchOrders({ page: 1, per_page: 1, status: 'completed' });
+    
+    // Buscar pedidos completos de hoje para calcular vendas do dia
+    const todayCompletedRequest = this.fetchOrders({ 
+      page: 1, 
+      per_page: 100, // Buscar mais para calcular vendas do dia
+      status: 'completed'
+    });
 
-    // Caso contrário, calcular do estado local
-    return this.orders$.pipe(
-      map(orders => ({
-        total_amount: orders.reduce((sum, order) => sum + order.total, 0),
-        total_orders: orders.length,
-        pending: orders.filter(o => o.status === 'pending').length,
-        delivering: orders.filter(o => o.status === 'delivering').length,
-        completed: orders.filter(o => o.status === 'completed').length
-      }))
+    return forkJoin({
+      pending: pendingRequest,
+      delivering: deliveringRequest,
+      completed: completedRequest,
+      todayCompleted: todayCompletedRequest
+    }).pipe(
+      map(({ pending, delivering, completed, todayCompleted }) => {
+        // Calcular vendas do dia (pedidos completos de hoje)
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        const todayOrders = todayCompleted.data.filter(order => {
+          const orderDate = new Date(order.created_at);
+          orderDate.setHours(0, 0, 0, 0);
+          return orderDate.getTime() === today.getTime();
+        });
+        
+        const totalAmount = todayOrders.reduce((sum, order) => sum + order.total, 0);
+        const totalOrdersToday = todayOrders.length;
+
+        // Retornar summary com dados atualizados
+        return {
+          total_amount: totalAmount, // Vendas do dia
+          total_orders: totalOrdersToday, // Pedidos completos de hoje
+          pending: pending.total, // Todos os pedidos pendentes
+          delivering: delivering.total, // Todos os pedidos em entrega
+          completed: completed.total // Todos os pedidos completos
+        };
+      })
     );
   }
 

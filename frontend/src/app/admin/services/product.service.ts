@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { switchMap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 
 export interface ProductResponse {
@@ -38,16 +39,20 @@ export interface CreateProductDTO {
   name: string;
   description: string;
   price: number;
+  original_price?: number | null;
   current_stock: number;
   min_stock: number;
   doses_por_garrafa: number;
   can_sell_by_dose: boolean;
-  dose_price?: number;
+  dose_price?: number | null;
   sku: string;
-  barcode?: string;
+  barcode?: string | null;
   category_id: number;
   image?: File;
   is_active: boolean;
+  featured?: boolean;
+  offers?: boolean;
+  popular?: boolean;
 }
 
 export interface UpdateProductDTO extends Partial<CreateProductDTO> {
@@ -88,14 +93,47 @@ export class ProductService {
   }
 
   createProduct(product: CreateProductDTO): Observable<Product> {
+    // Normalizar payload
+    const payload: any = { ...product };
+    
+    // Normalizar campos numéricos
+    const numericFields = ['price', 'original_price', 'current_stock', 'min_stock', 'doses_por_garrafa', 'dose_price', 'category_id'];
+    numericFields.forEach(field => {
+      if (payload[field] !== undefined && payload[field] !== null && payload[field] !== '') {
+        payload[field] = Number(payload[field]);
+      } else if (payload[field] === '') {
+        // Campos nullable: converter string vazia para null
+        if (field === 'original_price' || field === 'dose_price') {
+          payload[field] = null;
+        }
+      }
+    });
+    
+    // Normalizar campos de texto nullable
+    if (payload.barcode === '') {
+      payload.barcode = null;
+    }
+    
+    // Normalizar booleanos
+    const booleanFields = ['is_active', 'featured', 'offers', 'popular', 'can_sell_by_dose'];
+    booleanFields.forEach(field => {
+      if (payload[field] !== undefined) {
+        payload[field] = payload[field] === true || payload[field] === 'true' || payload[field] === 1 || payload[field] === '1';
+      }
+    });
+
     const formData = new FormData();
     
-    Object.entries(product).forEach(([key, value]) => {
+    Object.entries(payload).forEach(([key, value]) => {
       if (value !== undefined && value !== null) {
         if (key === 'image' && value instanceof File) {
           formData.append('image', value, value.name);
-        } else {
+        } else if (typeof value === 'boolean') {
+          formData.append(key, value ? '1' : '0');
+        } else if (typeof value === 'number') {
           formData.append(key, value.toString());
+        } else {
+          formData.append(key, String(value));
         }
       }
     });
@@ -106,31 +144,77 @@ export class ProductService {
   updateProduct(product: UpdateProductDTO): Observable<Product> {
     const { id, image, ...rest } = product as any;
 
-    // Normalizar
+    // Normalizar payload
     const payload: any = { ...rest };
+    
+    // Campos obrigatórios que sempre devem ser incluídos
+    const requiredFields = ['name', 'description', 'sku', 'category_id', 'price', 'current_stock', 'min_stock', 'doses_por_garrafa'];
+    
+    // Converter category_id para número
     if (payload.category_id !== undefined && payload.category_id !== null && payload.category_id !== '') {
       payload.category_id = Number(payload.category_id);
+    } else if (payload.category_id === '') {
+      // Se estiver vazio, manter como está para que a validação do backend trate
     }
-    if (payload.is_active !== undefined) payload.is_active = !!payload.is_active;
+    
+    // Normalizar campos numéricos obrigatórios
+    const requiredNumericFields = ['price', 'current_stock', 'min_stock', 'doses_por_garrafa'];
+    requiredNumericFields.forEach(field => {
+      if (payload[field] !== undefined && payload[field] !== null && payload[field] !== '') {
+        payload[field] = Number(payload[field]);
+      }
+    });
+    
+    // Normalizar campos numéricos nullable
+    const nullableNumericFields = ['original_price', 'dose_price'];
+    nullableNumericFields.forEach(field => {
+      if (payload[field] !== undefined && payload[field] !== null && payload[field] !== '') {
+        payload[field] = Number(payload[field]);
+      } else if (payload[field] === '') {
+        payload[field] = null;
+      }
+    });
+    
+    // Normalizar campos de texto nullable
+    if (payload.barcode !== undefined) {
+      if (payload.barcode === '') {
+        payload.barcode = null;
+      }
+    }
+    
+    // Normalizar booleanos
+    const booleanFields = ['is_active', 'featured', 'offers', 'popular', 'can_sell_by_dose'];
+    booleanFields.forEach(field => {
+      if (payload[field] !== undefined) {
+        payload[field] = payload[field] === true || payload[field] === 'true' || payload[field] === 1 || payload[field] === '1';
+      }
+    });
 
-    // Com imagem: POST com _method=PUT
+    // Com imagem: fazer upload da imagem primeiro, depois atualizar produto com JSON
     if (image instanceof File) {
-      const formData = new FormData();
-      if (payload.name !== undefined && payload.name !== null) formData.append('name', String(payload.name));
-      Object.entries(payload).forEach(([key, value]) => {
-        if (key === 'name') return;
-        if (value !== undefined && value !== null) {
-          if (typeof value === 'boolean') formData.append(key, value ? '1' : '0');
-          else formData.append(key, value.toString());
-        }
-      });
-      formData.append('image', image, image.name);
-      formData.append('_method', 'PUT');
-      return this.http.post<Product>(`${this.apiUrl}/${id}`, formData);
+      // Primeiro, fazer upload da imagem usando o endpoint específico
+      return this.uploadImage(id, image).pipe(
+        // Depois, atualizar o produto com os outros dados via JSON
+        switchMap(() => {
+          // Remover campos nullable null para enviar apenas o necessário
+          const jsonPayload: any = { ...payload };
+          if (jsonPayload.barcode === null) delete jsonPayload.barcode;
+          if (jsonPayload.original_price === null) delete jsonPayload.original_price;
+          if (jsonPayload.dose_price === null) delete jsonPayload.dose_price;
+          
+          return this.http.put<Product>(`${this.apiUrl}/${id}`, jsonPayload);
+        })
+      );
     }
 
     // Sem imagem: PUT JSON
-    return this.http.put<Product>(`${this.apiUrl}/${id}`, payload);
+    // Remover campos nullable null para enviar apenas o necessário
+    const jsonPayload: any = { ...payload };
+    if (jsonPayload.barcode === null) delete jsonPayload.barcode;
+    if (jsonPayload.original_price === null) delete jsonPayload.original_price;
+    if (jsonPayload.dose_price === null) delete jsonPayload.dose_price;
+    
+    return this.http.put<Product>(`${this.apiUrl}/${id}`, jsonPayload);
   }
 
   deleteProduct(id: number): Observable<void> {

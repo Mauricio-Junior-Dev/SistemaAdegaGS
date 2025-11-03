@@ -15,12 +15,32 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
+use App\Services\PrintService;
 
 class OrderController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Order::with(['items.product', 'items.combo', 'user', 'payment', 'deliveryAddress']);
+        $query = Order::with([
+            'items.product',
+            'items.combo',
+            'user',
+            'deliveryAddress',
+            'payment' => function ($query) {
+                // Garantir que received_amount e change_amount sejam selecionados explicitamente
+                $query->select(
+                    'id',
+                    'order_id',
+                    'payment_method',
+                    'amount',
+                    'status',
+                    'received_amount',
+                    'change_amount',
+                    'created_at',
+                    'updated_at'
+                );
+            }
+        ]);
 
         // Filtros
         if ($request->has('status') && $request->status !== 'all') {
@@ -58,8 +78,24 @@ class OrderController extends Controller
 
     public function myOrders(Request $request)
     {
-        $query = Order::with(['items.product', 'items.combo', 'payment'])
-            ->where('user_id', Auth::id());
+        $query = Order::with([
+            'items.product',
+            'items.combo',
+            'payment' => function ($query) {
+                // Garantir que received_amount e change_amount sejam selecionados explicitamente
+                $query->select(
+                    'id',
+                    'order_id',
+                    'payment_method',
+                    'amount',
+                    'status',
+                    'received_amount',
+                    'change_amount',
+                    'created_at',
+                    'updated_at'
+                );
+            }
+        ])->where('user_id', Auth::id());
 
         if ($request->has('status')) {
             $query->where('status', $request->status);
@@ -79,7 +115,9 @@ class OrderController extends Controller
             'payment_method' => 'required|in:dinheiro,cartão de débito,cartão de crédito,pix',
             'customer_name' => 'nullable|string|max:255',
             'customer_phone' => 'nullable|string|max:20',
-            'delivery' => 'nullable|array'
+            'delivery' => 'nullable|array',
+            'received_amount' => 'nullable|numeric|min:0',
+            'change_amount' => 'nullable|numeric|min:0'
         ]);
 
         // Validação customizada para garantir que cada item tenha product_id ou combo_id
@@ -292,16 +330,45 @@ class OrderController extends Controller
             $order->update(['total' => $total + $frete]);
 
             // Criar pagamento
-            $order->payment()->create([
+            $paymentData = [
                 'amount' => $total + $frete,
                 'payment_method' => $request->payment_method,
                 'status' => 'completed'
-            ]);
+            ];
+
+            // Incluir received_amount e change_amount se fornecidos
+            if ($request->has('received_amount') && $request->received_amount !== null) {
+                $paymentData['received_amount'] = $request->received_amount;
+            }
+
+            if ($request->has('change_amount') && $request->change_amount !== null) {
+                $paymentData['change_amount'] = $request->change_amount;
+            }
+
+            $order->payment()->create($paymentData);
 
             DB::commit();
 
             return response()->json(
-                $order->load(['items.product', 'items.combo', 'user', 'payment']),
+                $order->load([
+                    'items.product',
+                    'items.combo',
+                    'user',
+                    'payment' => function ($query) {
+                        // Garantir que received_amount e change_amount sejam selecionados explicitamente
+                        $query->select(
+                            'id',
+                            'order_id',
+                            'payment_method',
+                            'amount',
+                            'status',
+                            'received_amount',
+                            'change_amount',
+                            'created_at',
+                            'updated_at'
+                        );
+                    }
+                ]),
                 201
             );
 
@@ -576,7 +643,26 @@ class OrderController extends Controller
             DB::commit();
 
             return response()->json([
-                'order' => $order->load(['items.product', 'items.combo', 'user', 'payment', 'deliveryAddress']),
+                'order' => $order->load([
+                    'items.product',
+                    'items.combo',
+                    'user',
+                    'deliveryAddress',
+                    'payment' => function ($query) {
+                        // Garantir que received_amount e change_amount sejam selecionados explicitamente
+                        $query->select(
+                            'id',
+                            'order_id',
+                            'payment_method',
+                            'amount',
+                            'status',
+                            'received_amount',
+                            'change_amount',
+                            'created_at',
+                            'updated_at'
+                        );
+                    }
+                ]),
                 'customer' => $customer,
                 'received_amount' => $request->received_amount,
                 'change_amount' => $request->change_amount
@@ -590,7 +676,57 @@ class OrderController extends Controller
 
     public function show(Order $order)
     {
-        return response()->json($order->load(['items.product', 'items.combo', 'user', 'payment', 'deliveryAddress']));
+        return response()->json($order->load([
+            'items.product',
+            'items.combo',
+            'user',
+            'deliveryAddress',
+            'payment' => function ($query) {
+                // Garantir que received_amount e change_amount sejam selecionados explicitamente
+                $query->select(
+                    'id',
+                    'order_id',
+                    'payment_method',
+                    'amount',
+                    'status',
+                    'received_amount',
+                    'change_amount',
+                    'created_at',
+                    'updated_at'
+                );
+            }
+        ]));
+    }
+
+    /**
+     * Imprime um pedido automaticamente via backend
+     */
+    public function printOrder(Order $order)
+    {
+        try {
+            $printService = new PrintService();
+            $copies = 2; // 2 cópias conforme solicitado
+            
+            $success = $printService->printOrder($order, $copies);
+            
+            if ($success) {
+                return response()->json([
+                    'success' => true,
+                    'message' => "Pedido #{$order->order_number} enviado para impressão ({$copies} cópias)"
+                ]);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Erro ao enviar pedido para impressão'
+                ], 500);
+            }
+        } catch (\Exception $e) {
+            Log::error("Erro ao imprimir pedido #{$order->order_number}: " . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Erro ao imprimir: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     public function searchCustomers(Request $request)
@@ -822,7 +958,25 @@ class OrderController extends Controller
             }
         }
 
-        return response()->json($order->load(['items.product', 'items.combo', 'user', 'payment']));
+        return response()->json($order->load([
+            'items.product',
+            'items.combo',
+            'user',
+            'payment' => function ($query) {
+                // Garantir que received_amount e change_amount sejam selecionados explicitamente
+                $query->select(
+                    'id',
+                    'order_id',
+                    'payment_method',
+                    'amount',
+                    'status',
+                    'received_amount',
+                    'change_amount',
+                    'created_at',
+                    'updated_at'
+                );
+            }
+        ]));
     }
 
     /**

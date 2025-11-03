@@ -6,7 +6,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { Subject, takeUntil } from 'rxjs';
+import { Subject, takeUntil, interval } from 'rxjs';
 
 import { DashboardService } from '../../services/dashboard.service';
 import { DashboardSummary } from '../../models/dashboard.model';
@@ -35,7 +35,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
   constructor(private dashboardService: DashboardService) {}
 
   ngOnInit() {
-    this.loadSummary();
+    this.loadSummary(true); // Primeira carga mostra loading
+    // Atualizar os dados a cada 15 segundos para manter os números atualizados
+    interval(15000)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        this.loadSummary(false); // Atualizações subsequentes não mostram loading
+      });
   }
 
   ngOnDestroy() {
@@ -43,8 +49,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  loadSummary() {
-    this.loading = true;
+  loadSummary(showLoading = true) {
+    if (showLoading) {
+      this.loading = true;
+    }
     this.error = false;
 
     this.dashboardService.getSummary()
@@ -52,12 +60,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (data) => {
           this.summary = data;
-          this.loading = false;
+          if (showLoading) {
+            this.loading = false;
+          }
         },
         error: (error) => {
           console.error('Erro ao carregar dashboard:', error);
           this.error = true;
-          this.loading = false;
+          if (showLoading) {
+            this.loading = false;
+          }
         }
       });
   }

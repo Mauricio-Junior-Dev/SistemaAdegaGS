@@ -8,6 +8,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { AuthService } from '../../../core/services/auth.service';
+import { OrderPollingService } from '../../../core/services/order-polling.service';
 
 @Component({
   selector: 'app-employee-layout',
@@ -33,10 +34,16 @@ export class EmployeeLayoutComponent {
     { path: '/funcionario/estoque', icon: 'inventory_2', label: 'Estoque' }
   ];
 
-  constructor(private authService: AuthService) {}
+  constructor(
+    private authService: AuthService,
+    private orderPollingService: OrderPollingService
+  ) {}
 
   logout() {
     this.authService.logout().subscribe(() => {
+      // Parar polling de pedidos
+      this.orderPollingService.stopPolling();
+      this.orderPollingService.clearPrintedCache();
       // O redirecionamento é feito pelo interceptor
     });
   }

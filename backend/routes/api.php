@@ -145,6 +145,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/orders/{order}/status', [OrderController::class, 'updateStatus']);
         Route::post('/orders/create', [OrderController::class, 'store']);
         Route::post('/orders/manual', [OrderController::class, 'createManualOrder']);
+        Route::post('/orders/{order}/print', [OrderController::class, 'printOrder']);
         Route::get('/customers/search', [OrderController::class, 'searchCustomers']);
         Route::post('/customers/quick', [OrderController::class, 'createQuickCustomer']);
 

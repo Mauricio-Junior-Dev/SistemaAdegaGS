@@ -122,6 +122,17 @@ class ProductController extends Controller
 
     public function update(Request $request, Product $product): JsonResponse
     {
+        // Log temporário para debug
+        \Log::info('Product Update Request:', [
+            'method' => $request->method(),
+            'url' => $request->fullUrl(),
+            'all_data' => $request->all(),
+            'has_name' => $request->has('name'),
+            'name_value' => $request->input('name'),
+            'content_type' => $request->header('Content-Type'),
+            'files' => $request->allFiles()
+        ]);
+
         $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'required|string',

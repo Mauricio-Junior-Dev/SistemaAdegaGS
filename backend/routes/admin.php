@@ -33,6 +33,9 @@ Route::middleware(['admin'])->group(function () {
     Route::get('/admin/products/{product}', [ProductController::class, 'show']);
     Route::post('/admin/products', [ProductController::class, 'store']);
     Route::put('/admin/products/{product}', [ProductController::class, 'update']);
+    // Suporte a atualização via POST (útil para multipart/form-data em alguns clientes)
+    // IMPORTANTE: Esta rota deve vir ANTES de outras rotas específicas como /image
+    Route::post('/admin/products/{product}/update', [ProductController::class, 'update']);
     Route::delete('/admin/products/{product}', [ProductController::class, 'destroy']);
     Route::patch('/admin/products/{product}/toggle-status', [ProductController::class, 'toggleStatus']);
     Route::post('/admin/products/{product}/image', [ProductController::class, 'uploadImage']);

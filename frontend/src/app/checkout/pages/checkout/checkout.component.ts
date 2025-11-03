@@ -106,7 +106,8 @@ export class CheckoutComponent implements OnInit {
 
     this.paymentForm = this.fb.group({
       method: ['pix', Validators.required],
-      change: ['']
+      received_amount: [''], // Valor recebido para pagamento em dinheiro
+      change: [''] // Troco para (legacy, mantido para compatibilidade)
     });
   }
 
@@ -392,6 +393,42 @@ export class CheckoutComponent implements OnInit {
         'card': 'cartão de débito'
       };
 
+      const paymentMethodValue = this.paymentForm.value.method;
+      const mappedPaymentMethod = paymentMethodMap[paymentMethodValue] || 'pix';
+      
+      // Verificar se é pagamento em dinheiro (case-insensitive)
+      const isCashPayment = mappedPaymentMethod.toLowerCase() === 'dinheiro';
+
+      // Calcular total do pedido (subtotal + frete)
+      const cartTotal = await new Promise<number>((resolve) => {
+        this.cartTotal$.subscribe(total => {
+          resolve(total);
+        }).unsubscribe();
+      });
+      const orderTotal = cartTotal + this.deliveryFee;
+
+      // Preparar dados do pagamento (received_amount e change_amount)
+      let receivedAmount: number | undefined = undefined;
+      let changeAmount: number | undefined = undefined;
+
+      if (isCashPayment) {
+        // Para pagamento em dinheiro, usar received_amount do formulário
+        // ou o campo "change" (legacy) que representa o valor total a pagar
+        const receivedValue = this.paymentForm.value.received_amount || this.paymentForm.value.change;
+        
+        if (receivedValue && parseFloat(receivedValue) > 0) {
+          receivedAmount = parseFloat(receivedValue);
+          
+          // Calcular troco se o valor recebido for maior que o total
+          if (receivedAmount >= orderTotal) {
+            changeAmount = receivedAmount - orderTotal;
+          } else {
+            // Se o valor recebido for menor que o total, não há troco
+            changeAmount = 0;
+          }
+        }
+      }
+
       // Preparar dados do pedido
       let deliveryData;
       if (this.useSavedAddress && this.selectedAddressId) {
@@ -412,7 +449,7 @@ export class CheckoutComponent implements OnInit {
       const orderData = {
         type: 'online',
         delivery: deliveryData,
-        payment_method: paymentMethodMap[this.paymentForm.value.method] || 'pix',
+        payment_method: mappedPaymentMethod,
         customer_name: deliveryData.address,
         customer_phone: deliveryData.phone,
         items: items.map(item => {
@@ -431,7 +468,10 @@ export class CheckoutComponent implements OnInit {
           }
           return null;
         }).filter(item => item !== null),
-        delivery_fee: this.deliveryFee
+        delivery_fee: this.deliveryFee,
+        // Incluir received_amount e change_amount se for pagamento em dinheiro
+        received_amount: isCashPayment ? receivedAmount : undefined,
+        change_amount: isCashPayment ? changeAmount : undefined
       };
 
       console.log('Enviando pedido:', orderData);
