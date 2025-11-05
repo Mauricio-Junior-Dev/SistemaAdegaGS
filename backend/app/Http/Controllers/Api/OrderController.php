@@ -81,6 +81,7 @@ class OrderController extends Controller
         $query = Order::with([
             'items.product',
             'items.combo',
+            'deliveryAddress',
             'payment' => function ($query) {
                 // Garantir que received_amount e change_amount sejam selecionados explicitamente
                 $query->select(
@@ -958,10 +959,15 @@ class OrderController extends Controller
             }
         }
 
-        return response()->json($order->load([
+        // --- CORREÇÃO DO BUG 500 ---
+        // Recarrega o objeto $order do banco de dados (refresh)
+        // e carrega (load) as relações exatas que o frontend espera,
+        // incluindo a consulta 'payment' corrigida.
+        $order->refresh()->load([
+            'user',
             'items.product',
             'items.combo',
-            'user',
+            'deliveryAddress',
             'payment' => function ($query) {
                 // Garantir que received_amount e change_amount sejam selecionados explicitamente
                 $query->select(
@@ -976,7 +982,10 @@ class OrderController extends Controller
                     'updated_at'
                 );
             }
-        ]));
+        ]);
+
+        // Agora retorna o objeto "limpo" e completo
+        return response()->json($order);
     }
 
     /**
@@ -1006,5 +1015,27 @@ class OrderController extends Controller
             'tempo_estimado' => $deliveryZone->tempo_estimado,
             'nome_bairro' => $deliveryZone->nome_bairro
         ]);
+    }
+
+    public function confirmDelivery(Order $order)
+    {
+        // Verificar se o cliente logado é o dono do pedido
+        if ($order->user_id !== Auth::id()) {
+            return response()->json(['error' => 'Você não tem permissão para confirmar este pedido.'], 403);
+        }
+
+        // A regra de negócio: só pode confirmar se estiver "em entrega"
+        if ($order->status !== 'delivering') {
+            return response()->json(['error' => 'Este pedido não pode ser confirmado. Apenas pedidos em entrega podem ser confirmados.'], 422);
+        }
+
+        // Atualiza o status
+        $order->status = 'completed';
+        $order->save();
+
+        // Carregar as relações necessárias para retornar o pedido completo
+        $order->load(['items.product', 'items.combo', 'deliveryAddress', 'payment']);
+
+        return response()->json($order);
     }
 }

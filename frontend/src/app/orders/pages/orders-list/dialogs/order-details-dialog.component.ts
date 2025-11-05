@@ -11,15 +11,72 @@ import { Order } from '../../../../core/models/order.model';
 @Component({
   selector: 'app-order-details-dialog',
   template: `
-    <h2 mat-dialog-title>Detalhes do Pedido #{{data.order.order_number}}</h2>
+    <h2 mat-dialog-title>Acompanhamento do Pedido #{{data.order.order_number}}</h2>
     <mat-dialog-content>
       <mat-card class="order-details-card">
-        <!-- Status -->
+        <!-- Barra de Status Dinâmica -->
         <mat-card-header>
           <mat-card-title>
-            <mat-chip [class]="data.getStatusClass(data.order.status)">
-              {{data.getStatusLabel(data.order.status)}}
-            </mat-chip>
+            <div class="status-progress-container">
+              <div class="status-steps">
+                <!-- Etapa 1: Pendente -->
+                <div class="status-step" [ngClass]="{
+                  'completed': isStepCompleted('pending'),
+                  'active': isStepActive('pending')
+                }">
+                  <div class="step-circle">
+                    <mat-icon *ngIf="isStepCompleted('pending')">check</mat-icon>
+                    <span *ngIf="!isStepCompleted('pending')" class="step-number">1</span>
+                  </div>
+                  <span class="step-label">Pendente</span>
+                </div>
+
+                <!-- Linha conectora -->
+                <div class="step-connector" [ngClass]="{'completed': isStepCompleted('processing')}"></div>
+
+                <!-- Etapa 2: Em Preparo -->
+                <div class="status-step" [ngClass]="{
+                  'completed': isStepCompleted('processing'),
+                  'active': isStepActive('processing')
+                }">
+                  <div class="step-circle">
+                    <mat-icon *ngIf="isStepCompleted('processing')">check</mat-icon>
+                    <span *ngIf="!isStepCompleted('processing')" class="step-number">2</span>
+                  </div>
+                  <span class="step-label">Em Preparo</span>
+                </div>
+
+                <!-- Linha conectora -->
+                <div class="step-connector" [ngClass]="{'completed': isStepCompleted('delivering')}"></div>
+
+                <!-- Etapa 3: Em Entrega -->
+                <div class="status-step" [ngClass]="{
+                  'completed': isStepCompleted('delivering'),
+                  'active': isStepActive('delivering')
+                }">
+                  <div class="step-circle">
+                    <mat-icon *ngIf="isStepCompleted('delivering')">check</mat-icon>
+                    <span *ngIf="!isStepCompleted('delivering')" class="step-number">3</span>
+                  </div>
+                  <span class="step-label">Em Entrega</span>
+                </div>
+
+                <!-- Linha conectora -->
+                <div class="step-connector" [ngClass]="{'completed': isStepCompleted('completed')}"></div>
+
+                <!-- Etapa 4: Concluído -->
+                <div class="status-step" [ngClass]="{
+                  'completed': isStepCompleted('completed'),
+                  'active': isStepActive('completed')
+                }">
+                  <div class="step-circle">
+                    <mat-icon *ngIf="isStepCompleted('completed')">check</mat-icon>
+                    <span *ngIf="!isStepCompleted('completed')" class="step-number">4</span>
+                  </div>
+                  <span class="step-label">Concluído</span>
+                </div>
+              </div>
+            </div>
           </mat-card-title>
         </mat-card-header>
 
@@ -29,7 +86,6 @@ import { Order } from '../../../../core/models/order.model';
             <h3>Informações do Pedido</h3>
             <p><strong>Número:</strong> #{{data.order.order_number}}</p>
             <p><strong>Data:</strong> {{data.formatDate(data.order.created_at || '')}}</p>
-            <p><strong>Status:</strong> {{data.getStatusLabel(data.order.status)}}</p>
           </div>
 
           <mat-divider></mat-divider>
@@ -60,22 +116,39 @@ import { Order } from '../../../../core/models/order.model';
             <p class="total"><strong>Total:</strong> {{data.formatCurrency(data.order.total_amount || data.order.total || 0)}}</p>
           </div>
 
+          <mat-divider></mat-divider>
+
           <!-- Endereço de Entrega -->
-          <div class="section" *ngIf="data.order.delivery_address">
+          <div class="section">
             <h3>Endereço de Entrega</h3>
-            <div class="address-details">
+            <div class="address-details" *ngIf="data.order.delivery_address; else noAddress">
               <p><strong>Endereço:</strong> {{data.order.delivery_address.street}}, {{data.order.delivery_address.number}}</p>
               <p *ngIf="data.order.delivery_address.complement"><strong>Complemento:</strong> {{data.order.delivery_address.complement}}</p>
               <p><strong>Bairro:</strong> {{data.order.delivery_address.neighborhood}}</p>
               <p><strong>Cidade:</strong> {{data.order.delivery_address.city}}/{{data.order.delivery_address.state}}</p>
               <p><strong>CEP:</strong> {{data.order.delivery_address.zipcode}}</p>
-              <p *ngIf="data.order.notes"><strong>Observações:</strong> {{data.order.notes}}</p>
+              <p *ngIf="data.order.delivery_address.name"><strong>Nome do Endereço:</strong> {{data.order.delivery_address.name}}</p>
+              <p *ngIf="data.order.delivery_address.notes"><strong>Observações do Endereço:</strong> {{data.order.delivery_address.notes}}</p>
+              <p *ngIf="data.order.delivery_notes"><strong>Observações do Pedido:</strong> {{data.order.delivery_notes}}</p>
             </div>
+            <ng-template #noAddress>
+              <div class="no-address">
+                <p>Nenhum endereço de entrega informado</p>
+              </div>
+            </ng-template>
           </div>
         </mat-card-content>
       </mat-card>
     </mat-dialog-content>
     <mat-dialog-actions align="end">
+      <button mat-raised-button 
+              color="success" 
+              *ngIf="data.order.status === 'delivering'"
+              (click)="confirmarEntrega()"
+              [disabled]="confirming">
+        <mat-icon>check_circle</mat-icon>
+        {{confirming ? 'Confirmando...' : 'Confirmar Recebimento'}}
+      </button>
       <button mat-button (click)="dialogRef.close()">Fechar</button>
     </mat-dialog-actions>
   `,
@@ -158,9 +231,119 @@ import { Order } from '../../../../core/models/order.model';
     .address-details p {
       margin: 5px 0;
     }
-    
+
+    .no-address {
+      color: #999;
+      font-style: italic;
+      padding: 15px;
+      background-color: #f8f9fa;
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    /* Estilos da Barra de Status */
+    .status-progress-container {
+      width: 100%;
+      margin: 20px 0;
+    }
+
+    .status-steps {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: relative;
+      padding: 20px 0;
+    }
+
+    .status-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex: 1;
+      position: relative;
+    }
+
+    .step-circle {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background-color: #e0e0e0;
+      border: 3px solid #e0e0e0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 8px;
+      transition: all 0.3s ease;
+      position: relative;
+      z-index: 2;
+    }
+
+    .step-number {
+      font-weight: bold;
+      color: #999;
+      font-size: 18px;
+    }
+
+    .status-step.active .step-circle {
+      background-color: #2196f3;
+      border-color: #2196f3;
+      box-shadow: 0 0 0 4px rgba(33, 150, 243, 0.2);
+    }
+
+    .status-step.active .step-number {
+      color: white;
+    }
+
+    .status-step.completed .step-circle {
+      background-color: #4caf50;
+      border-color: #4caf50;
+    }
+
+    .status-step.completed .step-circle mat-icon {
+      color: white;
+      font-size: 24px;
+      width: 24px;
+      height: 24px;
+    }
+
+    .step-label {
+      font-size: 12px;
+      color: #666;
+      text-align: center;
+      font-weight: 500;
+      transition: color 0.3s ease;
+    }
+
+    .status-step.active .step-label {
+      color: #2196f3;
+      font-weight: 600;
+    }
+
+    .status-step.completed .step-label {
+      color: #4caf50;
+    }
+
+    .step-connector {
+      flex: 1;
+      height: 3px;
+      background-color: #e0e0e0;
+      margin: 0 10px;
+      margin-top: -35px;
+      transition: background-color 0.3s ease;
+      position: relative;
+      z-index: 1;
+    }
+
+    .step-connector.completed {
+      background-color: #4caf50;
+    }
+
     mat-dialog-actions {
       margin-top: 20px;
+    }
+
+    mat-dialog-actions button[color="success"] {
+      margin-right: 10px;
     }
   `],
   standalone: true,
@@ -175,6 +358,8 @@ import { Order } from '../../../../core/models/order.model';
   ]
 })
 export class OrderDetailsDialogComponent {
+  confirming = false;
+
   constructor(
     public dialogRef: MatDialogRef<OrderDetailsDialogComponent>,
     @Inject(MAT_DIALOG_DATA) public data: {
@@ -186,6 +371,56 @@ export class OrderDetailsDialogComponent {
       formatCurrency: (value: number) => string;
       getUnitPrice: (item: any) => number;
       getItemSubtotal: (item: any) => number;
+      confirmDelivery?: (orderId: number) => void;
     }
   ) {}
+
+  isStepCompleted(step: string): boolean {
+    const status = this.data.order.status;
+    
+    switch (step) {
+      case 'pending':
+        // Pendente está concluído quando o pedido passou desta etapa
+        return status !== 'pending';
+      case 'processing':
+        // Em Preparo está concluído quando o pedido está em entrega ou concluído
+        return status === 'delivering' || status === 'completed';
+      case 'delivering':
+        // Em Entrega está concluído quando o pedido está concluído
+        return status === 'completed';
+      case 'completed':
+        // Concluído só está concluído quando o status é completed
+        return status === 'completed';
+      default:
+        return false;
+    }
+  }
+
+  isStepActive(step: string): boolean {
+    const status = this.data.order.status;
+    
+    switch (step) {
+      case 'pending':
+        return status === 'pending';
+      case 'processing':
+        // Não há status "processing" no backend, então nunca será ativo
+        // A etapa "Em Preparo" é uma etapa intermediária lógica
+        return false;
+      case 'delivering':
+        return status === 'delivering';
+      case 'completed':
+        return status === 'completed';
+      default:
+        return false;
+    }
+  }
+
+  confirmarEntrega(): void {
+    const confirmado = confirm('Você confirma que recebeu seu pedido?');
+    
+    if (confirmado && this.data.confirmDelivery) {
+      this.confirming = true;
+      this.data.confirmDelivery(this.data.order.id);
+    }
+  }
 }

@@ -74,14 +74,15 @@ Route::middleware(['admin'])->group(function () {
     Route::post('/admin/users/import', [UserController::class, 'import']);
     Route::get('/admin/users/export', [UserController::class, 'export']);
 
-    // Relatórios
-    Route::get('/admin/reports/sales', [ReportController::class, 'sales']);
-    Route::get('/admin/reports/products', [ReportController::class, 'products']);
-    Route::get('/admin/reports/categories', [ReportController::class, 'categories']);
-    Route::get('/admin/reports/users', [ReportController::class, 'users']);
-    Route::get('/admin/reports/stock', [ReportController::class, 'stock']);
-    Route::get('/admin/reports/customers', [ReportController::class, 'customers']);
-    Route::get('/admin/reports/employees', [ReportController::class, 'employees']);
+    // Relatórios (DEPRECATED - Mantidas para compatibilidade)
+    // Route::get('/admin/reports/sales', [ReportController::class, 'sales']);
+    // Route::get('/admin/reports/products', [ReportController::class, 'products']);
+    // Route::get('/admin/reports/categories', [ReportController::class, 'categories']);
+    // Route::get('/admin/reports/users', [ReportController::class, 'users']);
+    // Route::get('/admin/reports/stock', [ReportController::class, 'stock']);
+    // Route::get('/admin/reports/customers', [ReportController::class, 'customers']);
+    // Route::get('/admin/reports/employees', [ReportController::class, 'employees']);
+
 
     // Movimentações de Estoque
     Route::get('/admin/stock-movements', [StockMovementController::class, 'index']);
@@ -93,6 +94,7 @@ Route::middleware(['admin'])->group(function () {
     Route::get('/admin/dashboard/sales-chart', [ReportController::class, 'salesChart']);
     Route::get('/admin/dashboard/top-products', [ReportController::class, 'topProducts']);
     Route::get('/admin/dashboard/top-customers', [ReportController::class, 'topCustomers']);
+    Route::get('/admin/dashboard/customer-summary', [ReportController::class, 'getCustomerSummary']);
 
     // Configurações
     Route::get('/admin/settings', [SettingController::class, 'index']);

@@ -15,10 +15,11 @@ import { MatPaginatorModule, MatPaginator, PageEvent } from '@angular/material/p
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { FormsModule } from '@angular/forms';
-import { Subject, takeUntil, debounceTime, distinctUntilChanged } from 'rxjs';
+import { Subject, takeUntil, debounceTime, distinctUntilChanged, Observable, combineLatest, map } from 'rxjs';
 
 import { OrderService, Order, OrderStatus, OrderResponse } from '../../services/order.service';
 import { PrintService } from '../../../core/services/print.service';
+import { OrderPollingService } from '../../../core/services/order-polling.service';
 import { UpdateOrderStatusDialogComponent } from './dialogs/update-order-status-dialog.component';
 import { OrderDetailsDialogComponent } from './dialogs/order-details-dialog.component';
 
@@ -47,6 +48,9 @@ import { OrderDetailsDialogComponent } from './dialogs/order-details-dialog.comp
   ]
 })
 export class PedidosComponent implements OnInit, OnDestroy {
+  // Observable para pedidos pendentes (atualizado automaticamente pelo OrderPollingService)
+  public pedidos$!: Observable<Order[]>;
+  
   orders: Order[] = [];
   displayedColumns = ['id', 'created_at', 'customer', 'address', 'items', 'total', 'status', 'actions'];
   loading = true;
@@ -77,6 +81,7 @@ export class PedidosComponent implements OnInit, OnDestroy {
 
   constructor(
     private orderService: OrderService,
+    private orderPollingService: OrderPollingService,
     private dialog: MatDialog,
     private snackBar: MatSnackBar,
     private printService: PrintService
@@ -94,7 +99,31 @@ export class PedidosComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.loadOrders();
+    // Conectar o componente ao Observable do OrderPollingService
+    // O componente agora está 'escutando' o serviço
+    this.pedidos$ = this.orderPollingService.pendingOrders$;
+    
+    // Subscrever ao Observable para atualizar a lista local quando houver mudanças
+    this.pedidos$.pipe(
+      takeUntil(this.destroy$)
+    ).subscribe(pendingOrders => {
+      // Atualizar apenas se o filtro estiver em 'pending'
+      if (this.selectedStatus === 'pending') {
+        this.orders = pendingOrders;
+        this.totalItems = pendingOrders.length;
+        this.loading = false;
+      }
+    });
+    
+    // Para outros status, usa a busca HTTP tradicional
+    // Para 'pending', o Observable do OrderPollingService já fornece os dados automaticamente
+    if (this.selectedStatus !== 'pending') {
+      this.loadOrders();
+    } else {
+      // Quando for 'pending', o loading será desativado quando o Observable emitir os dados
+      // O OrderPollingService já busca os dados a cada 10 segundos e atualiza o BehaviorSubject
+    }
+    
     this.loadStats();
   }
 
@@ -166,7 +195,15 @@ export class PedidosComponent implements OnInit, OnDestroy {
   onStatusFilterChange(status: OrderStatus | 'all'): void {
     this.selectedStatus = status;
     this.currentPage = 0;
-    this.loadOrders();
+    
+    // Se mudar para 'pending', usar o Observable do OrderPollingService
+    // O Observable já atualiza automaticamente através da subscription no ngOnInit
+    // Caso contrário, usar busca HTTP tradicional
+    if (status !== 'pending') {
+      this.loadOrders();
+    }
+    // Se for 'pending', a subscription já atualiza a lista automaticamente
+    
     // Recarregar estatísticas quando mudar o filtro
     this.loadStats();
   }

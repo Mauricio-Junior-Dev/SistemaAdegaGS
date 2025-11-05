@@ -40,6 +40,11 @@
           </mat-chip>
         </div>
 
+        <!-- Barra de Status Dinâmica -->
+        <div class="order-status-section">
+          <app-order-status-tracker [currentStatus]="order.status"></app-order-status-tracker>
+        </div>
+
         <div class="order-items">
           <div *ngFor="let item of order.items" class="order-item">
             <div class="item-info">
@@ -47,6 +52,19 @@
               <span class="item-name">{{ item.product?.name }}</span>
               <span class="item-unit-price">R$ {{ getUnitPrice(item) | number:'1.2-2' }} cada</span>
             </div>
+          </div>
+        </div>
+
+        <!-- Endereço de Entrega -->
+        <div class="delivery-address-section" *ngIf="order.delivery_address">
+          <div class="delivery-address">
+            <strong>Endereço de Entrega:</strong>
+            <p>
+              {{ order.delivery_address.street }}, {{ order.delivery_address.number }}
+              <br>
+              {{ order.delivery_address.neighborhood }} - {{ order.delivery_address.city }}
+              <span *ngIf="order.delivery_address.complement">, {{ order.delivery_address.complement }}</span>
+            </p>
           </div>
         </div>
 
@@ -62,15 +80,22 @@
         </div>
 
         <div class="order-actions">
+          <button mat-raised-button 
+                  color="success" 
+                  *ngIf="order.status === 'delivering'"
+                  (click)="confirmarEntrega(order)">
+            <mat-icon>check_circle</mat-icon>
+            Confirmar Recebimento
+          </button>
           <button mat-button color="primary" (click)="showOrderDetails(order)">
             <mat-icon>visibility</mat-icon>
             Ver Detalhes
           </button>
-          <button mat-button *ngIf="order.status === 'pending' || order.status === 'delivering'">
+          <button mat-button 
+                  color="accent"
+                  (click)="openWhatsAppHelp(order)">
             <mat-icon>help</mat-icon>
-            <a href="https://wa.me/5511999999999?text=Olá, estou precisando de ajuda com o pedido #{{ order.order_number }}" style="text-decoration: none; color: inherit;" target="_blank">
-              Ajuda
-            </a>
+            Ajuda
           </button>
         </div>
       </div>

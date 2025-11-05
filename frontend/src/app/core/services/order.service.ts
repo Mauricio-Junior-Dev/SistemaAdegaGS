@@ -28,4 +28,8 @@ export class OrderService {
   updateOrderStatus(id: number, status: string): Observable<Order> {
     return this.http.patch<Order>(`${this.apiUrl}/orders/${id}/status`, { status });
   }
+
+  confirmDelivery(orderId: number): Observable<Order> {
+    return this.http.put<Order>(`${this.apiUrl}/orders/${orderId}/confirm-delivery`, {});
+  }
 }

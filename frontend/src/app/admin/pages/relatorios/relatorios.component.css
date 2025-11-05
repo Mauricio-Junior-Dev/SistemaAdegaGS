@@ -1,235 +1,149 @@
-.reports-container {
+/* Contêiner Principal */
+.dashboard-container {
   padding: 20px;
 }
 
-.reports-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-.reports-header h1 {
-  margin: 0;
-  font-size: 24px;
-  color: #333;
-}
-
-.header-actions {
-  display: flex;
-  gap: 10px;
-}
-
-/* Filtros */
-.filters-card {
-  margin-bottom: 20px;
-}
-
-.filters-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  align-items: center;
-}
-
-.filters-container > * {
-  flex: 1;
-  min-width: 200px;
-}
-
-/* Loading State */
-.loading-container {
+/* Spinner de Loading Centralizado */
+.dashboard-loading-spinner {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 40px;
-}
-
-.loading-container p {
-  margin-top: 20px;
+  height: 60vh;
+  gap: 15px;
   color: #666;
 }
 
-/* Reports Grid */
-.reports-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
-  gap: 20px;
+/* Header da Página */
+.page-header {
+  margin-bottom: 20px;
 }
 
-.report-card {
-  height: 100%;
-}
-
-.report-card mat-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px;
-}
-
-.report-card mat-card-title {
+.page-header h1 {
   margin: 0;
-  font-size: 18px;
-}
-
-.report-card mat-card-content {
-  padding: 16px;
-}
-
-/* Metrics */
-.metrics-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 16px;
-  margin-bottom: 24px;
-}
-
-.metric {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  padding: 16px;
-  background-color: #f5f5f5;
-  border-radius: 8px;
-}
-
-.metric-label {
-  font-size: 14px;
-  color: #666;
-  margin-bottom: 8px;
-}
-
-.metric-value {
-  font-size: 24px;
+  font-size: 2rem;
   font-weight: 500;
   color: #333;
 }
 
-/* Charts */
-.chart-container {
-  height: 300px;
-  margin: 24px 0;
+/* Wrapper de Conteúdo de cada Aba */
+.tab-content-wrapper {
+  padding-top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Grid dos KPIs */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+}
+
+.kpi-grid-small {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.kpi-card mat-card-header {
+  padding-bottom: 0;
+}
+
+.kpi-card mat-card-title {
+  font-size: 2.2rem;
+  font-weight: 500;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.kpi-card .mat-icon {
+  font-size: 40px;
+  width: 40px;
+  height: 40px;
+}
+
+.kpi-card.sales .mat-icon {
+  color: #4CAF50;
+}
+
+.kpi-card.orders .mat-icon {
+  color: #007bff;
+}
+
+.kpi-card.ticket .mat-icon {
+  color: #f9a825;
+}
+
+.kpi-card.stock-value .mat-icon {
+  color: #795548;
+}
+
+/* Grid das Tabelas */
+.table-grid-2-col {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 20px;
+}
+
+/* Card do Gráfico (para garantir que o canvas caiba) */
+.chart-card {
+  max-height: 400px;
+}
+
+.chart-card mat-card-content {
+  height: 350px;
   position: relative;
 }
 
-/* No Data Messages */
-.no-data-message {
+.chart-pizza-container {
+  max-height: 350px;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 40px 20px;
-  text-align: center;
-  color: #666;
-  background-color: #f8f9fa;
-  border-radius: 8px;
-  border: 2px dashed #dee2e6;
-  margin: 20px 0;
+  height: 350px;
+  position: relative;
 }
 
-.no-data-message mat-icon {
-  font-size: 48px;
-  width: 48px;
-  height: 48px;
-  color: #adb5bd;
-  margin-bottom: 16px;
+/* Tabela simples */
+.simple-table {
+  width: 100%;
+  border-collapse: collapse;
 }
 
-.no-data-message p {
-  margin: 0;
-  font-size: 16px;
-  color: #6c757d;
-  max-width: 300px;
+.simple-table th,
+.simple-table td {
+  text-align: left;
+  padding: 12px;
+  border-bottom: 1px solid #eee;
 }
 
-/* Lists */
-.top-products,
-.low-stock,
-.customer-segments,
-.employee-sales,
-.cash-operations {
-  margin-top: 24px;
+.simple-table th {
+  background-color: #fcfcfc;
+  font-weight: 500;
 }
 
-.top-products h3,
-.low-stock h3,
-.customer-segments h3,
-.employee-sales h3,
-.cash-operations h3 {
-  margin: 0 0 16px;
-  font-size: 16px;
-  color: #333;
+.simple-table tr:hover {
+  background-color: #f5f5f5;
 }
 
-mat-list {
-  max-height: 300px;
-  overflow-y: auto;
-}
+/* Responsividade */
+@media (max-width: 768px) {
+  .dashboard-container {
+    padding: 10px;
+  }
 
-mat-list-item {
-  height: auto !important;
-  margin-bottom: 8px;
-}
-
-/* Card Colors */
-.sales-report {
-  border-top: 4px solid #4caf50;
-}
-
-.stock-report {
-  border-top: 4px solid #2196f3;
-}
-
-.customers-report {
-  border-top: 4px solid #ff9800;
-}
-
-.employees-report {
-  border-top: 4px solid #9c27b0;
-}
-
-/* Responsiveness */
-@media (max-width: 960px) {
-  .reports-grid {
+  .kpi-grid,
+  .kpi-grid-small {
     grid-template-columns: 1fr;
   }
 
-  .filters-container {
-    flex-direction: column;
-  }
-
-  .filters-container > * {
-    width: 100%;
-  }
-
-  .metrics-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .chart-container {
-    height: 250px;
-  }
-}
-
-@media (max-width: 600px) {
-  .reports-header {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 16px;
-  }
-
-  .header-actions {
-    justify-content: flex-end;
-  }
-
-  .metrics-grid {
+  .table-grid-2-col {
     grid-template-columns: 1fr;
   }
 
-  .chart-container {
-    height: 200px;
+  .kpi-card mat-card-title {
+    font-size: 1.8rem;
   }
 }

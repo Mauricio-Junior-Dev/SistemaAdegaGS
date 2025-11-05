@@ -10,6 +10,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 class ReportController extends Controller
 {
@@ -159,54 +160,41 @@ class ReportController extends Controller
             'period' => 'nullable|in:daily,weekly,monthly,yearly'
         ]);
 
-        $startDate = $request->start_date ? Carbon::parse($request->start_date) : Carbon::now()->startOfMonth();
-        $endDate = $request->end_date ? Carbon::parse($request->end_date) : Carbon::now()->endOfMonth();
+        $startDate = $request->query('start_date') ? Carbon::parse($request->query('start_date')) : Carbon::now()->subDays(30);
+        $endDate = $request->query('end_date') ? Carbon::parse($request->query('end_date')) : Carbon::now();
 
-        $query = Order::whereBetween('created_at', [$startDate, $endDate]);
+        $queryBase = Order::where('status', 'completed')
+                      ->whereBetween('created_at', [$startDate, $endDate]);
 
-        // Vendas por período
-        $salesData = $query->selectRaw('DATE(created_at) as date, COUNT(*) as orders_count, SUM(total) as total_sales')
+        // 1. DADOS PARA O GRÁFICO (Já formatado para Chart.js)
+        $salesData = (clone $queryBase)
+            ->selectRaw('DATE(created_at) as date, SUM(total) as total_sales')
             ->groupBy('date')
-            ->orderBy('date')
+            ->orderBy('date', 'asc')
             ->get();
 
-        // Vendas por status
-        $salesByStatus = Order::whereBetween('created_at', [$startDate, $endDate])
-            ->selectRaw('status, COUNT(*) as count, SUM(total) as total')
-            ->groupBy('status')
-            ->get();
+        $chartData = [
+            'labels' => $salesData->pluck('date')->map(fn($date) => Carbon::parse($date)->format('d/m'))->toArray(),
+            'datasets' => [
+                [
+                    'label' => 'Vendas (R$)',
+                    'data' => $salesData->pluck('total_sales')->toArray(),
+                    'borderColor' => '#4CAF50',
+                    'tension' => 0.1
+                ]
+            ]
+        ];
 
-        // Vendas por método de pagamento
-        $salesByPayment = collect();
-        try {
-            $salesByPayment = Order::whereBetween('created_at', [$startDate, $endDate])
-                ->join('payments', 'orders.id', '=', 'payments.order_id')
-                ->selectRaw('payments.payment_method, COUNT(*) as count, SUM(orders.total) as total')
-                ->groupBy('payments.payment_method')
-                ->get();
-        } catch (\Throwable $e) {
-            // Se não conseguir fazer join com payments, retorna collection vazia
-            $salesByPayment = collect();
-        }
-
-        // Resumo geral
+        // 2. DADOS PARA OS KPIs (RESUMO)
         $summary = [
-            'total_orders' => Order::whereBetween('created_at', [$startDate, $endDate])->count(),
-            'total_sales' => Order::whereBetween('created_at', [$startDate, $endDate])->sum('total'),
-            'average_order_value' => Order::whereBetween('created_at', [$startDate, $endDate])->avg('total'),
-            'pending_orders' => Order::whereBetween('created_at', [$startDate, $endDate])->where('status', 'pending')->count(),
-            'completed_orders' => Order::whereBetween('created_at', [$startDate, $endDate])->where('status', 'completed')->count(),
+            'total_orders' => (clone $queryBase)->count(),
+            'total_sales' => (clone $queryBase)->sum('total'),
+            'average_order_value' => (clone $queryBase)->avg('total') ?? 0,
         ];
 
         return response()->json([
-            'period' => [
-                'start_date' => $startDate->toDateString(),
-                'end_date' => $endDate->toDateString()
-            ],
             'summary' => $summary,
-            'sales_data' => $salesData,
-            'sales_by_status' => $salesByStatus,
-            'sales_by_payment' => $salesByPayment
+            'chart' => $chartData,
         ]);
     }
 
@@ -373,190 +361,103 @@ class ReportController extends Controller
 
     public function stock(Request $request): JsonResponse
     {
-        $startDate = $request->get('start_date') ? 
-            \Carbon\Carbon::parse($request->get('start_date')) : 
-            \Carbon\Carbon::now()->subDays(30);
-        $endDate = $request->get('end_date') ? 
-            \Carbon\Carbon::parse($request->get('end_date')) : 
-            \Carbon\Carbon::now();
+        // 1. DADOS PARA TABELA (Produtos com Baixo Estoque)
+        $lowStockProducts = Product::where('is_active', true)
+            ->whereColumn('current_stock', '<=', 'min_stock')
+            ->orderBy('current_stock', 'asc')
+            ->get(['id', 'name', 'current_stock', 'min_stock']);
 
-        $products = Product::with(['category', 'stockMovements'])->get()->map(function($product) {
-            $movements = $product->stockMovements()->latest()->take(5)->get();
-            
-            return [
-                'id' => $product->id,
-                'name' => $product->name,
-                'sku' => $product->sku,
-                'category' => $product->category->name,
-                'current_stock' => $product->current_stock,
-                'min_stock' => $product->min_stock,
-                'price' => $product->price,
-                'stock_value' => $product->current_stock * $product->price,
-                'is_low_stock' => $product->current_stock <= $product->min_stock,
-                'is_out_of_stock' => $product->current_stock == 0,
-                'recent_movements' => $movements->map(function($movement) {
-                    return [
-                        'type' => $movement->type,
-                        'quantity' => $movement->quantity,
-                        'reason' => $movement->reason,
-                        'created_at' => $movement->created_at
-                    ];
-                })
-            ];
-        });
+        // 2. DADOS PARA OS KPIs (RESUMO)
+        $totalStockValue = Product::where('is_active', true)
+            ->sum(DB::raw('current_stock * cost_price'));
 
-        // Produtos com estoque baixo
-        $lowStockProducts = $products->where('is_low_stock', true);
-
-        // Produtos sem estoque
-        $outOfStockProducts = $products->where('is_out_of_stock', true);
-
-        // Produtos com maior valor em estoque
-        $topValueProducts = $products->sortByDesc('stock_value')->take(10);
-
-        // Resumo
         $summary = [
-            'total_products' => $products->count(),
-            'low_stock_products' => $lowStockProducts->count(),
-            'out_of_stock_products' => $outOfStockProducts->count(),
-            'total_stock_value' => $products->sum('stock_value'),
-            'average_stock_value' => $products->avg('stock_value')
+            'products_in_low_stock' => $lowStockProducts->count(),
+            'total_stock_value' => (float) $totalStockValue,
         ];
-
-        // Movimentações de estoque para gráficos
-        $stockMovements = \App\Models\StockMovement::orderBy('created_at')->get();
-        
-        \Log::info('Stock movements count: ' . $stockMovements->count());
-        \Log::info('First movement: ' . json_encode($stockMovements->first()));
-        
-        $stockMovements = $stockMovements->map(function($movement) {
-            return [
-                'date' => $movement->created_at->format('Y-m-d'),
-                'type' => $movement->type === 'entrada' ? 'in' : 'out',
-                'quantity' => $movement->quantity,
-                'value' => $movement->quantity * ($movement->unit_cost ?? 0)
-            ];
-        });
 
         return response()->json([
             'summary' => $summary,
-            'low_stock_products' => $lowStockProducts,
-            'out_of_stock_products' => $outOfStockProducts,
-            'top_value_products' => $topValueProducts,
-            'stock_movements' => $stockMovements,
-            'all_products' => $products
+            'low_stock_table' => $lowStockProducts,
         ]);
     }
 
     public function customers(Request $request): JsonResponse
     {
-        $startDate = $request->get('start_date') ? 
-            \Carbon\Carbon::parse($request->get('start_date')) : 
-            \Carbon\Carbon::now()->subDays(30);
-        $endDate = $request->get('end_date') ? 
-            \Carbon\Carbon::parse($request->get('end_date')) : 
-            \Carbon\Carbon::now();
+        $startDate = $request->query('start_date') ? Carbon::parse($request->query('start_date')) : Carbon::now()->subDays(30);
+        $endDate = $request->query('end_date') ? Carbon::parse($request->query('end_date')) : Carbon::now();
 
-        // Novos clientes por período
-        $newCustomers = \App\Models\User::orderBy('created_at')
+        // 1. DADOS PARA O GRÁFICO (Novos Clientes por Dia)
+        $newCustomers = User::where('type', 'customer')
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->selectRaw('DATE(created_at) as date, COUNT(*) as count')
+            ->groupBy('date')
+            ->orderBy('date', 'asc')
             ->get();
-        
-        \Log::info('New customers count: ' . $newCustomers->count());
-        
-        $newCustomers = $newCustomers->map(function($user) {
-            return [
-                'date' => $user->created_at->format('Y-m-d'),
-                'count' => 1
-            ];
-        });
 
-        // Segmentos de clientes
-        $customerSegments = \App\Models\User::withCount('orders')
-            ->withSum('orders', 'total')
-            ->get()
-            ->groupBy(function($user) {
-                $totalOrders = $user->orders_count;
-                if ($totalOrders >= 10) return 'VIP';
-                if ($totalOrders >= 5) return 'Frequente';
-                if ($totalOrders >= 1) return 'Ocasional';
-                return 'Novo';
-            })
-            ->map(function($users, $segment) {
-                return [
-                    'segment' => $segment,
-                    'count' => $users->count(),
-                    'total_revenue' => $users->sum('orders_sum_total')
-                ];
-            })
-            ->values();
+        $chartData = [
+            'labels' => $newCustomers->pluck('date')->map(fn($date) => Carbon::parse($date)->format('d/m'))->toArray(),
+            'datasets' => [
+                [
+                    'label' => 'Novos Clientes',
+                    'data' => $newCustomers->pluck('count')->toArray(),
+                    'backgroundColor' => '#2196F3',
+                ]
+            ]
+        ];
+
+        // 2. DADOS PARA OS KPIs (RESUMO)
+        $summary = [
+            'total_customers' => User::where('type', 'customer')->count(),
+            'new_customers_period' => $newCustomers->sum('count'),
+        ];
 
         return response()->json([
-            'total_customers' => \App\Models\User::count(),
-            'active_customers' => \App\Models\User::whereHas('orders')->count(),
-            'new_customers' => $newCustomers,
-            'customer_segments' => $customerSegments,
-            'retention_rate' => $this->calculateRetentionRate()
+            'summary' => $summary,
+            'chart' => $chartData,
         ]);
     }
 
     public function employees(Request $request): JsonResponse
     {
         try {
-            $startDate = $request->get('start_date') ? 
-                \Carbon\Carbon::parse($request->get('start_date')) : 
-                \Carbon\Carbon::now()->subDays(30);
-            $endDate = $request->get('end_date') ? 
-                \Carbon\Carbon::parse($request->get('end_date')) : 
-                \Carbon\Carbon::now();
+            $startDate = $request->query('start_date') ? Carbon::parse($request->query('start_date')) : Carbon::now()->subDays(30);
+            $endDate = $request->query('end_date') ? Carbon::parse($request->query('end_date')) : Carbon::now();
 
-            \Log::info('Employees method called');
+            $employees = User::whereIn('type', ['admin', 'employee'])
+                ->withCount(['orders' => function ($query) use ($startDate, $endDate) {
+                    $query->where('status', 'completed')
+                          ->whereBetween('created_at', [$startDate, $endDate]);
+                }])
+                ->withSum(['orders' => function ($query) use ($startDate, $endDate) {
+                    $query->where('status', 'completed')
+                          ->whereBetween('created_at', [$startDate, $endDate]);
+                }], 'total')
+                ->get();
 
-            // Buscar funcionários reais
-            $employees = \App\Models\User::where('type', 'employee')->get();
-            
-            \Log::info('Employees found: ' . $employees->count());
-
-            // Vendas por funcionário (dados reais)
-            $salesByEmployee = $employees->map(function($employee) {
-                $ordersCount = $employee->orders()->count();
-                $totalSales = $employee->orders()->sum('total');
-                
-                return [
-                    'employee_id' => $employee->id,
-                    'employee_name' => $employee->name,
-                    'orders_count' => $ordersCount,
-                    'total_sales' => $totalSales,
-                ];
-            });
-
-            // Operações de caixa (dados reais baseados em transações financeiras)
-            $cashOperations = $employees->map(function($employee) {
-                $transactionsCount = \App\Models\FinancialTransaction::where('created_by', $employee->id)->count();
-                $balanceAccuracy = $this->calculateBalanceAccuracy($employee->id);
-                
-                return [
-                    'employee_id' => $employee->id,
-                    'employee_name' => $employee->name,
-                    'transactions' => $transactionsCount,
-                    'balance_accuracy' => $balanceAccuracy
-                ];
-            });
+            // Formatar para o Gráfico
+            $chartData = [
+                'labels' => $employees->pluck('name')->toArray(),
+                'datasets' => [
+                    [
+                        'label' => 'Vendas (R$)',
+                        'data' => $employees->pluck('orders_sum_total')->toArray(),
+                        'backgroundColor' => '#FFC107',
+                    ]
+                ]
+            ];
 
             return response()->json([
-                'total_employees' => $employees->count(),
-                'active_employees' => $employees->where('is_active', true)->count(),
-                'sales_by_employee' => $salesByEmployee,
-                'cash_operations' => $cashOperations
+                'chart' => $chartData,
+                'table_data' => $employees, // Envia dados brutos para uma tabela
             ]);
         } catch (\Exception $e) {
             \Log::error('Employees method error: ' . $e->getMessage());
             \Log::error('Stack trace: ' . $e->getTraceAsString());
             
             return response()->json([
-                'total_employees' => 0,
-                'active_employees' => 0,
-                'sales_by_employee' => [],
-                'cash_operations' => []
+                'chart' => ['labels' => [], 'datasets' => []],
+                'table_data' => []
             ], 500);
         }
     }
@@ -593,5 +494,38 @@ class ReportController extends Controller
         // Lógica simplificada: quanto mais transações, menor a chance de erro
         $accuracy = max(85.0, 100.0 - ($transactions * 0.1));
         return round($accuracy, 1);
+    }
+
+    /**
+     * Retorna dados para o gráfico de pizza de Clientes (Novos vs. Recorrentes)
+     * para o /admin/dashboard.
+     */
+    public function getCustomerSummary(Request $request)
+    {
+        $startDate = $request->query('start_date') ? Carbon::parse($request->query('start_date')) : Carbon::now()->subDays(30);
+        $endDate = $request->query('end_date') ? Carbon::parse($request->query('end_date')) : Carbon::now();
+
+        $allCustomersInPeriod = Order::where('status', 'completed')
+            ->whereBetween('created_at', [$startDate, $endDate])
+            ->select('user_id')
+            ->distinct()
+            ->pluck('user_id')
+            ->toArray();
+
+        $newCustomersCount = User::whereIn('id', $allCustomersInPeriod)
+            ->where('created_at', '>=', $startDate)
+            ->count();
+
+        $returningCustomersCount = count($allCustomersInPeriod) - $newCustomersCount;
+
+        return response()->json([
+            'labels' => ['Novos Clientes', 'Clientes Recorrentes'],
+            'datasets' => [
+                [
+                    'data' => [$newCustomersCount, $returningCustomersCount],
+                    'backgroundColor' => ['#4CAF50', '#2196F3'], // Cores do gráfico
+                ]
+            ]
+        ]);
     }
 }

@@ -1,0 +1,40 @@
+<div class="status-tracker-container">
+  <!-- Etapa 1: Pendente -->
+  <div class="step-item" 
+       [class.completed]="currentStatus !== 'pending' && currentStatus !== 'cancelled'" 
+       [class.active]="currentStatus === 'pending'">
+    <div class="step-circle">1</div>
+    <div class="step-label">Pendente</div>
+  </div>
+  <div class="step-line" 
+       [class.completed]="currentStatus === 'delivering' || currentStatus === 'completed'"></div>
+
+  <!-- Etapa 2: Em Preparo -->
+  <div class="step-item" 
+       [class.completed]="currentStatus === 'delivering' || currentStatus === 'completed'" 
+       [class.active]="false">
+    <div class="step-circle">2</div>
+    <div class="step-label">Em Preparo</div>
+  </div>
+  <div class="step-line" 
+       [class.completed]="currentStatus === 'delivering' || currentStatus === 'completed'"></div>
+
+  <!-- Etapa 3: Em Entrega -->
+  <div class="step-item" 
+       [class.completed]="currentStatus === 'completed'" 
+       [class.active]="currentStatus === 'delivering'">
+    <div class="step-circle">3</div>
+    <div class="step-label">Em Entrega</div>
+  </div>
+  <div class="step-line" 
+       [class.completed]="currentStatus === 'completed'"></div>
+
+  <!-- Etapa 4: Concluído -->
+  <div class="step-item" 
+       [class.active]="currentStatus === 'completed'"
+       [class.completed]="currentStatus === 'completed'">
+    <div class="step-circle">4</div>
+    <div class="step-label">Concluído</div>
+  </div>
+</div>
+

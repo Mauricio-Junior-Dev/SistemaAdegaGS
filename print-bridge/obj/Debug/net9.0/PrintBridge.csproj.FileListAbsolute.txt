@@ -35,3 +35,40 @@ C:\Users\pomad\OneDrive\Área de Trabalho\GitHub\adega\print-bridge\bin\Debug\ne
 C:\Users\pomad\OneDrive\Área de Trabalho\GitHub\adega\print-bridge\bin\Debug\net9.0\System.Drawing.Common.dll
 C:\Users\pomad\OneDrive\Área de Trabalho\GitHub\adega\print-bridge\bin\Debug\net9.0\System.Private.Windows.Core.dll
 C:\Users\pomad\OneDrive\Área de Trabalho\GitHub\adega\print-bridge\bin\Debug\net9.0\runtimes\win\lib\net9.0\Microsoft.Win32.SystemEvents.dll
+C:\Users\jasga\Desktop\Github\adegags\print-bridge\bin\Debug\net9.0\appsettings.Development.json
+C:\Users\jasga\Desktop\Github\adegags\print-bridge\bin\Debug\net9.0\appsettings.json
+C:\Users\jasga\Desktop\Github\adegags\print-bridge\bin\Debug\net9.0\PrintBridge.staticwebassets.endpoints.json
+C:\Users\jasga\Desktop\Github\adegags\print-bridge\bin\Debug\net9.0\PrintBridge.exe
+C:\Users\jasga\Desktop\Github\adegags\print-bridge\bin\Debug\net9.0\PrintBridge.deps.json
+C:\Users\jasga\Desktop\Github\adegags\print-bridge\bin\Debug\net9.0\PrintBridge.runtimeconfig.json
+C:\Users\jasga\Desktop\Github\adegags\print-bridge\bin\Debug\net9.0\PrintBridge.dll
+C:\Users\jasga\Desktop\Github\adegags\print-bridge\bin\Debug\net9.0\PrintBridge.pdb
+C:\Users\jasga\Desktop\Github\adegags\print-bridge\bin\Debug\net9.0\Microsoft.Extensions.Hosting.WindowsServices.dll
+C:\Users\jasga\Desktop\Github\adegags\print-bridge\bin\Debug\net9.0\Microsoft.Win32.SystemEvents.dll
+C:\Users\jasga\Desktop\Github\adegags\print-bridge\bin\Debug\net9.0\System.Drawing.Common.dll
+C:\Users\jasga\Desktop\Github\adegags\print-bridge\bin\Debug\net9.0\System.Private.Windows.Core.dll
+C:\Users\jasga\Desktop\Github\adegags\print-bridge\bin\Debug\net9.0\System.ServiceProcess.ServiceController.dll
+C:\Users\jasga\Desktop\Github\adegags\print-bridge\bin\Debug\net9.0\runtimes\win\lib\net9.0\Microsoft.Win32.SystemEvents.dll
+C:\Users\jasga\Desktop\Github\adegags\print-bridge\bin\Debug\net9.0\runtimes\win\lib\net9.0\System.ServiceProcess.ServiceController.dll
+C:\Users\jasga\Desktop\Github\adegags\print-bridge\obj\Debug\net9.0\PrintBridge.csproj.AssemblyReference.cache
+C:\Users\jasga\Desktop\Github\adegags\print-bridge\obj\Debug\net9.0\rpswa.dswa.cache.json
+C:\Users\jasga\Desktop\Github\adegags\print-bridge\obj\Debug\net9.0\PrintBridge.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\jasga\Desktop\Github\adegags\print-bridge\obj\Debug\net9.0\PrintBridge.AssemblyInfoInputs.cache
+C:\Users\jasga\Desktop\Github\adegags\print-bridge\obj\Debug\net9.0\PrintBridge.AssemblyInfo.cs
+C:\Users\jasga\Desktop\Github\adegags\print-bridge\obj\Debug\net9.0\PrintBridge.csproj.CoreCompileInputs.cache
+C:\Users\jasga\Desktop\Github\adegags\print-bridge\obj\Debug\net9.0\PrintBridge.MvcApplicationPartsAssemblyInfo.cache
+C:\Users\jasga\Desktop\Github\adegags\print-bridge\obj\Debug\net9.0\PrintBridge.sourcelink.json
+C:\Users\jasga\Desktop\Github\adegags\print-bridge\obj\Debug\net9.0\rjimswa.dswa.cache.json
+C:\Users\jasga\Desktop\Github\adegags\print-bridge\obj\Debug\net9.0\rjsmrazor.dswa.cache.json
+C:\Users\jasga\Desktop\Github\adegags\print-bridge\obj\Debug\net9.0\rjsmcshtml.dswa.cache.json
+C:\Users\jasga\Desktop\Github\adegags\print-bridge\obj\Debug\net9.0\scopedcss\bundle\PrintBridge.styles.css
+C:\Users\jasga\Desktop\Github\adegags\print-bridge\obj\Debug\net9.0\staticwebassets.build.json
+C:\Users\jasga\Desktop\Github\adegags\print-bridge\obj\Debug\net9.0\staticwebassets.build.json.cache
+C:\Users\jasga\Desktop\Github\adegags\print-bridge\obj\Debug\net9.0\staticwebassets.development.json
+C:\Users\jasga\Desktop\Github\adegags\print-bridge\obj\Debug\net9.0\staticwebassets.build.endpoints.json
+C:\Users\jasga\Desktop\Github\adegags\print-bridge\obj\Debug\net9.0\PrintBri.BDDAED60.Up2Date
+C:\Users\jasga\Desktop\Github\adegags\print-bridge\obj\Debug\net9.0\PrintBridge.dll
+C:\Users\jasga\Desktop\Github\adegags\print-bridge\obj\Debug\net9.0\refint\PrintBridge.dll
+C:\Users\jasga\Desktop\Github\adegags\print-bridge\obj\Debug\net9.0\PrintBridge.pdb
+C:\Users\jasga\Desktop\Github\adegags\print-bridge\obj\Debug\net9.0\PrintBridge.genruntimeconfig.cache
+C:\Users\jasga\Desktop\Github\adegags\print-bridge\obj\Debug\net9.0\ref\PrintBridge.dll

@@ -120,6 +120,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('customer')->group(function () {
         Route::get('/my-orders', [OrderController::class, 'myOrders']);
         Route::post('/orders', [OrderController::class, 'store']);
+        Route::put('/orders/{order}/confirm-delivery', [OrderController::class, 'confirmDelivery']);
         
         // Endereços
         Route::get('/addresses', [AddressController::class, 'index']);

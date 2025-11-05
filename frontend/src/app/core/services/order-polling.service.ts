@@ -1,7 +1,7 @@
 import { Injectable, OnDestroy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { interval, Subscription, Observable, of, BehaviorSubject } from 'rxjs';
-import { switchMap, catchError, takeWhile, startWith } from 'rxjs/operators';
+import { switchMap, catchError, takeWhile, startWith, tap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import { OrderService, OrderResponse, Order } from '../../employee/services/order.service';
 import { PrintService } from './print.service';
@@ -31,6 +31,8 @@ export class OrderPollingService implements OnDestroy {
   private pendingOrdersSubject = new BehaviorSubject<Order[]>([]);
   public pendingOrders$ = this.pendingOrdersSubject.asObservable();
 
+  private userSubscription?: Subscription;
+
   constructor(
     private http: HttpClient,
     private orderService: OrderService,
@@ -38,6 +40,25 @@ export class OrderPollingService implements OnDestroy {
     private authService: AuthService,
     private toastr: ToastrService
   ) {
+    // Observar mudanças no usuário para iniciar/parar polling automaticamente
+    // Isso garante que o polling seja iniciado mesmo após F5 (quando o usuário é restaurado do localStorage)
+    this.userSubscription = this.authService.user$.pipe(
+      tap(user => {
+        if (user && this.isEmployee(user)) {
+          // Se um funcionário/admin foi detectado (seja no login ou no F5), iniciar polling
+          if (!this.isPollingActive) {
+            console.log('[OrderPollingService] Usuário funcionário/admin detectado, iniciando polling automaticamente');
+            this.startPolling();
+          }
+        } else {
+          // Se não há usuário ou não é funcionário, parar polling
+          if (this.isPollingActive) {
+            console.log('[OrderPollingService] Usuário não é funcionário/admin, parando polling');
+            this.stopPolling();
+          }
+        }
+      })
+    ).subscribe();
   }
 
   /**
@@ -205,6 +226,9 @@ export class OrderPollingService implements OnDestroy {
 
   ngOnDestroy(): void {
     this.stopPolling();
+    if (this.userSubscription) {
+      this.userSubscription.unsubscribe();
+    }
   }
 }
 

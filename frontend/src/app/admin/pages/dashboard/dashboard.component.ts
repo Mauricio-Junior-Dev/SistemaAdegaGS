@@ -10,8 +10,10 @@ import { RouterModule } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
 
 import { AdminDashboardService, AdminDashboardSummary, TopProducts, TopCustomers } from '../../services/admin-dashboard.service';
+import { ReportService } from '../../services/report.service';
 import { NgChartsModule } from 'ng2-charts';
 import { PIE_CHART_OPTIONS, LINE_CHART_OPTIONS, CHART_COLORS } from './chart-config';
+import Chart from 'chart.js/auto';
 
 @Component({
   selector: 'app-admin-dashboard',
@@ -108,9 +110,15 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   stockPieChartOptions = PIE_CHART_OPTIONS;
 
+  // Gráfico de clientes (Chart.js direto)
+  private customerChart: any;
+
   private destroy$ = new Subject<void>();
 
-  constructor(private dashboardService: AdminDashboardService) {}
+  constructor(
+    private dashboardService: AdminDashboardService,
+    private reportService: ReportService
+  ) {}
 
   ngOnInit(): void {
     this.loadDashboardData();
@@ -119,6 +127,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+    if (this.customerChart) {
+      this.customerChart.destroy();
+    }
   }
 
   loadDashboardData(): void {
@@ -136,6 +147,23 @@ export class DashboardComponent implements OnInit, OnDestroy {
         error: (error) => {
           console.error('Erro ao carregar dados do dashboard:', error);
           this.loading = false;
+        }
+      });
+
+    // Carregar gráfico de clientes
+    const filters = {
+      start_date: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      end_date: new Date().toISOString().split('T')[0]
+    };
+
+    this.reportService.getCustomerSummary(filters)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (data) => {
+          setTimeout(() => this.renderCustomerChart(data), 100);
+        },
+        error: (error) => {
+          console.error('Erro ao carregar gráfico de clientes:', error);
         }
       });
   }
@@ -221,5 +249,24 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.stockPieChartData = { ...this.stockPieChartData };
       this.salesChartData = { ...this.salesChartData };
     }, 100);
+  }
+
+  // Renderiza o gráfico de pizza de clientes
+  renderCustomerChart(data: any): void {
+    const ctx = document.getElementById('customerPizzaChart') as HTMLCanvasElement;
+    if (!ctx || !data) return;
+
+    if (this.customerChart) {
+      this.customerChart.destroy();
+    }
+
+    this.customerChart = new Chart(ctx, {
+      type: 'pie',
+      data: data,
+      options: {
+        responsive: true,
+        maintainAspectRatio: false
+      }
+    });
   }
 }

@@ -5,9 +5,12 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDialog } from '@angular/material/dialog';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { OrderService } from '../../../core/services/order.service';
 import { Order } from '../../../core/models/order.model';
 import { OrderDetailsDialogComponent } from './dialogs/order-details-dialog.component';
+import { OrderStatusTrackerComponent } from '../../../shared/components/order-status-tracker/order-status-tracker.component';
+import { environment } from '../../../../environments/environment';
 
 @Component({
   selector: 'app-orders-list',
@@ -19,7 +22,9 @@ import { OrderDetailsDialogComponent } from './dialogs/order-details-dialog.comp
     RouterModule,
     MatButtonModule,
     MatIconModule,
-    MatChipsModule
+    MatChipsModule,
+    MatSnackBarModule,
+    OrderStatusTrackerComponent
   ]
 })
 export class OrdersListComponent implements OnInit {
@@ -29,7 +34,8 @@ export class OrdersListComponent implements OnInit {
 
   constructor(
     private orderService: OrderService,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private snackBar: MatSnackBar
   ) {}
 
   ngOnInit(): void {
@@ -146,7 +152,7 @@ export class OrdersListComponent implements OnInit {
   }
 
   showOrderDetails(order: Order): void {
-    this.dialog.open(OrderDetailsDialogComponent, {
+    const dialogRef = this.dialog.open(OrderDetailsDialogComponent, {
       data: {
         order,
         getStatusLabel: this.getStatusLabel.bind(this),
@@ -155,7 +161,32 @@ export class OrdersListComponent implements OnInit {
         formatDate: this.formatDate.bind(this),
         formatCurrency: this.formatCurrency.bind(this),
         getUnitPrice: this.getUnitPrice.bind(this),
-        getItemSubtotal: this.getItemSubtotal.bind(this)
+        getItemSubtotal: this.getItemSubtotal.bind(this),
+        confirmDelivery: (orderId: number) => {
+          this.orderService.confirmDelivery(orderId).subscribe({
+            next: (updatedOrder) => {
+              // Atualiza o pedido na lista local
+              const index = this.orders.findIndex(o => o.id === orderId);
+              if (index !== -1) {
+                this.orders[index] = updatedOrder;
+              }
+              // Atualiza o pedido no dialog
+              if (dialogRef.componentInstance) {
+                dialogRef.componentInstance.data.order = updatedOrder;
+                dialogRef.componentInstance.confirming = false;
+              }
+              // Recarrega a lista de pedidos para garantir sincronização
+              this.loadOrders();
+            },
+            error: (error) => {
+              console.error('Erro ao confirmar entrega:', error);
+              alert('Erro ao confirmar entrega. Tente novamente.');
+              if (dialogRef.componentInstance) {
+                dialogRef.componentInstance.confirming = false;
+              }
+            }
+          });
+        }
       },
       width: '600px',
       maxHeight: '90vh'
@@ -194,6 +225,53 @@ export class OrdersListComponent implements OnInit {
       return item.unit_price * item.quantity;
     }
     return 0;
+  }
+
+  confirmarEntrega(order: Order): void {
+    const confirmado = confirm('Você confirma que recebeu seu pedido?');
+
+    if (confirmado) {
+      this.orderService.confirmDelivery(order.id).subscribe({
+        next: (updatedOrder) => {
+          // Atualiza o status localmente para a UI reagir
+          order.status = updatedOrder.status;
+          // Atualiza também o objeto completo na lista
+          const index = this.orders.findIndex(o => o.id === order.id);
+          if (index !== -1) {
+            this.orders[index] = updatedOrder;
+          }
+          this.snackBar.open('Pedido confirmado com sucesso!', 'Fechar', {
+            duration: 3000,
+            horizontalPosition: 'center',
+            verticalPosition: 'top'
+          });
+        },
+        error: (err) => {
+          console.error('Erro ao confirmar entrega:', err);
+          this.snackBar.open('Erro ao confirmar o pedido. Tente novamente.', 'Fechar', {
+            duration: 3000,
+            horizontalPosition: 'center',
+            verticalPosition: 'top'
+          });
+        }
+      });
+    }
+  }
+
+  openWhatsAppHelp(order: Order): void {
+    const phoneNumber = environment.whatsappNumber;
+
+    // Mensagem pré-pronta
+    const message = `Olá! Preciso de ajuda com o meu pedido Nº ${order.order_number}.`;
+
+    // Codifica a mensagem para a URL
+    const encodedMessage = encodeURIComponent(message);
+
+    // Cria a URL do WhatsApp
+    const url = `https://wa.me/${phoneNumber}?text=${encodedMessage}`;
+
+    // Abre em uma nova aba
+    window.open(url, '_blank');
   }
 }
 
