@@ -20,10 +20,10 @@ export class DeliveryZoneService {
   }
 
   /**
-   * Calcula o frete para um bairro específico
+   * Calcula o frete por CEP
    */
-  calculateFrete(bairro: string): Observable<DeliveryZoneResponse> {
-    const params = new HttpParams().set('bairro', bairro);
+  calculateFrete(cep: string): Observable<DeliveryZoneResponse> {
+    const params = new HttpParams().set('cep', cep);
     return this.http.get<DeliveryZoneResponse>(`${this.apiUrl}/frete`, { params });
   }
 

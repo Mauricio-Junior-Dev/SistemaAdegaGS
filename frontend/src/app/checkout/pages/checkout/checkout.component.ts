@@ -110,6 +110,33 @@ export class CheckoutComponent implements OnInit {
       change: [''] // Troco para (legacy, mantido para compatibilidade)
     });
   }
+  // Método central para buscar frete por CEP
+  private _fetchFrete(cep: string): void {
+    if (!cep || cep.replace(/\D/g, '').length < 8) {
+      this.deliveryFee = 0;
+      this.estimatedTime = '';
+      return;
+    }
+
+    this.loadingDeliveryZones = true;
+    this.deliveryZoneService.calculateFrete(cep).subscribe({
+      next: (response) => {
+        this.deliveryFee = response.valor_frete ?? 0;
+        this.estimatedTime = response.tempo_estimado || '';
+        this.loadingDeliveryZones = false;
+      },
+      error: (error) => {
+        console.error('Erro ao calcular frete:', error);
+        this.deliveryFee = 0;
+        this.estimatedTime = 'Não disponível';
+        this.loadingDeliveryZones = false;
+        if (error.status === 404) {
+          this.snackBar.open('Infelizmente, ainda não atendemos este CEP.', 'Fechar', { duration: 5000 });
+        }
+      }
+    });
+  }
+
 
   ngOnInit(): void {
     // Inicializar observables
@@ -181,6 +208,11 @@ export class CheckoutComponent implements OnInit {
         state: address.state,
         instructions: address.notes
       });
+
+      // Dispara cálculo de frete pelo CEP do endereço selecionado
+      if (address.zipcode) {
+        this._fetchFrete(address.zipcode);
+      }
     }
   }
 
@@ -319,24 +351,12 @@ export class CheckoutComponent implements OnInit {
   }
 
   /**
-   * Calcula o frete quando o bairro é selecionado
+   * Calcula o frete a partir do CEP do formulário
    */
-  onNeighborhoodChange(): void {
-    if (this.selectedNeighborhood) {
-      this.deliveryZoneService.calculateFrete(this.selectedNeighborhood).subscribe({
-        next: (response) => {
-          this.deliveryFee = response.valor_frete;
-          this.estimatedTime = response.tempo_estimado || '';
-        },
-        error: (error) => {
-          console.error('Erro ao calcular frete:', error);
-          this.deliveryFee = 0;
-          this.estimatedTime = '';
-          if (error.status === 404) {
-            this.snackBar.open('Entre em contato para verificar disponibilidade para este bairro', 'Fechar', { duration: 5000 });
-          }
-        }
-      });
+  public calculateFreteFromCep(): void {
+    const cepControl = this.deliveryForm.get('zipcode');
+    if (cepControl && cepControl.valid && cepControl.value) {
+      this._fetchFrete(cepControl.value);
     } else {
       this.deliveryFee = 0;
       this.estimatedTime = '';

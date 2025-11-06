@@ -1,6 +1,8 @@
 export interface DeliveryZone {
   id: number;
   nome_bairro: string;
+  cep_inicio?: string;
+  cep_fim?: string;
   valor_frete: number;
   tempo_estimado?: string;
   ativo: boolean;

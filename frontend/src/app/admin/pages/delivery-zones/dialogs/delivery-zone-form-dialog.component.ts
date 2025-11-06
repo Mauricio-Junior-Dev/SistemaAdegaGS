@@ -50,10 +50,12 @@ export class DeliveryZoneFormDialogComponent implements OnInit {
     this.isEdit = !!data.zone;
     
     this.form = this.fb.group({
-      nome_bairro: ['', [Validators.required, Validators.maxLength(255)]],
-      valor_frete: ['', [Validators.required, Validators.min(0)]],
-      tempo_estimado: ['', [Validators.maxLength(255)]],
-      ativo: [true]
+      nome_bairro: [this.data.zone?.nome_bairro || '', [Validators.required, Validators.maxLength(255)]],
+      cep_inicio: [this.data.zone?.cep_inicio || '', [Validators.required, Validators.pattern(/^[0-9]{5}-?[0-9]{3}$/)]],
+      cep_fim: [this.data.zone?.cep_fim || '', [Validators.required, Validators.pattern(/^[0-9]{5}-?[0-9]{3}$/)]],
+      valor_frete: [this.data.zone?.valor_frete || '', [Validators.required, Validators.min(0)]],
+      tempo_estimado: [this.data.zone?.tempo_estimado || '', [Validators.maxLength(255)]],
+      ativo: [this.data.zone?.ativo ?? true]
     });
   }
 
@@ -61,6 +63,8 @@ export class DeliveryZoneFormDialogComponent implements OnInit {
     if (this.isEdit && this.data.zone) {
       this.form.patchValue({
         nome_bairro: this.data.zone.nome_bairro,
+        cep_inicio: (this.data.zone as any).cep_inicio || '',
+        cep_fim: (this.data.zone as any).cep_fim || '',
         valor_frete: this.data.zone.valor_frete,
         tempo_estimado: this.data.zone.tempo_estimado || '',
         ativo: this.data.zone.ativo
@@ -115,6 +119,9 @@ export class DeliveryZoneFormDialogComponent implements OnInit {
     const control = this.form.get(field);
     if (control?.hasError('required')) {
       return 'Este campo é obrigatório';
+    }
+    if (control?.hasError('pattern')) {
+      return 'Formato de CEP inválido (use 00000-000)';
     }
     if (control?.hasError('min')) {
       return 'Valor deve ser maior ou igual a 0';

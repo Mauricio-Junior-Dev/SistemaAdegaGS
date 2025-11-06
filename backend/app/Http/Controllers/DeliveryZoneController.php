@@ -35,7 +35,9 @@ class DeliveryZoneController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'nome_bairro' => 'required|string|max:255|unique:delivery_zones,nome_bairro',
+            'nome_bairro' => 'required|string|max:255', // Rótulo
+            'cep_inicio' => 'required|string|regex:/^\d{5}-?\d{3}$/', // 00000-000 ou 00000000
+            'cep_fim' => 'required|string|regex:/^\d{5}-?\d{3}$/',
             'valor_frete' => 'required|numeric|min:0',
             'tempo_estimado' => 'nullable|string|max:255',
             'ativo' => 'boolean'
@@ -64,7 +66,9 @@ class DeliveryZoneController extends Controller
         $deliveryZone = DeliveryZone::findOrFail($id);
         
         $validated = $request->validate([
-            'nome_bairro' => 'required|string|max:255|unique:delivery_zones,nome_bairro,' . $id,
+            'nome_bairro' => 'required|string|max:255',
+            'cep_inicio' => 'required|string|regex:/^\d{5}-?\d{3}$/',
+            'cep_fim' => 'required|string|regex:/^\d{5}-?\d{3}$/',
             'valor_frete' => 'required|numeric|min:0',
             'tempo_estimado' => 'nullable|string|max:255',
             'ativo' => 'boolean'
@@ -87,22 +91,29 @@ class DeliveryZoneController extends Controller
     }
 
     /**
-     * Calculate delivery fee for a specific neighborhood
+     * Calcula o frete com base no CEP do cliente
      */
     public function calculateFrete(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'bairro' => 'required|string'
+            // Agora esperamos 'cep' em vez de 'bairro'
+            'cep' => 'required|string|regex:/^\d{5}-?\d{3}$/'
         ]);
 
+        // Limpa o hífen/formatação do CEP do cliente para comparar com o banco
+        // (O Model DeliveryZone já faz isso ao salvar, então os dados no DB estão limpos)
+        $clientCep = preg_replace('/[^0-9]/', '', $validated['cep']);
+
+        // Procura por uma zona ativa onde o CEP do cliente está DENTRO da faixa
         $deliveryZone = DeliveryZone::ativo()
-            ->where('nome_bairro', 'LIKE', '%' . $validated['bairro'] . '%')
+            ->where('cep_inicio', '<=', $clientCep)
+            ->where('cep_fim', '>=', $clientCep)
             ->first();
 
         if (!$deliveryZone) {
             return response()->json([
-                'error' => 'Bairro não encontrado',
-                'message' => 'Entre em contato para verificar disponibilidade',
+                'error' => 'CEP não atendido',
+                'message' => 'Não encontramos uma taxa de entrega para este CEP.',
                 'valor_frete' => null,
                 'tempo_estimado' => null
             ], 404);
@@ -111,7 +122,7 @@ class DeliveryZoneController extends Controller
         return response()->json([
             'valor_frete' => $deliveryZone->valor_frete,
             'tempo_estimado' => $deliveryZone->tempo_estimado,
-            'nome_bairro' => $deliveryZone->nome_bairro
+            'nome_bairro' => $deliveryZone->nome_bairro // Rótulo da zona
         ]);
     }
 }

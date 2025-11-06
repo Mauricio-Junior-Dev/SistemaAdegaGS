@@ -23,6 +23,30 @@
 
       <div class="form-row">
         <mat-form-field class="half-width">
+          <mat-label>CEP Início (ex: 01000-000)</mat-label>
+          <input matInput formControlName="cep_inicio" placeholder="00000-000" maxlength="9">
+          <mat-error *ngIf="form.get('cep_inicio')?.hasError('required') && form.get('cep_inicio')?.touched">
+            CEP de início é obrigatório.
+          </mat-error>
+          <mat-error *ngIf="form.get('cep_inicio')?.hasError('pattern') && form.get('cep_inicio')?.touched">
+            Formato de CEP inválido (use 00000-000).
+          </mat-error>
+        </mat-form-field>
+
+        <mat-form-field class="half-width">
+          <mat-label>CEP Fim (ex: 01500-999)</mat-label>
+          <input matInput formControlName="cep_fim" placeholder="00000-999" maxlength="9">
+          <mat-error *ngIf="form.get('cep_fim')?.hasError('required') && form.get('cep_fim')?.touched">
+            CEP de fim é obrigatório.
+          </mat-error>
+          <mat-error *ngIf="form.get('cep_fim')?.hasError('pattern') && form.get('cep_fim')?.touched">
+            Formato de CEP inválido (use 00000-000).
+          </mat-error>
+        </mat-form-field>
+      </div>
+
+      <div class="form-row">
+        <mat-form-field class="half-width">
           <mat-label>Valor do Frete (R$)</mat-label>
           <input matInput 
                  formControlName="valor_frete" 

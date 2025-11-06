@@ -149,7 +149,7 @@
                     <div class="cep-field">
                       <mat-form-field class="cep-input">
                         <mat-label>CEP</mat-label>
-                        <input matInput formControlName="zipcode" placeholder="00000-000" (input)="formatZipcode($event); clearError()">
+                        <input matInput formControlName="zipcode" placeholder="00000-000" (input)="formatZipcode($event); clearError()" (blur)="calculateFreteFromCep()">
                         <mat-error *ngIf="deliveryForm.get('zipcode')?.errors?.['required']">CEP é obrigatório</mat-error>
                         <mat-error *ngIf="deliveryForm.get('zipcode')?.errors?.['pattern']">CEP inválido</mat-error>
                       </mat-form-field>
@@ -182,7 +182,7 @@
 
                       <mat-form-field>
                         <mat-label>Bairro</mat-label>
-                        <mat-select formControlName="neighborhood" (selectionChange)="onNeighborhoodChange()" [(ngModel)]="selectedNeighborhood">
+                        <mat-select formControlName="neighborhood" [(ngModel)]="selectedNeighborhood">
                           <mat-option value="">Selecione seu bairro</mat-option>
                           <mat-option *ngFor="let zone of deliveryZones" [value]="zone.nome_bairro">
                             {{ zone.nome_bairro }}
