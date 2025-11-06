@@ -870,3 +870,143 @@
     align-items: flex-start;
   }
 }
+
+/* Tela de Aguardando Pagamento PIX */
+.pix-payment-container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+}
+
+.pix-card {
+  max-width: 600px;
+  width: 100%;
+  margin: 0 auto;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.pix-card mat-card-header {
+  text-align: center;
+  padding: 1.5rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  margin: -16px -16px 24px -16px;
+  border-radius: 4px 4px 0 0;
+}
+
+.pix-card mat-card-title {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.pix-card mat-card-title mat-icon {
+  font-size: 2rem;
+  width: 2rem;
+  height: 2rem;
+}
+
+.pix-card mat-card-subtitle {
+  color: rgba(255, 255, 255, 0.9);
+  margin-top: 0.5rem;
+}
+
+.pix-content {
+  text-align: center;
+  padding: 1rem 0;
+}
+
+.pix-instruction {
+  font-size: 1.1rem;
+  color: #4a5568;
+  margin-bottom: 1.5rem;
+  font-weight: 500;
+}
+
+.qr-code-container {
+  display: flex;
+  justify-content: center;
+  margin: 2rem 0;
+  padding: 1.5rem;
+  background: #f7fafc;
+  border-radius: 12px;
+  border: 2px dashed #cbd5e0;
+}
+
+.qr-code-image {
+  max-width: 300px;
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.loading-pix {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 2rem;
+  color: #64748b;
+}
+
+.loading-pix p {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.pix-copy-section {
+  margin-top: 2rem;
+  text-align: left;
+}
+
+.pix-input {
+  width: 100%;
+  margin-top: 1rem;
+}
+
+.pix-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 2rem;
+  padding: 1rem;
+  background: #e6fffa;
+  border-left: 4px solid #059669;
+  border-radius: 4px;
+  color: #047857;
+}
+
+.pix-info mat-icon {
+  color: #059669;
+}
+
+.pix-info p {
+  margin: 0;
+  font-size: 0.95rem;
+}
+
+.back-to-orders-btn {
+  margin-top: 1rem;
+}
+
+@media (max-width: 768px) {
+  .pix-card {
+    margin: 1rem;
+  }
+
+  .qr-code-image {
+    max-width: 250px;
+  }
+
+  .pix-card mat-card-title {
+    font-size: 1.25rem;
+  }
+}

@@ -76,9 +76,9 @@ export class LoginComponent implements OnInit, OnDestroy {
     // Salvar dados de autenticação
     this.authService.saveAuth(authResponse);
     
-    // Iniciar polling de pedidos se for funcionário ou admin
-    if (authResponse.user.type === 'employee' || authResponse.user.type === 'admin') {
-      console.log('[LoginComponent] Iniciando polling de pedidos para funcionário/admin (social auth)');
+    // Iniciar polling de pedidos apenas se for funcionário
+    if (authResponse.user.type === 'employee') {
+      console.log('[LoginComponent] Iniciando polling de pedidos para funcionário (social auth)');
       this.orderPollingService.startPolling();
     }
     
@@ -128,9 +128,9 @@ export class LoginComponent implements OnInit, OnDestroy {
           // Salvar dados de autenticação
           this.authService.saveAuth(authResponse);
           
-          // Iniciar polling de pedidos se for funcionário ou admin
-          if (authResponse.user.type === 'employee' || authResponse.user.type === 'admin') {
-            console.log('[LoginComponent] Iniciando polling de pedidos para funcionário/admin (Google)');
+          // Iniciar polling de pedidos apenas se for funcionário
+          if (authResponse.user.type === 'employee') {
+            console.log('[LoginComponent] Iniciando polling de pedidos para funcionário (Google)');
             this.orderPollingService.startPolling();
           }
           
@@ -178,9 +178,9 @@ export class LoginComponent implements OnInit, OnDestroy {
 
      this.authService.login(this.loginForm.value).subscribe({
        next: (response) => {
-         // Iniciar polling de pedidos se for funcionário ou admin
-         if (response.user.type === 'employee' || response.user.type === 'admin') {
-           console.log('[LoginComponent] Iniciando polling de pedidos para funcionário/admin');
+         // Iniciar polling de pedidos apenas se for funcionário
+         if (response.user.type === 'employee') {
+           console.log('[LoginComponent] Iniciando polling de pedidos para funcionário');
            this.orderPollingService.startPolling();
          }
          

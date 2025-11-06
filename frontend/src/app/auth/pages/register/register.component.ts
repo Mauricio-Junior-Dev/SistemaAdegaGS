@@ -1,7 +1,7 @@
 import { Component, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, ReactiveFormsModule, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
 import { AuthService } from '../../../core/services/auth.service';
 import { SocialAuthService } from '../../../core/services/social-auth.service';
 import { Router } from '@angular/router';
@@ -28,7 +28,8 @@ export class RegisterComponent implements OnDestroy {
       name: ['', [Validators.required, Validators.minLength(3)]],
       email: ['', [Validators.required, Validators.email]],
       phone: ['', [Validators.required, Validators.pattern(/^\(\d{2}\) \d{5}-\d{4}$/)]],
-      document_number: ['', [Validators.required, Validators.pattern(/^\d{3}\.\d{3}\.\d{3}-\d{2}$/)]],
+      // Aceita CPF (11 dígitos) ou CNPJ (14 dígitos) - valida apenas números (ignora formatação)
+      document_number: ['', [Validators.required, (control: AbstractControl) => this.documentValidator(control)]],
       password: ['', [Validators.required, Validators.minLength(8)]],
       password_confirmation: ['', [Validators.required]]
     }, {
@@ -88,6 +89,18 @@ export class RegisterComponent implements OnDestroy {
       ? null : { mismatch: true };
   }
 
+  // Validador customizado para CPF/CNPJ (valida apenas números, ignorando formatação)
+  private documentValidator(control: AbstractControl): ValidationErrors | null {
+    if (!control.value) {
+      return null;
+    }
+    const numbersOnly = control.value.replace(/\D/g, '');
+    if (numbersOnly.length === 11 || numbersOnly.length === 14) {
+      return null; // Válido
+    }
+    return { invalidDocument: true };
+  }
+
   onSubmit(): void {
     if (this.registerForm.invalid) {
       return;
@@ -96,7 +109,13 @@ export class RegisterComponent implements OnDestroy {
     this.loading = true;
     this.error = null;
 
-    this.authService.register(this.registerForm.value).subscribe({
+    // Remove formatação do document_number antes de enviar (apenas números)
+    const formValue = {
+      ...this.registerForm.value,
+      document_number: this.registerForm.value.document_number.replace(/\D/g, '')
+    };
+
+    this.authService.register(formValue).subscribe({
       next: () => {
         this.router.navigate(['/']);
       },
@@ -122,9 +141,16 @@ export class RegisterComponent implements OnDestroy {
 
   formatDocument(event: any): void {
     let value = event.target.value.replace(/\D/g, '');
+    
+    // Formata CPF (11 dígitos) ou CNPJ (14 dígitos)
     if (value.length <= 11) {
+      // Formatação CPF: 000.000.000-00
       value = value.replace(/^(\d{3})(\d{3})(\d{3})(\d{2}).*/, '$1.$2.$3-$4');
-      this.registerForm.get('document_number')?.setValue(value, { emitEvent: false });
+    } else if (value.length <= 14) {
+      // Formatação CNPJ: 00.000.000/0000-00
+      value = value.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2}).*/, '$1.$2.$3/$4-$5');
     }
+    
+    this.registerForm.get('document_number')?.setValue(value, { emitEvent: false });
   }
 }

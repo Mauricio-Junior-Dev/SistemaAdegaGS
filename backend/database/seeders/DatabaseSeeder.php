@@ -12,18 +12,24 @@ use App\Models\Payment;
 use App\Models\StockMovement;
 use App\Models\Address;
 use Illuminate\Support\Str;
+use Faker\Factory as FakerFactory;
 
 class DatabaseSeeder extends Seeder
 {
     public function run()
     {
+        // --- ADICIONE ESTA LINHA ---
+        $faker = FakerFactory::create('pt_BR'); // Cria um Faker para o Brasil
+        // -------------------------
+
         // Criar usuários
         $admin = User::create([
             'name' => 'Administrador',
             'email' => 'admin@adegags.com',
             'password' => bcrypt('12345678'),
             'type' => 'admin',
-            'is_active' => true
+            'is_active' => true,
+            'document_number' => $faker->cpf(false) // CPF sem formatação (apenas números)
         ]);
 
         $employee = User::create([
@@ -32,6 +38,7 @@ class DatabaseSeeder extends Seeder
             'password' => bcrypt('12345678'),
             'type' => 'employee',
             'is_active' => true,
+            'document_number' => $faker->cpf(false) // CPF sem formatação (apenas números)
         ]);
 
         // Criar alguns clientes
@@ -43,7 +50,8 @@ class DatabaseSeeder extends Seeder
                 'password' => bcrypt('12345678'),
                 'type' => 'customer',
                 'is_active' => true,
-                'phone' => "11 9999-999{$i}"
+                'phone' => "11 9999-999{$i}",
+                'document_number' => $faker->cpf(false) // CPF sem formatação (apenas números)
             ]);
         }
 
@@ -645,12 +653,26 @@ class DatabaseSeeder extends Seeder
             $order->update(['total' => $total]);
 
             // Criar pagamento
-            Payment::create([
+            $paymentData = [
                 'order_id' => $order->id,
                 'amount' => $total,
                 'payment_method' => $paymentMethod,
-                'status' => $status === 'cancelled' ? 'failed' : 'completed'
-            ]);
+                'status' => $status === 'cancelled' ? 'failed' : ($status === 'pending' ? 'pending' : 'completed')
+            ];
+
+            // Se o pagamento for em dinheiro, simule dados de troco
+            if ($paymentMethod === 'dinheiro' && $status !== 'cancelled') {
+                $paymentData['received_amount'] = $total + 10; // Pagou com R$ 10 a mais
+                $paymentData['change_amount'] = 10;
+                $paymentData['status'] = 'completed'; // Pagamento em dinheiro é sempre 'completed'
+            }
+
+            // Se o pagamento for PIX, o status deve ser 'pending'
+            if ($paymentMethod === 'pix' && $status === 'pending') {
+                $paymentData['status'] = 'pending';
+            }
+
+            Payment::create($paymentData);
 
             // Definir data aleatória nos últimos 7 dias
             $date = now()->subDays(rand(0, 6))->setTime(rand(9, 22), rand(0, 59), 0);
@@ -683,6 +705,9 @@ class DatabaseSeeder extends Seeder
                 'name' => 'Cliente Teste ' . ($i + 1),
                 'email' => 'cliente' . ($i + 1) . '@teste.com',
                 'password' => bcrypt('password'),
+                'type' => 'customer',
+                'is_active' => true,
+                'document_number' => $faker->cpf(false), // CPF sem formatação (apenas números)
                 'created_at' => $date,
                 'updated_at' => $date
             ]);

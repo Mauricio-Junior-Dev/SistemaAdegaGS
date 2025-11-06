@@ -8,11 +8,12 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { SettingsService, SystemSettings } from '../../services/settings.service';
 import { GeneralSettingsComponent } from './tabs/general-settings.component';
-import { BusinessSettingsComponent } from './tabs/business-settings.component';
-import { PaymentSettingsComponent } from './tabs/payment-settings.component';
-import { StockSettingsComponent } from './tabs/stock-settings.component';
-import { OrderSettingsComponent } from './tabs/order-settings.component';
-import { EmailSettingsComponent } from './tabs/email-settings.component';
+// Removidas as abas: Negócio, Pagamentos, Estoque, Pedidos, E-mail
+// import { BusinessSettingsComponent } from './tabs/business-settings.component';
+// import { PaymentSettingsComponent } from './tabs/payment-settings.component';
+// import { StockSettingsComponent } from './tabs/stock-settings.component';
+// import { OrderSettingsComponent } from './tabs/order-settings.component';
+// import { EmailSettingsComponent } from './tabs/email-settings.component';
 import { SecuritySettingsComponent } from './tabs/security-settings.component';
 // These components will be implemented later
 // import { BackupSettingsComponent } from './tabs/backup-settings.component';
@@ -29,11 +30,12 @@ import { SecuritySettingsComponent } from './tabs/security-settings.component';
     MatSnackBarModule,
     MatIconModule,
     GeneralSettingsComponent,
-    BusinessSettingsComponent,
-    PaymentSettingsComponent,
-    StockSettingsComponent,
-    OrderSettingsComponent,
-    EmailSettingsComponent,
+    // Removidas as abas: Negócio, Pagamentos, Estoque, Pedidos, E-mail
+    // BusinessSettingsComponent,
+    // PaymentSettingsComponent,
+    // StockSettingsComponent,
+    // OrderSettingsComponent,
+    // EmailSettingsComponent,
     SecuritySettingsComponent,
     // These components will be implemented later
     // BackupSettingsComponent,
@@ -60,7 +62,8 @@ import { SecuritySettingsComponent } from './tabs/security-settings.component';
               </app-general-settings>
             </mat-tab>
 
-            <mat-tab label="Negócio">
+            <!-- Removidas as abas: Negócio, Pagamentos, Estoque, Pedidos, E-mail -->
+            <!-- <mat-tab label="Negócio">
               <app-business-settings
                 [settings]="settings"
                 (settingsChange)="onSettingsChange($event)">
@@ -93,7 +96,7 @@ import { SecuritySettingsComponent } from './tabs/security-settings.component';
                 [settings]="settings"
                 (settingsChange)="onSettingsChange($event)">
               </app-email-settings>
-            </mat-tab>
+            </mat-tab> -->
 
             <mat-tab label="Segurança">
               <app-security-settings

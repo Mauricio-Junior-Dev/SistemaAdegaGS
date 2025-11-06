@@ -62,18 +62,19 @@
 
       <!-- Document Field -->
       <div class="form-group">
-        <label for="document_number">CPF</label>
+        <label for="document_number">CPF ou CNPJ (somente números)</label>
         <input
           type="text"
           id="document_number"
           formControlName="document_number"
-          placeholder="000.000.000-00"
+          placeholder="000.000.000-00 ou 00.000.000/0000-00"
           (input)="formatDocument($event)"
+          maxlength="18"
           [class.invalid]="registerForm.get('document_number')?.invalid && registerForm.get('document_number')?.touched"
         >
         <div *ngIf="registerForm.get('document_number')?.invalid && registerForm.get('document_number')?.touched" class="error-hint">
-          <span *ngIf="registerForm.get('document_number')?.errors?.['required']">CPF é obrigatório</span>
-          <span *ngIf="registerForm.get('document_number')?.errors?.['pattern']">CPF inválido</span>
+          <span *ngIf="registerForm.get('document_number')?.errors?.['required']">CPF/CNPJ é obrigatório</span>
+          <span *ngIf="registerForm.get('document_number')?.errors?.['invalidDocument']">Documento inválido (deve ter 11 dígitos para CPF ou 14 dígitos para CNPJ)</span>
         </div>
       </div>
 

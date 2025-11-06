@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { Order, OrderItem } from '../models/order.model';
@@ -11,6 +11,15 @@ export class OrderService {
   private apiUrl = environment.apiUrl;
 
   constructor(private http: HttpClient) {}
+
+  // Headers para garantir que os dados NUNCA venham do cache
+  private getCacheBustingHeaders(): HttpHeaders {
+    return new HttpHeaders({
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
+  }
 
   getOrders(): Observable<Order[]> {
     console.log('OrderService: Fetching orders from:', `${this.apiUrl}/my-orders`);
@@ -31,5 +40,23 @@ export class OrderService {
 
   confirmDelivery(orderId: number): Observable<Order> {
     return this.http.put<Order>(`${this.apiUrl}/orders/${orderId}/confirm-delivery`, {});
+  }
+
+  /**
+   * Chama a API do backend para criar a intenção de pagamento PIX no Mercado Pago.
+   */
+  createPixPayment(orderId: number): Observable<any> {
+    return this.http.post<any>(
+      `${this.apiUrl}/orders/${orderId}/create-payment`, 
+      {} // Envia um corpo vazio, pois o ID está na URL
+    );
+  }
+
+  /**
+   * Busca um único pedido pelo ID (para verificar o status do pagamento)
+   */
+  getOrderById(orderId: number): Observable<Order> {
+    const headers = this.getCacheBustingHeaders();
+    return this.http.get<Order>(`${this.apiUrl}/orders/${orderId}`, { headers });
   }
 }

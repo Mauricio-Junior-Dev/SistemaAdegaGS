@@ -19,7 +19,13 @@ class AuthController extends Controller
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
             'password' => ['required', 'confirmed', Password::defaults()],
             'phone' => ['required', 'string', 'max:20'],
-            'document_number' => ['required', 'string', 'max:20', 'unique:users'],
+            // Valida CPF (11 dígitos) ou CNPJ (14 dígitos) - apenas números
+            'document_number' => [
+                'required', 
+                'string', 
+                'regex:/^[0-9]{11,14}$/', // Aceita 11 (CPF) ou 14 (CNPJ) dígitos numéricos
+                'unique:users,document_number'
+            ],
         ]);
 
         if ($validator->fails()) {

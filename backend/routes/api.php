@@ -35,6 +35,9 @@ Route::get('/banners/active', [App\Http\Controllers\BannerController::class, 'ac
 Route::get('/delivery-zones', [DeliveryZoneController::class, 'index']);
 Route::get('/frete', [DeliveryZoneController::class, 'calculateFrete']);
 
+// --- WEBHOOKS (Rotas Públicas para Serviços Externos) ---
+Route::post('/webhooks/mercadopago', [App\Http\Controllers\Api\WebhookController::class, 'handleMercadoPago'])
+     ->name('webhooks.mercadopago');
 
 // Endpoint de teste sem middleware
 Route::get('/test-no-auth', function () {
@@ -121,6 +124,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/my-orders', [OrderController::class, 'myOrders']);
         Route::post('/orders', [OrderController::class, 'store']);
         Route::put('/orders/{order}/confirm-delivery', [OrderController::class, 'confirmDelivery']);
+        
+        // Pagamentos
+        Route::post('/orders/{order}/create-payment', [App\Http\Controllers\Api\PaymentController::class, 'createPixPayment']);
         
         // Endereços
         Route::get('/addresses', [AddressController::class, 'index']);

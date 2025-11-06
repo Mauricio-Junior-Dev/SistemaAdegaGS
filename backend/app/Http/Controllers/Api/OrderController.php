@@ -118,7 +118,8 @@ class OrderController extends Controller
             'customer_phone' => 'nullable|string|max:20',
             'delivery' => 'nullable|array',
             'received_amount' => 'nullable|numeric|min:0',
-            'change_amount' => 'nullable|numeric|min:0'
+            'change_amount' => 'nullable|numeric|min:0',
+            'document_number_override' => 'nullable|string|regex:/^[0-9]{11,14}$/' // CPF (11) ou CNPJ (14) dígitos
         ]);
 
         // Validação customizada para garantir que cada item tenha product_id ou combo_id
@@ -144,6 +145,25 @@ class OrderController extends Controller
 
         try {
             DB::beginTransaction();
+
+            $user = $request->user();
+
+            // --- ADICIONE ESTA LÓGICA DE ATUALIZAÇÃO ---
+            // Se o cliente (antigo) digitou um CPF/CNPJ no checkout, salve-o no perfil dele
+            if ($request->has('document_number_override') && !empty($request->input('document_number_override')) && empty($user->document_number)) {
+                // Limpar formatação e validar tamanho
+                $docNumber = preg_replace('/[^0-9]/', '', $request->input('document_number_override'));
+                
+                // Validar se é CPF (11 dígitos) ou CNPJ (14 dígitos)
+                if (strlen($docNumber) === 11 || strlen($docNumber) === 14) {
+                    $user->document_number = $docNumber;
+                    $user->save();
+                    Log::info("Documento CPF/CNPJ salvo para usuário {$user->id} durante checkout");
+                } else {
+                    Log::warning("Tentativa de salvar documento inválido para usuário {$user->id}: tamanho = " . strlen($docNumber));
+                }
+            }
+            // --- FIM DA LÓGICA DE ATUALIZAÇÃO ---
 
             // Criar pedido
             $orderData = [
@@ -331,10 +351,14 @@ class OrderController extends Controller
             $order->update(['total' => $total + $frete]);
 
             // Criar pagamento
+            // Para PIX, o status deve ser 'pending' (será atualizado pelo webhook)
+            // Para outros métodos (dinheiro, cartão na entrega), pode ser 'completed' se já foi pago
+            $paymentStatus = ($request->payment_method === 'pix') ? 'pending' : 'completed';
+            
             $paymentData = [
                 'amount' => $total + $frete,
                 'payment_method' => $request->payment_method,
-                'status' => 'completed'
+                'status' => $paymentStatus
             ];
 
             // Incluir received_amount e change_amount se fornecidos
@@ -625,10 +649,14 @@ class OrderController extends Controller
             $order->update(['total' => $total + $frete]);
 
             // Criar pagamento
+            // Para PIX, o status deve ser 'pending' (será atualizado pelo webhook)
+            // Para outros métodos (dinheiro, cartão na entrega), pode ser 'completed' se já foi pago
+            $paymentStatus = ($request->payment_method === 'pix') ? 'pending' : 'completed';
+            
             $paymentData = [
                 'amount' => $total + $frete,
                 'payment_method' => $request->payment_method,
-                'status' => 'completed'
+                'status' => $paymentStatus
             ];
 
             if ($request->received_amount) {

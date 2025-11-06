@@ -44,17 +44,22 @@ export class OrderPollingService implements OnDestroy {
     // Isso garante que o polling seja iniciado mesmo após F5 (quando o usuário é restaurado do localStorage)
     this.userSubscription = this.authService.user$.pipe(
       tap(user => {
-        if (user && this.isEmployee(user)) {
-          // Se um funcionário/admin foi detectado (seja no login ou no F5), iniciar polling
+        // Verificação explícita e defensiva: APENAS employee pode iniciar polling
+        if (user && user.type === 'employee') {
+          // Se um funcionário foi detectado (seja no login ou no F5), iniciar polling
           if (!this.isPollingActive) {
-            console.log('[OrderPollingService] Usuário funcionário/admin detectado, iniciando polling automaticamente');
+            console.log(`[OrderPollingService] Usuário funcionário detectado (ID: ${user.id}, Tipo: ${user.type}), iniciando polling automaticamente`);
             this.startPolling();
           }
         } else {
-          // Se não há usuário ou não é funcionário, parar polling
+          // Se não há usuário, é admin, customer ou qualquer outro tipo, parar polling
           if (this.isPollingActive) {
-            console.log('[OrderPollingService] Usuário não é funcionário/admin, parando polling');
+            const userType = user ? user.type : 'null';
+            console.log(`[OrderPollingService] Usuário não é funcionário (Tipo: ${userType}), parando polling`);
             this.stopPolling();
+          } else if (user && user.type !== 'employee') {
+            // Log adicional para debug: garantir que admin/customer não iniciam polling
+            console.log(`[OrderPollingService] Usuário tipo '${user.type}' detectado - polling NÃO será iniciado (apenas 'employee')`);
           }
         }
       })
@@ -69,12 +74,20 @@ export class OrderPollingService implements OnDestroy {
     console.log('%c[OrderPollingService] STARTING POLLING...', 'color: blue; font-weight: bold;');
     
     if (this.isPollingActive) {
+      console.log('[OrderPollingService] Polling já está ativo, ignorando chamada.');
       return;
     }
 
     const currentUser = this.authService.getUser();
     
-    if (!currentUser || !this.isEmployee(currentUser)) {
+    // Verificação dupla e explícita: APENAS employee pode iniciar polling
+    if (!currentUser) {
+      console.warn('[OrderPollingService] Tentativa de iniciar polling sem usuário logado. Abortando.');
+      return;
+    }
+    
+    if (currentUser.type !== 'employee') {
+      console.warn(`[OrderPollingService] Tentativa de iniciar polling para usuário tipo '${currentUser.type}'. Apenas 'employee' pode iniciar polling. Abortando.`);
       return;
     }
     this.isPollingActive = true;
@@ -182,39 +195,60 @@ export class OrderPollingService implements OnDestroy {
 
   /**
    * Imprime os novos pedidos detectados
+   * Apenas imprime pedidos com método de pagamento 'dinheiro'
    */
   private printNewOrders(orders: Order[]): void {
     if (!orders || orders.length === 0) {
       return;
     }
 
-    orders.forEach((order, index) => {
-      // Marcar como impresso antes de imprimir para evitar duplicação
-      this.printedOrderIds.add(order.id);
-      
-      // Adicionar pequeno delay entre cada impressão para evitar sobrecarga
-      setTimeout(() => {
-        // Notificar o usuário sobre o novo pedido
-        this.toastr.success(
-          `Cliente: ${order.user.name}`,
-          `Novo Pedido Recebido! #${order.order_number}`,
-          {
-            timeOut: 30000,
-            closeButton: true,
-            tapToDismiss: true
-          }
-        );
+    let cashOrderIndex = 0;
+
+    orders.forEach((order) => {
+      // Obter o método de pagamento do pedido
+      const paymentMethod = order.payment && order.payment.length > 0
+        ? order.payment[0].payment_method
+        : (order as any).payment_method;
+
+      const isNew = !this.printedOrderIds.has(order.id);
+      const isCash = paymentMethod === 'dinheiro';
+
+      if (isNew && isCash) {
+        // Marcar como impresso antes de imprimir para evitar duplicação
+        this.printedOrderIds.add(order.id);
         
-        this.printService.autoPrintOrder(order);
-      }, index * 1000); // 1 segundo entre cada pedido
+        console.log(`%c[OrderPollingService] NOVO PEDIDO 'DINHEIRO'! Enviando Pedido #${order.order_number} para impressão...`, 'color: green; font-weight: bold;');
+        
+        // Adicionar pequeno delay entre cada impressão para evitar sobrecarga
+        setTimeout(() => {
+          // Notificar o usuário sobre o novo pedido
+          this.toastr.success(
+            `Cliente: ${order.user.name}`,
+            `Novo Pedido (Dinheiro)! #${order.order_number}`,
+            {
+              timeOut: 30000,
+              closeButton: true,
+              tapToDismiss: true
+            }
+          );
+          
+          this.printService.autoPrintOrder(order);
+        }, cashOrderIndex * 1000); // 1 segundo entre cada pedido
+        
+        cashOrderIndex++;
+      } else if (isNew && !isCash) {
+        // Se for um pedido PIX/Cartão 'pending', adicione à memória, mas NÃO imprima
+        this.printedOrderIds.add(order.id);
+        console.log(`[OrderPollingService] Novo pedido PIX/Cartão #${order.order_number} detectado. Aguardando pagamento (não imprimir).`);
+      }
     });
   }
 
   /**
-   * Verifica se o usuário é funcionário ou admin
+   * Verifica se o usuário é funcionário (apenas employee, não admin)
    */
   private isEmployee(user: any): boolean {
-    return user && (user.type === 'employee' || user.type === 'admin');
+    return user && user.type === 'employee';
   }
 
   /**
