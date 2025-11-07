@@ -1,60 +1,4 @@
 <div class="checkout-page">
-  <!-- Tela de Aguardando Pagamento PIX -->
-  <div *ngIf="checkoutState === 'awaiting_payment'" class="pix-payment-container">
-    <div class="container">
-      <mat-card class="pix-card">
-        <mat-card-header>
-          <mat-card-title>
-            <mat-icon>qr_code</mat-icon>
-            Pague com PIX para Concluir
-          </mat-card-title>
-          <mat-card-subtitle>Seu pedido só será confirmado após o pagamento.</mat-card-subtitle>
-        </mat-card-header>
-
-        <mat-card-content>
-          <div class="pix-content">
-            <p class="pix-instruction">Escaneie o QR Code abaixo com o app do seu banco:</p>
-
-            <div class="qr-code-container" *ngIf="pixQrCodeBase64">
-              <img [src]="pixQrCodeBase64" alt="PIX QR Code" class="qr-code-image">
-            </div>
-
-            <div *ngIf="isProcessingPayment" class="loading-pix">
-              <mat-spinner diameter="50"></mat-spinner>
-              <p>Gerando código PIX...</p>
-            </div>
-
-            <div class="pix-copy-section" *ngIf="pixCopiaECola">
-              <p class="pix-instruction">Ou copie o código "Copia e Cola":</p>
-              
-              <mat-form-field appearance="outline" class="pix-input">
-                <mat-label>PIX Copia e Cola</mat-label>
-                <input matInput readonly [value]="pixCopiaECola" #pixInput>
-                <button mat-icon-button matSuffix (click)="copiarPix()" matTooltip="Copiar código">
-                  <mat-icon>content_copy</mat-icon>
-                </button>
-              </mat-form-field>
-            </div>
-
-            <div class="pix-info">
-              <mat-icon>info</mat-icon>
-              <p>Após o pagamento, você será redirecionado automaticamente.</p>
-            </div>
-          </div>
-        </mat-card-content>
-
-        <mat-card-actions>
-          <button mat-button (click)="goToOrders()" class="back-to-orders-btn">
-            <mat-icon>arrow_back</mat-icon>
-            Voltar para Pedidos
-          </button>
-        </mat-card-actions>
-      </mat-card>
-    </div>
-  </div>
-
-  <!-- Formulário de Checkout (mostrado apenas quando checkoutState === 'form') -->
-  <div *ngIf="checkoutState === 'form'">
   <!-- Header com Progresso -->
   <div class="checkout-header">
     <div class="container">
@@ -324,21 +268,6 @@
               <form [formGroup]="paymentForm">
                 <div class="payment-methods">
                   <mat-radio-group formControlName="method">
-                    <mat-radio-button value="pix" class="payment-option">
-                      <div class="payment-card">
-                        <div class="payment-icon">
-                          <mat-icon>qr_code</mat-icon>
-                        </div>
-                        <div class="payment-info">
-                          <h4>PIX</h4>
-                          <p>Pagamento instantâneo</p>
-                        </div>
-                        <div class="payment-badge">
-                          <span>Recomendado</span>
-                        </div>
-                      </div>
-                    </mat-radio-button>
-
                     <mat-radio-button value="cash" class="payment-option">
                       <div class="payment-card">
                         <div class="payment-icon">
@@ -374,30 +303,6 @@
                       <mat-icon>info</mat-icon>
                       <span>Troco: R$ {{ ((paymentForm.get('received_amount')?.value || 0) * 1 - ((cartTotal$ | async) || 0) * 1 - (deliveryFee * 1)) | number:'1.2-2' }}</span>
                     </div>
-                  </div>
-
-                  <!-- Campo condicional de CPF/CNPJ para PIX -->
-                  <div *ngIf="paymentForm.get('payerDocument')?.enabled" class="conditional-cpf-field">
-                    <p class="cpf-info-text">
-                      <mat-icon>info</mat-icon>
-                      Para pagar com PIX, por favor, informe seu CPF/CNPJ (só é necessário uma vez):
-                    </p>
-                    <mat-form-field appearance="outline">
-                      <mat-label>CPF ou CNPJ (somente números)</mat-label>
-                      <input 
-                        matInput 
-                        formControlName="payerDocument" 
-                        type="text" 
-                        maxlength="18" 
-                        placeholder="000.000.000-00 ou 00.000.000/0000-00"
-                        (input)="formatPayerDocument($event)">
-                      <mat-error *ngIf="paymentForm.get('payerDocument')?.hasError('required')">
-                        CPF/CNPJ é obrigatório para PIX.
-                      </mat-error>
-                      <mat-error *ngIf="paymentForm.get('payerDocument')?.hasError('pattern')">
-                        Documento inválido (deve ter 11 dígitos para CPF ou 14 dígitos para CNPJ).
-                      </mat-error>
-                    </mat-form-field>
                   </div>
                 </div>
 
@@ -486,5 +391,4 @@
       </div>
     </div>
   </div>
-  </div> <!-- Fim do *ngIf="checkoutState === 'form'" -->
 </div>

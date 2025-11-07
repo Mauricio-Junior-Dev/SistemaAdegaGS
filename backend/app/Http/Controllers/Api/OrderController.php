@@ -21,59 +21,25 @@ class OrderController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Order::with([
-            'items.product',
-            'items.combo',
-            'user',
-            'deliveryAddress',
-            'payment' => function ($query) {
-                // Garantir que received_amount e change_amount sejam selecionados explicitamente
-                $query->select(
-                    'id',
-                    'order_id',
-                    'payment_method',
-                    'amount',
-                    'status',
-                    'received_amount',
-                    'change_amount',
-                    'created_at',
-                    'updated_at'
-                );
+        $query = Order::with(['user', 'items.product', 'payment', 'delivery_address']);
+        $user = $request->user();
+
+        // --- CORREÇÃO DE PERMISSÃO ---
+        if ($user->type === 'customer') {
+            // Clientes SÓ podem ver seus próprios pedidos
+            $query->where('user_id', $user->id);
+        } elseif ($user->type === 'employee' || $user->type === 'admin') {
+            // Funcionários/Admins podem ver todos (ou filtrar por status)
+            if ($request->has('status')) {
+                $query->where('status', $request->status);
             }
-        ]);
-
-        // Filtros
-        if ($request->has('status') && $request->status !== 'all') {
-            $query->where('status', $request->status);
+        } else {
+            // Se não for nenhum, não retorna nada
+            return response()->json(['error' => 'Não autorizado'], 403);
         }
 
-        // Busca por número do pedido ou nome do cliente
-        if ($request->has('search') && $request->search) {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('order_number', 'like', "%{$search}%")
-                  ->orWhereHas('user', function($q) use ($search) {
-                      $q->where('name', 'like', "%{$search}%");
-                  });
-            });
-        }
-
-        // Ordenação
-        $sortBy = $request->get('sort_by', 'created_at');
-        $sortOrder = $request->get('sort_order', 'desc');
-        $query->orderBy($sortBy, $sortOrder);
-
-        // Paginação
-        $perPage = $request->get('per_page', 15);
-        $orders = $query->paginate($perPage);
-
-        return response()->json([
-            'data' => $orders->items(),
-            'total' => $orders->total(),
-            'current_page' => $orders->currentPage(),
-            'per_page' => $orders->perPage(),
-            'last_page' => $orders->lastPage()
-        ]);
+        $orders = $query->orderBy('created_at', 'desc')->paginate(20);
+        return response()->json($orders);
     }
 
     public function myOrders(Request $request)
@@ -118,8 +84,7 @@ class OrderController extends Controller
             'customer_phone' => 'nullable|string|max:20',
             'delivery' => 'nullable|array',
             'received_amount' => 'nullable|numeric|min:0',
-            'change_amount' => 'nullable|numeric|min:0',
-            'document_number_override' => 'nullable|string|regex:/^[0-9]{11,14}$/' // CPF (11) ou CNPJ (14) dígitos
+            'change_amount' => 'nullable|numeric|min:0'
         ]);
 
         // Validação customizada para garantir que cada item tenha product_id ou combo_id
@@ -147,23 +112,6 @@ class OrderController extends Controller
             DB::beginTransaction();
 
             $user = $request->user();
-
-            // --- ADICIONE ESTA LÓGICA DE ATUALIZAÇÃO ---
-            // Se o cliente (antigo) digitou um CPF/CNPJ no checkout, salve-o no perfil dele
-            if ($request->has('document_number_override') && !empty($request->input('document_number_override')) && empty($user->document_number)) {
-                // Limpar formatação e validar tamanho
-                $docNumber = preg_replace('/[^0-9]/', '', $request->input('document_number_override'));
-                
-                // Validar se é CPF (11 dígitos) ou CNPJ (14 dígitos)
-                if (strlen($docNumber) === 11 || strlen($docNumber) === 14) {
-                    $user->document_number = $docNumber;
-                    $user->save();
-                    Log::info("Documento CPF/CNPJ salvo para usuário {$user->id} durante checkout");
-                } else {
-                    Log::warning("Tentativa de salvar documento inválido para usuário {$user->id}: tamanho = " . strlen($docNumber));
-                }
-            }
-            // --- FIM DA LÓGICA DE ATUALIZAÇÃO ---
 
             // Criar pedido
             $orderData = [
@@ -351,10 +299,9 @@ class OrderController extends Controller
             $order->update(['total' => $total + $frete]);
 
             // Criar pagamento
-            // Para PIX, o status deve ser 'pending' (será atualizado pelo webhook)
-            // Para outros métodos (dinheiro, cartão na entrega), pode ser 'completed' se já foi pago
-            $paymentStatus = ($request->payment_method === 'pix') ? 'pending' : 'completed';
-            
+            // Para pagamentos em dinheiro, o status fica pendente até a entrega; demais são marcados como concluídos
+            $paymentStatus = $request->payment_method === 'dinheiro' ? 'pending' : 'completed';
+
             $paymentData = [
                 'amount' => $total + $frete,
                 'payment_method' => $request->payment_method,

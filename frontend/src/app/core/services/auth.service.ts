@@ -94,6 +94,10 @@ export class AuthService {
     return this.userSubject.value;
   }
 
+  getCurrentUser(): User | null {
+    return this.userSubject.value;
+  }
+
   saveAuth(response: AuthResponse): void {
     localStorage.setItem('user', JSON.stringify(response.user));
     localStorage.setItem('token', response.access_token);

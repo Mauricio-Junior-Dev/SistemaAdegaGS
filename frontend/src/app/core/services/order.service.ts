@@ -43,16 +43,6 @@ export class OrderService {
   }
 
   /**
-   * Chama a API do backend para criar a intenção de pagamento PIX no Mercado Pago.
-   */
-  createPixPayment(orderId: number): Observable<any> {
-    return this.http.post<any>(
-      `${this.apiUrl}/orders/${orderId}/create-payment`, 
-      {} // Envia um corpo vazio, pois o ID está na URL
-    );
-  }
-
-  /**
    * Busca um único pedido pelo ID (para verificar o status do pagamento)
    */
   getOrderById(orderId: number): Observable<Order> {

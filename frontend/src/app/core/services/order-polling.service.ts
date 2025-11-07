@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { interval, Subscription, Observable, of, BehaviorSubject } from 'rxjs';
 import { switchMap, catchError, takeWhile, startWith, tap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
-import { OrderService, OrderResponse, Order } from '../../employee/services/order.service';
+import { OrderService, OrderResponse, Order, Payment } from '../../employee/services/order.service';
 import { PrintService } from './print.service';
 import { AuthService } from './auth.service';
 import { ToastrService } from 'ngx-toastr';
@@ -205,10 +205,17 @@ export class OrderPollingService implements OnDestroy {
     let cashOrderIndex = 0;
 
     orders.forEach((order) => {
-      // Obter o método de pagamento do pedido
-      const paymentMethod = order.payment && order.payment.length > 0
-        ? order.payment[0].payment_method
-        : (order as any).payment_method;
+      // --- INÍCIO DA CORREÇÃO TS2339 ---
+      let paymentMethod: string | null = null;
+
+      if (Array.isArray(order.payment) && order.payment.length > 0) {
+        paymentMethod = order.payment[0].payment_method;
+      } else if (order.payment && !Array.isArray(order.payment)) {
+        paymentMethod = (order.payment as Payment).payment_method;
+      } else {
+        paymentMethod = (order as any).payment_method;
+      }
+      // --- FIM DA CORREÇÃO TS2339 ---
 
       const isNew = !this.printedOrderIds.has(order.id);
       const isCash = paymentMethod === 'dinheiro';

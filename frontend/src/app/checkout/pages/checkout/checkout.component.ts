@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -14,11 +14,9 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatSelectModule } from '@angular/material/select';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { Clipboard } from '@angular/cdk/clipboard';
 import { FormsModule } from '@angular/forms';
-import { Observable, Subscription, timer } from 'rxjs';
-import { map, switchMap, takeWhile, tap } from 'rxjs/operators';
+import { Observable, firstValueFrom } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { ToastrService } from 'ngx-toastr';
 import { CartService } from '../../../core/services/cart.service';
 import { AuthService } from '../../../core/services/auth.service';
@@ -55,11 +53,10 @@ import { environment } from '../../../../environments/environment';
     MatDividerModule,
     MatSnackBarModule,
     MatSelectModule,
-    MatTooltipModule,
     ProductSuggestionsComponent
   ]
 })
-export class CheckoutComponent implements OnInit, OnDestroy {
+export class CheckoutComponent implements OnInit {
   deliveryForm: FormGroup;
   paymentForm: FormGroup;
   cartItems$!: Observable<CartItem[]>;
@@ -84,13 +81,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   // Controle de Steps
   currentStep = 1;
 
-  // --- NOVAS PROPRIEDADES PARA PAGAMENTO PIX ---
-  // Controla o que o cliente vê: 'form' (formulário) ou 'awaiting_payment' (QR Code)
-  public checkoutState: 'form' | 'awaiting_payment' = 'form';
-  public pixQrCodeBase64: string | null = null;
-  public pixCopiaECola: string | null = null;
   public isProcessingPayment = false;
-  private paymentPollingSub?: Subscription;
   // ---------------------------------------------
 
   constructor(
@@ -104,7 +95,6 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     private snackBar: MatSnackBar,
     private router: Router,
     private cdr: ChangeDetectorRef,
-    private clipboard: Clipboard,
     private toastr: ToastrService
   ) {
     this.deliveryForm = this.fb.group({
@@ -120,12 +110,29 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     });
 
     this.paymentForm = this.fb.group({
-      method: ['pix', Validators.required],
-      received_amount: [''], // Valor recebido para pagamento em dinheiro
-      change: [''], // Troco para (legacy, mantido para compatibilidade)
-      // Campo condicional para CPF/CNPJ (habilitado apenas se PIX e usuário não tiver documento)
-      payerDocument: [{ value: null, disabled: true }]
+      method: ['cash', Validators.required],
+      received_amount: [''],
+      change: ['']
     });
+  }
+
+  private updateCartTotals(): void {
+    this.cartTotal$ = this.cartItems$.pipe(
+      map((items: CartItem[]) => {
+        const total = items.reduce((sum: number, item: CartItem) => {
+          const quantity = Number(item.quantity) || 0;
+          const price = Number(item.price) || 0;
+          return sum + (quantity * price);
+        }, 0);
+
+        if (!Number.isFinite(total)) {
+          return 0;
+        }
+
+        const normalizedTotal = Number(total.toFixed(2));
+        return Number.isFinite(normalizedTotal) ? normalizedTotal : 0;
+      })
+    );
   }
   // Método central para buscar frete por CEP
   private _fetchFrete(cep: string): void {
@@ -138,17 +145,10 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     this.loadingDeliveryZones = true;
     this.deliveryZoneService.calculateFrete(cep).subscribe({
       next: (response) => {
-        // parseFloat garante que '9.90' (string) vire 9.90 (number)
-        // Usar || 0 para garantir que NaN ou null virem 0
-        const valorFrete = response.valor_frete;
-        if (valorFrete === null || valorFrete === undefined) {
-          this.deliveryFee = 0;
-        } else {
-          const parsed = parseFloat(String(valorFrete));
-          this.deliveryFee = isNaN(parsed) ? 0 : parsed;
-        }
-        this.estimatedTime = response.tempo_estimado || '';
+        this.deliveryFee = parseFloat(String(response?.valor_frete ?? '0')) || 0;
+        this.estimatedTime = response?.tempo_estimado || '';
         this.loadingDeliveryZones = false;
+        this.updateCartTotals();
       },
       error: (error) => {
         console.error('Erro ao calcular frete:', error);
@@ -166,17 +166,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     // Inicializar observables
     this.cartItems$ = this.cartService.cartItems$;
-    this.cartTotal$ = this.cartItems$.pipe(
-      map((items: CartItem[]) => {
-        const total = items.reduce((sum: number, item: CartItem) => {
-          const quantity = Number(item.quantity) || 0;
-          const price = Number(item.price) || 0;
-          return sum + (quantity * price);
-        }, 0);
-        // Garantir que o resultado seja sempre um number válido
-        return isNaN(total) ? 0 : Number(total.toFixed(2));
-      })
-    );
+    this.updateCartTotals();
     this.user$ = this.authService.user$;
 
     // Preencher formulário com dados do usuário
@@ -193,50 +183,6 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     
     // Carregar zonas de entrega
     this.loadDeliveryZones();
-
-    // Observar mudanças no método de pagamento para habilitar/desabilitar campo de CPF/CNPJ
-    this.watchPaymentMethod();
-  }
-
-  /**
-   * Observa mudanças no método de pagamento e habilita/desabilita o campo de CPF/CNPJ
-   */
-  private watchPaymentMethod(): void {
-    this.paymentForm.get('method')?.valueChanges.subscribe(method => {
-      const docControl = this.paymentForm.get('payerDocument');
-      const currentUser = this.authService.getUser();
-
-      // Se o método for 'pix' E o usuário não tiver documento salvo...
-      if (method === 'pix' && currentUser && !currentUser.document_number) {
-        // ...habilite e exija o campo de CPF/CNPJ.
-        docControl?.setValidators([Validators.required, Validators.pattern(/^[0-9]{11,14}$/)]);
-        docControl?.enable();
-      } else {
-        // ...senão, desabilite e limpe.
-        docControl?.clearValidators();
-        docControl?.disable();
-        docControl?.setValue(null);
-      }
-      docControl?.updateValueAndValidity();
-    });
-  }
-
-  /**
-   * Formata o documento (CPF ou CNPJ) durante a digitação
-   */
-  formatPayerDocument(event: any): void {
-    let value = event.target.value.replace(/\D/g, '');
-    
-    // Formata CPF (11 dígitos) ou CNPJ (14 dígitos)
-    if (value.length <= 11) {
-      // Formatação CPF: 000.000.000-00
-      value = value.replace(/^(\d{3})(\d{3})(\d{3})(\d{2}).*/, '$1.$2.$3-$4');
-    } else if (value.length <= 14) {
-      // Formatação CNPJ: 00.000.000/0000-00
-      value = value.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2}).*/, '$1.$2.$3/$4-$5');
-    }
-    
-    this.paymentForm.get('payerDocument')?.setValue(value, { emitEvent: false });
   }
 
   loadAddresses(): void {
@@ -454,194 +400,126 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   }
 
   async onSubmit(): Promise<void> {
-    console.log('Submitting order:', {
-      useSavedAddress: this.useSavedAddress,
-      selectedAddressId: this.selectedAddressId,
-      deliveryFormValid: this.deliveryForm.valid,
-      paymentFormValid: this.paymentForm.valid
-    });
-
     if (!this.isDeliveryFormValid() || this.paymentForm.invalid) {
       this.error = 'Por favor, preencha todos os campos obrigatórios';
       return;
     }
 
     this.loading = true;
+    this.isProcessingPayment = true;
     this.error = null;
 
     try {
-      // Buscar os itens do carrinho
-      const items = await new Promise<CartItem[]>((resolve) => {
-        this.cartItems$.subscribe(items => {
-          resolve(items);
-        }).unsubscribe();
-      });
+      const items = await firstValueFrom(this.cartItems$);
 
-      if (items.length === 0) {
+      if (!items || items.length === 0) {
         this.error = 'Seu carrinho está vazio';
         this.loading = false;
+        this.isProcessingPayment = false;
         return;
       }
 
-      // Mapear método de pagamento para o formato esperado pelo backend
-      const paymentMethodMap: { [key: string]: string } = {
-        'pix': 'pix',
-        'cash': 'dinheiro',
-        'card': 'cartão de débito'
+      const cartTotal = await firstValueFrom(this.cartTotal$);
+      const normalizedCartTotal = Number.isFinite(cartTotal) ? Number(cartTotal) : 0;
+      const orderTotal = normalizedCartTotal + this.deliveryFee;
+
+      const paymentMethodMap: Record<string, string> = {
+        cash: 'dinheiro',
+        card: 'cartão de débito',
+        credit: 'cartão de crédito'
       };
 
-      const paymentMethodValue = this.paymentForm.value.method;
-      const mappedPaymentMethod = paymentMethodMap[paymentMethodValue] || 'pix';
-      
-      // Verificar se é pagamento em dinheiro (case-insensitive)
-      const isCashPayment = mappedPaymentMethod.toLowerCase() === 'dinheiro';
+      const paymentMethodValue = this.paymentForm.value.method || 'cash';
+      const mappedPaymentMethod = paymentMethodMap[paymentMethodValue] || 'dinheiro';
+      const isCashPayment = mappedPaymentMethod === 'dinheiro';
 
-      // Calcular total do pedido (subtotal + frete)
-      const cartTotal = await new Promise<number>((resolve) => {
-        this.cartTotal$.subscribe(total => {
-          resolve(total);
-        }).unsubscribe();
-      });
-      const orderTotal = cartTotal + this.deliveryFee;
-
-      // Preparar dados do pagamento (received_amount e change_amount)
-      let receivedAmount: number | undefined = undefined;
-      let changeAmount: number | undefined = undefined;
+      let receivedAmount: number | undefined;
+      let changeAmount: number | undefined;
 
       if (isCashPayment) {
-        // Para pagamento em dinheiro, usar received_amount do formulário
-        // ou o campo "change" (legacy) que representa o valor total a pagar
         const receivedValue = this.paymentForm.value.received_amount || this.paymentForm.value.change;
-        
-        if (receivedValue && parseFloat(receivedValue) > 0) {
-          receivedAmount = parseFloat(receivedValue);
-          
-          // Calcular troco se o valor recebido for maior que o total
-          if (receivedAmount >= orderTotal) {
-            changeAmount = receivedAmount - orderTotal;
-          } else {
-            // Se o valor recebido for menor que o total, não há troco
-            changeAmount = 0;
+
+        if (receivedValue) {
+          const parsedReceived = Number(receivedValue);
+
+          if (Number.isFinite(parsedReceived) && parsedReceived > 0) {
+            receivedAmount = parsedReceived;
+            changeAmount = parsedReceived >= orderTotal ? parsedReceived - orderTotal : 0;
           }
         }
       }
 
-      // Preparar dados do pedido
-      let deliveryData;
-      if (this.useSavedAddress && this.selectedAddressId) {
-        // Usar endereço salvo
-        deliveryData = {
-          address_id: this.selectedAddressId,
-          phone: this.deliveryForm.value.phone,
-          instructions: ''
-        };
-      } else {
-        // Usar novo endereço
-        deliveryData = {
-          name: 'Endereço de Entrega',
-          ...this.deliveryForm.value
-        };
-      }
+      const deliveryData = this.useSavedAddress && this.selectedAddressId
+        ? {
+            address_id: this.selectedAddressId,
+            phone: this.deliveryForm.value.phone,
+            instructions: ''
+          }
+        : {
+            name: 'Endereço de Entrega',
+            ...this.deliveryForm.value
+          };
 
-      // Obter valores do formulário (incluindo campos desabilitados)
-      const paymentFormValue = this.paymentForm.getRawValue();
-
-      const orderData = {
+      const orderPayload = {
         type: 'online',
         delivery: deliveryData,
         payment_method: mappedPaymentMethod,
         customer_name: deliveryData.address,
         customer_phone: deliveryData.phone,
-        items: items.map(item => {
-          if (item.isCombo && item.combo) {
-            return {
-              combo_id: item.combo.id,
-              quantity: item.quantity,
-              sale_type: 'garrafa' // Default para combos
-            };
-          } else if (item.product) {
-            return {
-              product_id: item.product.id,
-              quantity: item.quantity,
-              sale_type: 'garrafa' // Default para produtos
-            };
-          }
-          return null;
-        }).filter(item => item !== null),
+        items: items
+          .map(item => {
+            if (item.isCombo && item.combo) {
+              return {
+                combo_id: item.combo.id,
+                quantity: item.quantity,
+                sale_type: 'garrafa' as const
+              };
+            }
+
+            if (item.product) {
+              return {
+                product_id: item.product.id,
+                quantity: item.quantity,
+                sale_type: 'garrafa' as const
+              };
+            }
+
+            return null;
+          })
+          .filter((item): item is {
+            combo_id: number;
+            quantity: number;
+            sale_type: 'garrafa';
+          } | {
+            product_id: number;
+            quantity: number;
+            sale_type: 'garrafa';
+          } => item !== null),
         delivery_fee: this.deliveryFee,
-        // Incluir received_amount e change_amount se for pagamento em dinheiro
-        received_amount: isCashPayment ? receivedAmount : undefined,
-        change_amount: isCashPayment ? changeAmount : undefined,
-        // Envia o CPF/CNPJ que o cliente digitou, se ele foi habilitado (remove formatação)
-        document_number_override: paymentFormValue.payerDocument 
-          ? paymentFormValue.payerDocument.replace(/\D/g, '') 
-          : undefined
+        received_amount: receivedAmount,
+        change_amount: changeAmount
       };
 
-      console.log('Enviando pedido:', orderData);
-      console.log('Items processados:', orderData.items);
-      console.log('Items originais:', items);
-
-      // Enviar pedido para o backend
-      this.orderService.createOrder(orderData).subscribe({
-        next: (response) => {
-          console.log('Pedido criado com sucesso:', response);
-
-          // Limpar o carrinho
-          this.cartService.clearCart();
-
-          // Redirecionar baseado no método de pagamento
-          const paymentMethod = this.paymentForm.value.method;
-          
-          // Se o pagamento NÃO for PIX, o fluxo termina aqui
-          if (paymentMethod !== 'pix') {
-            this.loading = false;
-            if (paymentMethod === 'cash') {
-              // Dinheiro na entrega
-              this.snackBar.open(`Pedido #${response.order_number} criado com sucesso! Pagamento em dinheiro na entrega.`, 'Fechar', { duration: 5000 });
-            } else if (paymentMethod === 'card') {
-              // Cartão na entrega
-              this.snackBar.open(`Pedido #${response.order_number} criado com sucesso! Pagamento com cartão na entrega.`, 'Fechar', { duration: 5000 });
-            }
-            this.router.navigate(['/pedidos']);
-            return;
-          }
-
-          // --- ETAPA 2: Se for PIX, criar o pagamento no Mercado Pago ---
-          this.isProcessingPayment = true;
-          this.orderService.createPixPayment(response.id).subscribe({
-            next: (pixData) => {
-              console.log('Pagamento PIX criado:', pixData);
-              this.pixQrCodeBase64 = pixData.pix_qr_code_base64;
-              this.pixCopiaECola = pixData.pix_copia_e_cola;
-
-              // --- ETAPA 3: Mudar a tela para mostrar o PIX ---
-              this.checkoutState = 'awaiting_payment';
-              this.isProcessingPayment = false;
-              this.loading = false;
-
-              // --- INICIA O POLLING ---
-              this.startPaymentPolling(response.id);
-            },
-            error: (err) => {
-              console.error('Erro ao gerar PIX:', err);
-              this.snackBar.open('Erro ao gerar o PIX. Tente novamente.', 'Fechar', { duration: 5000 });
-              this.isProcessingPayment = false;
-              this.loading = false;
-            }
-          });
-        },
-        error: (error) => {
-          console.error('Erro ao criar pedido:', error);
-          this.error = error.error?.message || 'Erro ao finalizar pedido. Tente novamente.';
+      this.orderService.createOrder(orderPayload).subscribe({
+        next: (createdOrder) => {
           this.loading = false;
+          this.isProcessingPayment = false;
+          this.toastr.success('Pedido recebido com sucesso!');
+          this.cartService.clearCart();
+          this.router.navigate(['/pedidos', createdOrder.id]);
+        },
+        error: (err) => {
+          console.error('Erro ao criar pedido:', err);
+          this.loading = false;
+          this.isProcessingPayment = false;
+          this.toastr.error('Erro ao criar seu pedido.', 'Falha');
         }
       });
-
     } catch (error) {
       console.error('Erro ao processar pedido:', error);
-      this.error = 'Erro ao processar pedido. Tente novamente.';
       this.loading = false;
+      this.isProcessingPayment = false;
+      this.toastr.error('Erro ao processar pedido.', 'Falha');
     }
   }
 
@@ -685,78 +563,4 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     return 'Categoria';
   }
 
-  /**
-   * Copia o código PIX para a área de transferência
-   */
-  public copiarPix(): void {
-    if (!this.pixCopiaECola) {
-      return; // Proteção para caso o valor ainda não exista
-    }
-
-    // Usa o serviço Clipboard do CDK para copiar o texto
-    this.clipboard.copy(this.pixCopiaECola);
-
-    // Dá um feedback visual para o usuário
-    this.toastr.success('Código PIX copiado para a área de transferência!');
-  }
-
-  /**
-   * Inicia a verificação (polling) do status do pagamento a cada 5 segundos.
-   */
-  startPaymentPolling(orderId: number): void {
-    // Começa imediatamente (0), e depois repete a cada 5 segundos (5000)
-    this.paymentPollingSub = timer(0, 5000).pipe(
-      // switchMap cancela a requisição anterior se uma nova for feita
-      switchMap(() => {
-        return this.orderService.getOrderById(orderId);
-      }),
-      // Notifica o status (útil para debug)
-      tap(order => console.log(`[Polling] Status do pedido: ${order.status}`)),
-      // Continue checando ENQUANTO o status for 'pending'
-      takeWhile(order => order.status === 'pending', true)
-    ).subscribe({
-      next: (order) => {
-        // Este 'next' é chamado na última vez (quando o status MUDA)
-        if (order.status !== 'pending') {
-          this.stopPaymentPolling(); // Para o timer
-
-          // Sucesso!
-          this.toastr.success('Seu pagamento foi aprovado!', 'Pagamento Recebido!');
-
-          // Redireciona o cliente para a tela de "meus pedidos"
-          this.router.navigate(['/pedidos', order.id]);
-        }
-      },
-      error: (err) => {
-        console.error("Erro durante o polling do pagamento", err);
-        this.toastr.error('Houve um erro ao verificar seu pagamento.');
-      }
-    });
-  }
-
-  /**
-   * Para o polling (timer)
-   */
-  stopPaymentPolling(): void {
-    if (this.paymentPollingSub) {
-      this.paymentPollingSub.unsubscribe();
-      this.paymentPollingSub = undefined;
-      console.log("[Polling] Verificação de pagamento interrompida.");
-    }
-  }
-
-  /**
-   * Garante que o polling pare se o usuário sair da tela
-   */
-  ngOnDestroy(): void {
-    this.stopPaymentPolling();
-  }
-
-  /**
-   * Navega para a página de pedidos
-   */
-  goToOrders(): void {
-    this.stopPaymentPolling();
-    this.router.navigate(['/pedidos']);
-  }
 }

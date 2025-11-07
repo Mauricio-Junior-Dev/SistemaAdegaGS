@@ -36,8 +36,6 @@ Route::get('/delivery-zones', [DeliveryZoneController::class, 'index']);
 Route::get('/frete', [DeliveryZoneController::class, 'calculateFrete']);
 
 // --- WEBHOOKS (Rotas Públicas para Serviços Externos) ---
-Route::post('/webhooks/mercadopago', [App\Http\Controllers\Api\WebhookController::class, 'handleMercadoPago'])
-     ->name('webhooks.mercadopago');
 
 // Endpoint de teste sem middleware
 Route::get('/test-no-auth', function () {
@@ -125,9 +123,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/orders', [OrderController::class, 'store']);
         Route::put('/orders/{order}/confirm-delivery', [OrderController::class, 'confirmDelivery']);
         
-        // Pagamentos
-        Route::post('/orders/{order}/create-payment', [App\Http\Controllers\Api\PaymentController::class, 'createPixPayment']);
-        
         // Endereços
         Route::get('/addresses', [AddressController::class, 'index']);
         Route::post('/addresses', [AddressController::class, 'store']);
@@ -165,8 +160,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/stock/{product}', [StockController::class, 'update']);
     });
 
-    // Rotas administrativas
-    require __DIR__.'/admin.php';
+    // Rotas administrativas específicas de caixa
     Route::middleware('admin')->group(function () {
         Route::get('/admin/cash/sessions', [CashController::class, 'sessions']);
         Route::get('/admin/cash/sessions/{session}', [CashController::class, 'sessionDetail']);
