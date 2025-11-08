@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Models\Address;
 
 class Order extends Model
 {
@@ -36,9 +37,12 @@ class Order extends Model
         return $this->hasMany(Payment::class);
     }
 
-    public function deliveryAddress(): BelongsTo
+    /**
+     * Get the delivery address associated with the order.
+     */
+    public function delivery_address(): BelongsTo
     {
-        return $this->belongsTo(Address::class, 'delivery_address_id');
+        return $this->belongsTo(Address::class, 'delivery_address_id', 'id');
     }
 
     protected static function boot()

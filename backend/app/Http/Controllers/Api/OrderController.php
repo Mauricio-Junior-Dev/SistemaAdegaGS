@@ -47,7 +47,7 @@ class OrderController extends Controller
         $query = Order::with([
             'items.product',
             'items.combo',
-            'deliveryAddress',
+            'delivery_address',
             'payment' => function ($query) {
                 // Garantir que received_amount e change_amount sejam selecionados explicitamente
                 $query->select(
@@ -298,14 +298,10 @@ class OrderController extends Controller
             // Atualizar total do pedido (subtotal + frete)
             $order->update(['total' => $total + $frete]);
 
-            // Criar pagamento
-            // Para pagamentos em dinheiro, o status fica pendente até a entrega; demais são marcados como concluídos
-            $paymentStatus = $request->payment_method === 'dinheiro' ? 'pending' : 'completed';
-
             $paymentData = [
                 'amount' => $total + $frete,
                 'payment_method' => $request->payment_method,
-                'status' => $paymentStatus
+                'status' => 'pending'
             ];
 
             // Incluir received_amount e change_amount se fornecidos
@@ -595,15 +591,10 @@ class OrderController extends Controller
             // Atualizar total do pedido (subtotal + frete)
             $order->update(['total' => $total + $frete]);
 
-            // Criar pagamento
-            // Para PIX, o status deve ser 'pending' (será atualizado pelo webhook)
-            // Para outros métodos (dinheiro, cartão na entrega), pode ser 'completed' se já foi pago
-            $paymentStatus = ($request->payment_method === 'pix') ? 'pending' : 'completed';
-            
             $paymentData = [
                 'amount' => $total + $frete,
                 'payment_method' => $request->payment_method,
-                'status' => $paymentStatus
+                'status' => 'pending'
             ];
 
             if ($request->received_amount) {
@@ -623,7 +614,7 @@ class OrderController extends Controller
                     'items.product',
                     'items.combo',
                     'user',
-                    'deliveryAddress',
+                    'delivery_address',
                     'payment' => function ($query) {
                         // Garantir que received_amount e change_amount sejam selecionados explicitamente
                         $query->select(
@@ -656,7 +647,7 @@ class OrderController extends Controller
             'items.product',
             'items.combo',
             'user',
-            'deliveryAddress',
+            'delivery_address',
             'payment' => function ($query) {
                 // Garantir que received_amount e change_amount sejam selecionados explicitamente
                 $query->select(
@@ -942,7 +933,7 @@ class OrderController extends Controller
             'user',
             'items.product',
             'items.combo',
-            'deliveryAddress',
+            'delivery_address',
             'payment' => function ($query) {
                 // Garantir que received_amount e change_amount sejam selecionados explicitamente
                 $query->select(
@@ -1009,7 +1000,7 @@ class OrderController extends Controller
         $order->save();
 
         // Carregar as relações necessárias para retornar o pedido completo
-        $order->load(['items.product', 'items.combo', 'deliveryAddress', 'payment']);
+        $order->load(['items.product', 'items.combo', 'delivery_address', 'payment']);
 
         return response()->json($order);
     }

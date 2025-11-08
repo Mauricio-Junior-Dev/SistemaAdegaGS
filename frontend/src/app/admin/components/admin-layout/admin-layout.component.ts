@@ -65,10 +65,6 @@ import { Subscription } from 'rxjs';
             <mat-icon>swap_horiz</mat-icon>
             <span>Movimentações</span>
           </a>
-          <a routerLink="/admin/relatorios" routerLinkActive="active" class="nav-item">
-            <mat-icon>assessment</mat-icon>
-            <span>Relatórios</span>
-          </a>
           <a routerLink="/admin/caixa" routerLinkActive="active" class="nav-item" matTooltip="Gerenciar Caixa (sessões e transações)">
             <mat-icon>account_balance_wallet</mat-icon>
             <span>Caixa</span>

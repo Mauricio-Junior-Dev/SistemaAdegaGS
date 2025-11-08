@@ -81,9 +81,6 @@ export class CheckoutComponent implements OnInit {
   // Controle de Steps
   currentStep = 1;
 
-  public isProcessingPayment = false;
-  // ---------------------------------------------
-
   constructor(
     private fb: FormBuilder,
     private cartService: CartService,
@@ -406,7 +403,6 @@ export class CheckoutComponent implements OnInit {
     }
 
     this.loading = true;
-    this.isProcessingPayment = true;
     this.error = null;
 
     try {
@@ -415,7 +411,6 @@ export class CheckoutComponent implements OnInit {
       if (!items || items.length === 0) {
         this.error = 'Seu carrinho está vazio';
         this.loading = false;
-        this.isProcessingPayment = false;
         return;
       }
 
@@ -425,8 +420,7 @@ export class CheckoutComponent implements OnInit {
 
       const paymentMethodMap: Record<string, string> = {
         cash: 'dinheiro',
-        card: 'cartão de débito',
-        credit: 'cartão de crédito'
+        card: 'cartão de débito'
       };
 
       const paymentMethodValue = this.paymentForm.value.method || 'cash';
@@ -503,7 +497,6 @@ export class CheckoutComponent implements OnInit {
       this.orderService.createOrder(orderPayload).subscribe({
         next: (createdOrder) => {
           this.loading = false;
-          this.isProcessingPayment = false;
           this.toastr.success('Pedido recebido com sucesso!');
           this.cartService.clearCart();
           this.router.navigate(['/pedidos', createdOrder.id]);
@@ -511,14 +504,12 @@ export class CheckoutComponent implements OnInit {
         error: (err) => {
           console.error('Erro ao criar pedido:', err);
           this.loading = false;
-          this.isProcessingPayment = false;
           this.toastr.error('Erro ao criar seu pedido.', 'Falha');
         }
       });
     } catch (error) {
       console.error('Erro ao processar pedido:', error);
       this.loading = false;
-      this.isProcessingPayment = false;
       this.toastr.error('Erro ao processar pedido.', 'Falha');
     }
   }

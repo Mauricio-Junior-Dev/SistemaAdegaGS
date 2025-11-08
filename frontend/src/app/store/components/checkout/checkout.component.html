@@ -32,79 +32,24 @@
           <label class="block text-gray-700 text-sm font-bold mb-2">
             Forma de Pagamento
           </label>
-          <div class="grid grid-cols-3 gap-4">
-            <label class="flex items-center p-4 border rounded-lg cursor-pointer"
-                   [class.border-primary-600]="paymentMethod === 'pix'">
-              <input type="radio" 
-                     formControlName="payment_method"
-                     value="pix"
-                     class="mr-2">
-              <span>PIX</span>
-            </label>
-            <label class="flex items-center p-4 border rounded-lg cursor-pointer"
-                   [class.border-primary-600]="paymentMethod === 'credit_card'">
-              <input type="radio" 
-                     formControlName="payment_method"
-                     value="credit_card"
-                     class="mr-2">
-              <span>Cartão de Crédito</span>
-            </label>
-            <label class="flex items-center p-4 border rounded-lg cursor-pointer"
-                   [class.border-primary-600]="paymentMethod === 'local'">
-              <input type="radio" 
-                     formControlName="payment_method"
-                     value="local"
-                     class="mr-2">
-              <span>Pagar na Entrega</span>
-            </label>
-          </div>
-        </div>
-
-        <!-- Campos do Cartão -->
-        <div *ngIf="paymentMethod === 'credit_card'" class="space-y-4">
-          <div>
-            <label class="block text-gray-700 text-sm font-bold mb-2">
-              Número do Cartão
-            </label>
-            <input type="text" 
-                   formControlName="card_number"
-                   class="w-full px-3 py-2 border rounded-lg">
-          </div>
-          <div>
-            <label class="block text-gray-700 text-sm font-bold mb-2">
-              Nome no Cartão
-            </label>
-            <input type="text" 
-                   formControlName="card_holder"
-                   class="w-full px-3 py-2 border rounded-lg">
-          </div>
           <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-gray-700 text-sm font-bold mb-2">
-                Validade
-              </label>
-              <input type="text" 
-                     formControlName="card_expiry"
-                     placeholder="MM/AA"
-                     class="w-full px-3 py-2 border rounded-lg">
-            </div>
-            <div>
-              <label class="block text-gray-700 text-sm font-bold mb-2">
-                CVV
-              </label>
-              <input type="text" 
-                     formControlName="card_cvv"
-                     class="w-full px-3 py-2 border rounded-lg">
-            </div>
+            <label class="flex items-center p-4 border rounded-lg cursor-pointer"
+                   [class.border-primary-600]="paymentMethod === 'cash'">
+              <input type="radio" 
+                     formControlName="payment_method"
+                     value="cash"
+                     class="mr-2">
+              <span>Dinheiro (na entrega)</span>
+            </label>
+            <label class="flex items-center p-4 border rounded-lg cursor-pointer"
+                   [class.border-primary-600]="paymentMethod === 'card'">
+              <input type="radio" 
+                     formControlName="payment_method"
+                     value="card"
+                     class="mr-2">
+              <span>Cartão (na entrega)</span>
+            </label>
           </div>
-        </div>
-
-        <!-- QR Code PIX -->
-        <div *ngIf="pixQrCode" class="mb-6 text-center">
-          <img [src]="pixQrCode" alt="QR Code PIX" class="mx-auto mb-4">
-          <p class="text-sm text-gray-600">
-            Escaneie o QR Code para pagar com PIX
-          </p>
         </div>
 
         <!-- Botão Submit -->

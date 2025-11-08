@@ -136,10 +136,6 @@ export const routes: Routes = [
         loadComponent: () => import('./admin/pages/usuarios/usuarios.component').then(m => m.UsuariosComponent)
       },
       {
-        path: 'relatorios',
-        loadComponent: () => import('./admin/pages/relatorios/relatorios.component').then(m => m.RelatoriosComponent)
-      },
-      {
         path: 'caixa',
         loadComponent: () => import('./admin/pages/caixa/caixa-admin.component').then(m => m.CaixaAdminComponent)
       },
