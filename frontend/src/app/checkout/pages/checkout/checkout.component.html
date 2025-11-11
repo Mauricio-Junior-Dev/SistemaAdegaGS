@@ -39,6 +39,7 @@
     </div>
   </div>
 
+  <div *ngIf="checkoutState === 'form'">
   <div class="checkout-container">
     <div class="checkout-layout">
       <!-- Conteúdo Principal -->
@@ -291,6 +292,18 @@
                         </div>
                       </div>
                     </mat-radio-button>
+
+                    <mat-radio-button value="pix" class="payment-option">
+                      <div class="payment-card">
+                        <div class="payment-icon">
+                          <mat-icon>qr_code</mat-icon>
+                        </div>
+                        <div class="payment-info">
+                          <h4>PIX</h4>
+                          <p>Pagamento online via QR Code</p>
+                        </div>
+                      </div>
+                    </mat-radio-button>
                   </mat-radio-group>
 
                   <div *ngIf="paymentForm.get('method')?.value === 'cash'" class="change-field">
@@ -317,11 +330,11 @@
                     <mat-icon>arrow_back</mat-icon>
                     Voltar
                   </button>
-                  <button mat-raised-button color="primary" (click)="onSubmit()" [disabled]="paymentForm.invalid || loading" class="finalize-btn">
-                    <mat-spinner *ngIf="loading" diameter="20" style="display: inline-block; margin-right: 8px;"></mat-spinner>
-                    <mat-icon *ngIf="!loading">check</mat-icon>
-                    <span *ngIf="!loading">Finalizar Pedido</span>
-                    <span *ngIf="loading">Processando...</span>
+                  <button mat-raised-button color="primary" (click)="onSubmit()" [disabled]="paymentForm.invalid || loading || isProcessingPayment" class="finalize-btn">
+                    <mat-spinner *ngIf="loading || isProcessingPayment" diameter="20" style="display: inline-block; margin-right: 8px;"></mat-spinner>
+                    <mat-icon *ngIf="!(loading || isProcessingPayment)">check</mat-icon>
+                    <span *ngIf="!(loading || isProcessingPayment)">Finalizar Pedido</span>
+                    <span *ngIf="loading || isProcessingPayment">Processando...</span>
                   </button>
                 </div>
               </form>
@@ -390,5 +403,40 @@
         </div>
       </div>
     </div>
+  </div>
+  </div>
+
+  <div *ngIf="checkoutState === 'awaiting_payment'" class="pix-payment-container">
+    <mat-card>
+      <mat-card-header>
+        <mat-card-title>Pague com PIX para Concluir</mat-card-title>
+        <mat-card-subtitle>Seu pedido só será confirmado após o pagamento.</mat-card-subtitle>
+      </mat-card-header>
+
+      <mat-card-content>
+        <p>Escaneie o QR Code abaixo com o app do seu banco:</p>
+
+        <img *ngIf="pixQrCodeBase64" [src]="pixQrCodeBase64" alt="PIX QR Code" style="max-width: 250px; height: auto;">
+
+        <p>Ou copie o código "Copia e Cola":</p>
+
+        <mat-form-field appearance="outline" style="width: 100%;">
+          <mat-label>PIX Copia e Cola</mat-label>
+          <input matInput readonly [value]="pixCopiaECola">
+          <button mat-icon-button matSuffix (click)="copiarPix()" [disabled]="!pixCopiaECola">
+            <mat-icon>content_copy</mat-icon>
+          </button>
+        </mat-form-field>
+
+        <p style="font-weight: bold; margin-top: 15px;">
+          Aguardando pagamento...
+        </p>
+        <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+        <p style="font-size: 0.9em; color: #555;">
+          Não feche esta página. Você será redirecionado automaticamente
+          assim que o pagamento for aprovado.
+        </p>
+      </mat-card-content>
+    </mat-card>
   </div>
 </div>

@@ -2,7 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { Order, OrderItem } from '../models/order.model';
+import { Order, OrderItem, PixPaymentResponse } from '../models/order.model';
 
 @Injectable({
   providedIn: 'root'
@@ -48,5 +48,12 @@ export class OrderService {
   getOrderById(orderId: number): Observable<Order> {
     const headers = this.getCacheBustingHeaders();
     return this.http.get<Order>(`${this.apiUrl}/orders/${orderId}`, { headers });
+  }
+
+  /**
+   * Cria um pagamento PIX para um pedido existente
+   */
+  createPixPayment(orderId: number): Observable<PixPaymentResponse> {
+    return this.http.post<PixPaymentResponse>(`${this.apiUrl}/orders/${orderId}/create-payment`, {});
   }
 }

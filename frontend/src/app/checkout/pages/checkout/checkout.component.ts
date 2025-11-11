@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -15,7 +15,7 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { FormsModule } from '@angular/forms';
-import { Observable, firstValueFrom } from 'rxjs';
+import { Observable, firstValueFrom, Subscription, timer, switchMap, takeWhile, tap } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { ToastrService } from 'ngx-toastr';
 import { CartService } from '../../../core/services/cart.service';
@@ -27,9 +27,12 @@ import { DeliveryZoneService } from '../../../services/delivery-zone.service';
 import { CartItem } from '../../../core/models/cart.model';
 import { User } from '../../../core/models/auth.model';
 import { Product } from '../../../core/models/product.model';
+import { Order, PixPaymentResponse } from '../../../core/models/order.model';
 import { DeliveryZone } from '../../../models/delivery-zone.model';
 import { ProductSuggestionsComponent } from '../../components/product-suggestions/product-suggestions.component';
 import { environment } from '../../../../environments/environment';
+import { Clipboard } from '@angular/cdk/clipboard';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 
 @Component({
   selector: 'app-checkout',
@@ -53,10 +56,11 @@ import { environment } from '../../../../environments/environment';
     MatDividerModule,
     MatSnackBarModule,
     MatSelectModule,
-    ProductSuggestionsComponent
+    ProductSuggestionsComponent,
+    MatProgressBarModule
   ]
 })
-export class CheckoutComponent implements OnInit {
+export class CheckoutComponent implements OnInit, OnDestroy {
   deliveryForm: FormGroup;
   paymentForm: FormGroup;
   cartItems$!: Observable<CartItem[]>;
@@ -64,6 +68,11 @@ export class CheckoutComponent implements OnInit {
   user$!: Observable<User | null>;
   loading = false;
   error: string | null = null;
+  public checkoutState: 'form' | 'awaiting_payment' = 'form';
+  public pixQrCodeBase64: string | null = null;
+  public pixCopiaECola: string | null = null;
+  public isProcessingPayment = false;
+  private paymentPollingSub?: Subscription;
   
   // Endereços
   addresses: Address[] = [];
@@ -92,7 +101,8 @@ export class CheckoutComponent implements OnInit {
     private snackBar: MatSnackBar,
     private router: Router,
     private cdr: ChangeDetectorRef,
-    private toastr: ToastrService
+    private toastr: ToastrService,
+    private clipboard: Clipboard
   ) {
     this.deliveryForm = this.fb.group({
       address: ['', Validators.required],
@@ -396,20 +406,23 @@ export class CheckoutComponent implements OnInit {
     }
   }
 
-  async onSubmit(): Promise<void> {
+  public async onSubmit(): Promise<void> {
     if (!this.isDeliveryFormValid() || this.paymentForm.invalid) {
       this.error = 'Por favor, preencha todos os campos obrigatórios';
       return;
     }
 
+    this.isProcessingPayment = true;
     this.loading = true;
     this.error = null;
+    this.checkoutState = 'form';
 
     try {
       const items = await firstValueFrom(this.cartItems$);
 
       if (!items || items.length === 0) {
         this.error = 'Seu carrinho está vazio';
+        this.isProcessingPayment = false;
         this.loading = false;
         return;
       }
@@ -420,7 +433,8 @@ export class CheckoutComponent implements OnInit {
 
       const paymentMethodMap: Record<string, string> = {
         cash: 'dinheiro',
-        card: 'cartão de débito'
+        card: 'cartão de débito',
+        pix: 'pix'
       };
 
       const paymentMethodValue = this.paymentForm.value.method || 'cash';
@@ -441,6 +455,9 @@ export class CheckoutComponent implements OnInit {
             changeAmount = parsedReceived >= orderTotal ? parsedReceived - orderTotal : 0;
           }
         }
+      } else {
+        receivedAmount = undefined;
+        changeAmount = undefined;
       }
 
       const deliveryData = this.useSavedAddress && this.selectedAddressId
@@ -495,21 +512,50 @@ export class CheckoutComponent implements OnInit {
       };
 
       this.orderService.createOrder(orderPayload).subscribe({
-        next: (createdOrder) => {
-          this.loading = false;
-          this.toastr.success('Pedido recebido com sucesso!');
-          this.cartService.clearCart();
-          this.router.navigate(['/pedidos', createdOrder.id]);
+        next: (newlyCreatedOrder: Order) => {
+          if (paymentMethodValue !== 'pix') {
+            this.loading = false;
+            this.isProcessingPayment = false;
+            this.toastr.success('Pedido recebido! (Pagamento na entrega)');
+            this.cartService.clearCart();
+            this.router.navigate(['/pedidos', newlyCreatedOrder.id]);
+            return;
+          }
+
+          this.pixQrCodeBase64 = null;
+          this.pixCopiaECola = null;
+
+          this.orderService.createPixPayment(newlyCreatedOrder.id).subscribe({
+            next: (pixData: PixPaymentResponse) => {
+              this.pixQrCodeBase64 = pixData.pix_qr_code_base64;
+              this.pixCopiaECola = pixData.pix_copia_e_cola;
+
+              this.checkoutState = 'awaiting_payment';
+              this.isProcessingPayment = false;
+              this.loading = false;
+
+              this.startPaymentPolling(newlyCreatedOrder.id);
+            },
+            error: (err: unknown) => {
+              console.error('Erro ao gerar PIX:', err);
+              this.toastr.error('Erro ao gerar o PIX. Tente novamente.', 'Falha no Pagamento');
+              this.isProcessingPayment = false;
+              this.loading = false;
+              this.checkoutState = 'form';
+            }
+          });
         },
-        error: (err) => {
+        error: (err: unknown) => {
           console.error('Erro ao criar pedido:', err);
+          this.toastr.error('Erro ao criar seu pedido. Verifique os dados.', 'Falha');
+          this.isProcessingPayment = false;
           this.loading = false;
-          this.toastr.error('Erro ao criar seu pedido.', 'Falha');
         }
       });
     } catch (error) {
       console.error('Erro ao processar pedido:', error);
       this.loading = false;
+      this.isProcessingPayment = false;
       this.toastr.error('Erro ao processar pedido.', 'Falha');
     }
   }
@@ -552,6 +598,61 @@ export class CheckoutComponent implements OnInit {
       return item.product.category.name;
     }
     return 'Categoria';
+  }
+
+  /**
+   * Copia o código PIX para a área de transferência
+   */
+  public copiarPix(): void {
+    if (!this.pixCopiaECola) {
+      return;
+    }
+    this.clipboard.copy(this.pixCopiaECola);
+    this.toastr.success('Código PIX copiado!');
+  }
+
+  /**
+   * Inicia a verificação (polling) do status do pagamento a cada 5 segundos.
+   */
+  startPaymentPolling(orderId: number): void {
+    this.stopPaymentPolling();
+
+    this.paymentPollingSub = timer(0, 5000).pipe(
+      switchMap(() => this.orderService.getOrderById(orderId)),
+      tap((order: Order) => console.log(`[Polling] Status do pedido: ${order.status}`)),
+      takeWhile((order: Order) => order.status === 'pending' || order.status === 'pending_pix', true)
+    ).subscribe({
+      next: (order: Order) => {
+        if (order.status !== 'pending' && order.status !== 'pending_pix') {
+          this.stopPaymentPolling();
+          this.toastr.success('Seu pagamento foi aprovado!', 'Pagamento Recebido!');
+          this.cartService.clearCart();
+          this.router.navigate(['/pedidos', order.id]);
+        }
+      },
+      error: (err) => {
+        console.error('Erro durante o polling do pagamento', err);
+        this.toastr.error('Houve um erro ao verificar seu pagamento.');
+      }
+    });
+  }
+
+  /**
+   * Para o polling (timer)
+   */
+  stopPaymentPolling(): void {
+    if (this.paymentPollingSub) {
+      this.paymentPollingSub.unsubscribe();
+      this.paymentPollingSub = undefined;
+      console.log('[Polling] Verificação de pagamento interrompida.');
+    }
+  }
+
+  /**
+   * Garante que o polling pare se o usuário sair da tela
+   */
+  ngOnDestroy(): void {
+    this.stopPaymentPolling();
   }
 
 }

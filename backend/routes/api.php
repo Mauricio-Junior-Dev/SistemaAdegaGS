@@ -11,6 +11,8 @@ use App\Http\Controllers\Api\StockController;
 use App\Http\Controllers\Api\AddressController;
 use App\Http\Controllers\Api\CashController;
 use App\Http\Controllers\DeliveryZoneController;
+use App\Http\Controllers\Api\PaymentController;
+use App\Http\Controllers\Api\WebhookController;
 use Illuminate\Support\Facades\Auth;
 
 // Rotas públicas
@@ -35,7 +37,13 @@ Route::get('/banners/active', [App\Http\Controllers\BannerController::class, 'ac
 Route::get('/delivery-zones', [DeliveryZoneController::class, 'index']);
 Route::get('/frete', [DeliveryZoneController::class, 'calculateFrete']);
 
+// --- ROTA DE TESTE PÚBLICA (TEMPORÁRIA) ---
+Route::post('/orders/{order}/create-payment', [PaymentController::class, 'createPixPayment']);
+// ----------------------------------------
+
 // --- WEBHOOKS (Rotas Públicas para Serviços Externos) ---
+Route::post('/webhooks/mercadopago', [WebhookController::class, 'handleMercadoPago'])
+    ->name('webhooks.mercadopago');
 
 // Endpoint de teste sem middleware
 Route::get('/test-no-auth', function () {

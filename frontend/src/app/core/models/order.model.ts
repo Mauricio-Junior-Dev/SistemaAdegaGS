@@ -1,12 +1,14 @@
 import { User } from './user.model';
 import { Product } from './product.model';
 
+export type OrderStatus = 'pending' | 'pending_pix' | 'delivering' | 'completed' | 'cancelled';
+
 export interface Order {
     id: number;
     user_id: number;
     order_number: string;
     type: 'local' | 'online';
-    status: 'pending' | 'delivering' | 'completed' | 'cancelled';
+    status: OrderStatus;
     total_amount: number;
     total?: number; // Para compatibilidade com backend
     discount_amount: number;
@@ -41,12 +43,20 @@ export interface OrderItem {
     combo?: any; // Combo interface
 }
 
+export type PaymentStatus = 'pending' | 'pending_pix' | 'processing' | 'approved' | 'declined' | 'refunded' | 'cancelled';
+
 export interface Payment {
     id: number;
     order_id: number;
     transaction_id?: string;
     payment_method: 'credit_card' | 'debit_card' | 'pix' | 'cash' | 'other';
-    status: 'pending' | 'processing' | 'approved' | 'declined' | 'refunded' | 'cancelled';
+    status: PaymentStatus;
     amount: number;
     payment_details?: any;
+}
+
+export interface PixPaymentResponse {
+    payment_id: string | null;
+    pix_copia_e_cola: string | null;
+    pix_qr_code_base64: string | null;
 }
