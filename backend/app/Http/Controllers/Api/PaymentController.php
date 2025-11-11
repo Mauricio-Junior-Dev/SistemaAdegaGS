@@ -48,7 +48,7 @@ class PaymentController extends Controller
                 'description' => 'Pedido #' . $order->order_number . ' - Adega GS',
                 'payment_method_id' => 'pix',
                 'external_reference' => (string) $order->id,
-                'notification_url' => route('webhooks.mercadopago'),
+                'notification_url' => 'https://jordy-sluglike-corruptively.ngrok-free.dev',
                 'payer' => [
                     'email' => $order->user->email,
                     'first_name' => explode(' ', $order->user->name)[0],
@@ -80,4 +80,3 @@ class PaymentController extends Controller
         }
     }
 }
-

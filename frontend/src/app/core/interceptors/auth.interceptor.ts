@@ -27,9 +27,10 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     headers['Content-Type'] = 'application/json';
   }
 
-  // Clonar a requisição e adicionar os headers
+  // Clonar a requisição, adicionar os headers e enviar cookies de credencial
   req = req.clone({
-    setHeaders: headers
+    setHeaders: headers,
+    withCredentials: true
   });
 
   // Passar a requisição para o próximo handler
