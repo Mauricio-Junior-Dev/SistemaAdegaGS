@@ -16,6 +16,7 @@ class Order extends Model
         'total',
         'delivery_address_id',
         'delivery_notes',
+        'delivery_fee',
     ];
 
     protected $casts = [

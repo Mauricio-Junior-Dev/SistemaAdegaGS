@@ -283,20 +283,15 @@ class OrderController extends Controller
                 }
             }
 
-            // Calcular frete baseado no bairro
-            $frete = 0;
-            if ($request->has('delivery') && isset($delivery['neighborhood'])) {
-                $deliveryZone = DeliveryZone::ativo()
-                    ->where('nome_bairro', 'LIKE', '%' . $delivery['neighborhood'] . '%')
-                    ->first();
-                
-                if ($deliveryZone) {
-                    $frete = $deliveryZone->valor_frete;
-                }
-            }
+            // Pega o frete que o frontend (Angular) calculou e enviou no payload.
+            // O $total aqui é o subtotal dos itens.
+            $frete = $request->input('delivery_fee', 0);
 
-            // Atualizar total do pedido (subtotal + frete)
-            $order->update(['total' => $total + $frete]);
+            // Atualizar total do pedido (subtotal + frete) e salvar o frete
+            $order->update([
+                'total' => $total + $frete,
+                'delivery_fee' => $frete
+            ]);
 
             $paymentData = [
                 'amount' => $total + $frete,

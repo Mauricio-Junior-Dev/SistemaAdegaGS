@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, BehaviorSubject, interval, Subject, forkJoin } from 'rxjs';
-import { switchMap, tap, map, takeUntil } from 'rxjs/operators';
+import { Observable, BehaviorSubject, interval, forkJoin, Subscription } from 'rxjs';
+import { switchMap, tap, map, startWith } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import { Product as CoreProduct } from '../../core/models/product.model';
 
@@ -134,22 +134,34 @@ export class OrderService {
   private apiUrl = `${environment.apiUrl}/orders`;
   private ordersSubject = new BehaviorSubject<Order[]>([]);
   private autoRefreshInterval = 15000; // 15 segundos
-  private destroy$ = new Subject<void>();
+  private autoRefreshSubscription?: Subscription;
 
   orders$ = this.ordersSubject.asObservable();
 
-  constructor(private http: HttpClient) {
-    // Iniciar atualização automática com lógica inteligente
-    this.startAutoRefresh();
+  constructor(private http: HttpClient) {}
+
+  public startAutoRefresh(): void {
+    if (this.autoRefreshSubscription) {
+      return;
+    }
+
+    this.autoRefreshSubscription = interval(this.autoRefreshInterval)
+      .pipe(
+        startWith(0),
+        switchMap(() => this.fetchOrders({ status: 'pending' })) // Só buscar pendentes
+      )
+      .subscribe({
+        error: (error) => {
+          console.error('Erro no auto refresh de pedidos:', error);
+        }
+      });
   }
 
-  private startAutoRefresh() {
-    interval(this.autoRefreshInterval)
-      .pipe(
-        switchMap(() => this.fetchOrders({ status: 'pending' })), // Só buscar pendentes
-        takeUntil(this.destroy$)
-      )
-      .subscribe();
+  public stopAutoRefresh(): void {
+    if (this.autoRefreshSubscription) {
+      this.autoRefreshSubscription.unsubscribe();
+      this.autoRefreshSubscription = undefined;
+    }
   }
 
   fetchOrders(filters?: { 

@@ -11,6 +11,7 @@ export interface Order {
     status: OrderStatus;
     total_amount: number;
     total?: number; // Para compatibilidade com backend
+    delivery_fee?: number;
     discount_amount: number;
     discount_code?: string;
     notes?: string;

@@ -113,7 +113,18 @@ import { Order } from '../../../../core/models/order.model';
           <div class="section">
             <h3>Pagamento</h3>
             <p><strong>Método:</strong> {{data.getPaymentMethodLabel(data.order)}}</p>
-            <p class="total"><strong>Total:</strong> {{data.formatCurrency(data.order.total_amount || data.order.total || 0)}}</p>
+            <p>
+              <strong>Subtotal:</strong>
+              {{data.formatCurrency((data.order.total || 0) - (data.order.delivery_fee || 0))}}
+            </p>
+            <p>
+              <strong>Frete:</strong>
+              {{data.formatCurrency(data.order.delivery_fee || 0)}}
+            </p>
+            <p class="total">
+              <strong>Total:</strong>
+              {{data.formatCurrency(data.order.total || 0)}}
+            </p>
           </div>
 
           <mat-divider></mat-divider>

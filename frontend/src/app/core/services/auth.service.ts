@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { AuthResponse, LoginRequest, RegisterRequest, UpdateProfileRequest, User } from '../models/auth.model';
+import { OrderService } from '../../employee/services/order.service';
 
 @Injectable({
   providedIn: 'root'
@@ -15,7 +16,10 @@ export class AuthService {
   user$ = this.userSubject.asObservable();
   token$ = this.tokenSubject.asObservable();
 
-  constructor(private http: HttpClient) {
+  constructor(
+    private http: HttpClient,
+    private orderService: OrderService
+  ) {
     this.loadStoredAuth();
   }
 
@@ -24,8 +28,10 @@ export class AuthService {
     const storedToken = localStorage.getItem('token');
 
     if (storedUser && storedToken) {
-      this.userSubject.next(JSON.parse(storedUser));
+      const user = JSON.parse(storedUser) as User;
+      this.userSubject.next(user);
       this.tokenSubject.next(storedToken);
+      this.handleAutoRefresh(user);
     }
   }
 
@@ -34,6 +40,7 @@ export class AuthService {
     localStorage.setItem('token', response.access_token);
     this.userSubject.next(response.user);
     this.tokenSubject.next(response.access_token);
+    this.handleAutoRefresh(response.user);
   }
 
   register(data: RegisterRequest): Observable<AuthResponse> {
@@ -55,6 +62,7 @@ export class AuthService {
         this.userSubject.next(null);
         this.tokenSubject.next(null);
         console.log('Usuário após logout:', this.userSubject.value);
+        this.orderService.stopAutoRefresh();
       })
     );
   }
@@ -99,9 +107,14 @@ export class AuthService {
   }
 
   saveAuth(response: AuthResponse): void {
-    localStorage.setItem('user', JSON.stringify(response.user));
-    localStorage.setItem('token', response.access_token);
-    this.userSubject.next(response.user);
-    this.tokenSubject.next(response.access_token);
+    this.saveAuthInternal(response);
+  }
+
+  private handleAutoRefresh(user: User | null): void {
+    if (user && user.type === 'employee') {
+      this.orderService.startAutoRefresh();
+    } else {
+      this.orderService.stopAutoRefresh();
+    }
   }
 }

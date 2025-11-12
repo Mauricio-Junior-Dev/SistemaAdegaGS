@@ -407,6 +407,24 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   }
 
   public async onSubmit(): Promise<void> {
+    console.log('--- DEBUG CHECKOUT: Início do onSubmit ---');
+
+    const currentUser =
+      typeof this.authService.getCurrentUser === 'function'
+        ? this.authService.getCurrentUser()
+        : typeof this.authService.getUser === 'function'
+          ? this.authService.getUser()
+          : null;
+
+    console.log('Usuário logado (segundo o AuthService):', currentUser);
+
+    if (!currentUser) {
+      console.error('ERRO GRAVE: O usuário não está logado no Angular, mas o checkout foi permitido!');
+      this.loading = false;
+      this.isProcessingPayment = false;
+      return;
+    }
+
     if (!this.isDeliveryFormValid() || this.paymentForm.invalid) {
       this.error = 'Por favor, preencha todos os campos obrigatórios';
       return;
@@ -511,6 +529,8 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         change_amount: changeAmount
       };
 
+      console.log("Payload que será enviado para 'createOrder':", orderPayload);
+
       this.orderService.createOrder(orderPayload).subscribe({
         next: (newlyCreatedOrder: Order) => {
           if (paymentMethodValue !== 'pix') {
@@ -518,7 +538,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
             this.isProcessingPayment = false;
             this.toastr.success('Pedido recebido! (Pagamento na entrega)');
             this.cartService.clearCart();
-            this.router.navigate(['/pedidos', newlyCreatedOrder.id]);
+            this.router.navigate(['/pedidos']);
             return;
           }
 
