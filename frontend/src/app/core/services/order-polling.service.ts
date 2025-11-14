@@ -1,6 +1,6 @@
 import { Injectable, OnDestroy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { interval, Subscription, Observable, of, BehaviorSubject } from 'rxjs';
+import { interval, Subscription, Observable, of, BehaviorSubject, forkJoin } from 'rxjs';
 import { switchMap, catchError, takeWhile, startWith, tap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import { OrderService, OrderResponse, Order, Payment } from '../../employee/services/order.service';
@@ -40,30 +40,36 @@ export class OrderPollingService implements OnDestroy {
     private authService: AuthService,
     private toastr: ToastrService
   ) {
-    // Observar mudanças no usuário para iniciar/parar polling automaticamente
-    // Isso garante que o polling seja iniciado mesmo após F5 (quando o usuário é restaurado do localStorage)
-    this.userSubscription = this.authService.user$.pipe(
-      tap(user => {
-        // Verificação explícita e defensiva: APENAS employee pode iniciar polling
-        if (user && user.type === 'employee') {
-          // Se um funcionário foi detectado (seja no login ou no F5), iniciar polling
-          if (!this.isPollingActive) {
-            console.log(`[OrderPollingService] Usuário funcionário detectado (ID: ${user.id}, Tipo: ${user.type}), iniciando polling automaticamente`);
-            this.startPolling();
-          }
-        } else {
-          // Se não há usuário, é admin, customer ou qualquer outro tipo, parar polling
-          if (this.isPollingActive) {
-            const userType = user ? user.type : 'null';
-            console.log(`[OrderPollingService] Usuário não é funcionário (Tipo: ${userType}), parando polling`);
-            this.stopPolling();
-          } else if (user && user.type !== 'employee') {
-            // Log adicional para debug: garantir que admin/customer não iniciam polling
-            console.log(`[OrderPollingService] Usuário tipo '${user.type}' detectado - polling NÃO será iniciado (apenas 'employee')`);
-          }
-        }
-      })
-    ).subscribe();
+    // Iniciar o listener para mudanças de autenticação
+    this.listenToAuthStatus();
+  }
+
+  private listenToAuthStatus(): void {
+    // Verificar estado inicial imediatamente (BehaviorSubject emite valor atual na subscrição)
+    this.checkAndStartPolling();
+    
+    // Escutar mudanças futuras
+    this.userSubscription = this.authService.authStatus$.subscribe(() => {
+      this.checkAndStartPolling();
+    });
+  }
+
+  private checkAndStartPolling(): void {
+    const isLoggedIn = this.authService.isLoggedIn();
+    const userType = this.authService.getUserType();
+    const isEmployee = userType === 'employee' || userType === 'admin';
+    
+    if (isLoggedIn && isEmployee) {
+      // Se está logado e é funcionário/admin, iniciar polling
+      if (!this.isPollingActive) {
+        this.startPolling();
+      }
+    } else {
+      // Se não está logado ou não é funcionário/admin, parar polling
+      if (this.isPollingActive) {
+        this.stopPolling();
+      }
+    }
   }
 
   /**
@@ -71,23 +77,18 @@ export class OrderPollingService implements OnDestroy {
    * Deve ser chamado após o login de um funcionário
    */
   startPolling(): void {
-    console.log('%c[OrderPollingService] STARTING POLLING...', 'color: blue; font-weight: bold;');
-    
     if (this.isPollingActive) {
-      console.log('[OrderPollingService] Polling já está ativo, ignorando chamada.');
       return;
     }
 
     const currentUser = this.authService.getUser();
     
-    // Verificação dupla e explícita: APENAS employee pode iniciar polling
+    // Verificação dupla e explícita: APENAS employee ou admin pode iniciar polling
     if (!currentUser) {
-      console.warn('[OrderPollingService] Tentativa de iniciar polling sem usuário logado. Abortando.');
       return;
     }
     
-    if (currentUser.type !== 'employee') {
-      console.warn(`[OrderPollingService] Tentativa de iniciar polling para usuário tipo '${currentUser.type}'. Apenas 'employee' pode iniciar polling. Abortando.`);
+    if (currentUser.type !== 'employee' && currentUser.type !== 'admin') {
       return;
     }
     this.isPollingActive = true;
@@ -123,7 +124,6 @@ export class OrderPollingService implements OnDestroy {
       return;
     }
 
-    console.log('%c[OrderPollingService] STOPPING POLLING.', 'color: red; font-weight: bold;');
     this.isPollingActive = false;
     
     if (this.pollingSubscription) {
@@ -151,40 +151,78 @@ export class OrderPollingService implements OnDestroy {
       return of([]);
     }
 
-    return this.orderService.fetchOrders({
+    // Buscar pedidos com status 'pending' e 'processing' em paralelo
+    const pendingRequest = this.orderService.fetchOrders({
       page: 1,
-      per_page: 50, // Buscar mais pedidos para detectar todos os novos
+      per_page: 50,
+      status: 'pending'
+    }).pipe(
+      catchError((error) => {
+        console.error('Erro ao buscar pedidos pending:', error);
+        return of({ data: [], total: 0, current_page: 1, per_page: 50, last_page: 1 } as OrderResponse);
+      })
+    );
+
+    const processingRequest = this.orderService.fetchOrders({
+      page: 1,
+      per_page: 50,
       status: 'processing'
     }).pipe(
       catchError((error) => {
-        console.error('Erro ao buscar pedidos pendentes:', error);
+        console.error('Erro ao buscar pedidos processing:', error);
         return of({ data: [], total: 0, current_page: 1, per_page: 50, last_page: 1 } as OrderResponse);
-      }),
-      switchMap((response: OrderResponse) => {
-        const currentPendingIds = new Set(response.data.map(order => order.id));
+      })
+    );
+
+    // Combinar os resultados das duas requisições em paralelo
+    return forkJoin({
+      pending: pendingRequest,
+      processing: processingRequest
+    }).pipe(
+      switchMap(({ pending, processing }) => {
+        // Combinar todos os pedidos
+        const allOrders = [...pending.data, ...processing.data];
+        
+        // Remover duplicatas por ID (caso algum pedido apareça em ambas)
+        const uniqueOrders = Array.from(
+          new Map(allOrders.map(order => [order.id, order])).values()
+        );
         
         // Sempre atualizar o BehaviorSubject com TODOS os pedidos pendentes
-        this.pendingOrdersSubject.next(response.data);
+        this.pendingOrdersSubject.next(uniqueOrders);
         
         // Se for a primeira vez, apenas armazenar os IDs
         if (this.lastPendingOrderIds.size === 0) {
-          response.data.forEach(order => {
+          uniqueOrders.forEach(order => {
             this.lastPendingOrderIds.add(order.id);
           });
           return of([]);
         }
         
-        // Encontrar novos pedidos pendentes que ainda não foram impressos
-        const newPendingOrders = response.data.filter(order => {
+        // Encontrar novos pedidos que ainda não foram impressos
+        const newPendingOrders = uniqueOrders.filter(order => {
           const isNew = !this.lastPendingOrderIds.has(order.id);
           const notPrinted = !this.printedOrderIds.has(order.id);
-          const isProcessing = order.status === 'processing';
           
-          return isNew && notPrinted && isProcessing;
+          // Extrair método de pagamento
+          const payment = order.payment || [];
+          const paymentMethod = Array.isArray(payment) 
+            ? payment[0]?.payment_method 
+            : payment?.payment_method;
+          
+          // --- Lógica de Impressão ---
+          // 1. É um PIX PAGO?
+          const isPaidPix = order.status === 'processing';
+          
+          // 2. É um pedido NA ENTREGA? (Dinheiro ou Cartão)
+          const isOnDelivery = order.status === 'pending' && 
+                              (paymentMethod === 'dinheiro' || paymentMethod === 'cartão de débito');
+          
+          return isNew && notPrinted && (isPaidPix || isOnDelivery);
         });
         
         // Atualizar lista de IDs conhecidos
-        response.data.forEach(order => {
+        uniqueOrders.forEach(order => {
           this.lastPendingOrderIds.add(order.id);
         });
         
@@ -195,59 +233,48 @@ export class OrderPollingService implements OnDestroy {
 
   /**
    * Imprime os novos pedidos detectados
-   * Apenas imprime pedidos com método de pagamento 'dinheiro'
+   * Todos os pedidos que chegam aqui já foram filtrados e são considerados "novos"
    */
   private printNewOrders(orders: Order[]): void {
     if (!orders || orders.length === 0) {
       return;
     }
 
-    let cashOrderIndex = 0;
-
-    orders.forEach((order) => {
-      // --- INÍCIO DA CORREÇÃO TS2339 ---
-      let paymentMethod: string | null = null;
-
-      if (Array.isArray(order.payment) && order.payment.length > 0) {
-        paymentMethod = order.payment[0].payment_method;
-      } else if (order.payment && !Array.isArray(order.payment)) {
-        paymentMethod = (order.payment as Payment).payment_method;
-      } else {
-        paymentMethod = (order as any).payment_method;
+    orders.forEach((order, index) => {
+      // Pega o método de pagamento (para o toast)
+      const payment = order.payment || [];
+      const paymentMethod = Array.isArray(payment) 
+        ? payment[0]?.payment_method 
+        : payment?.payment_method;
+      
+      // Determinar título da notificação
+      let title = 'Novo Pedido!';
+      if (order.status === 'processing') {
+        title = 'Novo Pedido (PIX Pago)!';
+      } else if (paymentMethod === 'dinheiro') {
+        title = 'Novo Pedido (Dinheiro)!';
+      } else if (paymentMethod === 'cartão de débito') {
+        title = 'Novo Pedido (Cartão na Entrega)!';
       }
-      // --- FIM DA CORREÇÃO TS2339 ---
-
-      const isNew = !this.printedOrderIds.has(order.id);
-      const isCash = paymentMethod === 'dinheiro';
-
-      if (isNew && isCash) {
-        // Marcar como impresso antes de imprimir para evitar duplicação
-        this.printedOrderIds.add(order.id);
+      
+      // Marcar como impresso IMEDIATAMENTE para evitar duplicação
+      this.printedOrderIds.add(order.id);
+      
+      // Adicionar pequeno delay entre cada impressão para evitar sobrecarga
+      setTimeout(() => {
+        // Notificar o usuário sobre o novo pedido
+        this.toastr.success(
+          `Cliente: ${order.user.name}`,
+          `${title} #${order.order_number}`,
+          {
+            timeOut: 30000,
+            closeButton: true,
+            tapToDismiss: true
+          }
+        );
         
-        console.log(`%c[OrderPollingService] NOVO PEDIDO 'DINHEIRO'! Enviando Pedido #${order.order_number} para impressão...`, 'color: green; font-weight: bold;');
-        
-        // Adicionar pequeno delay entre cada impressão para evitar sobrecarga
-        setTimeout(() => {
-          // Notificar o usuário sobre o novo pedido
-          this.toastr.success(
-            `Cliente: ${order.user.name}`,
-            `Novo Pedido (Dinheiro)! #${order.order_number}`,
-            {
-              timeOut: 30000,
-              closeButton: true,
-              tapToDismiss: true
-            }
-          );
-          
-          this.printService.autoPrintOrder(order);
-        }, cashOrderIndex * 1000); // 1 segundo entre cada pedido
-        
-        cashOrderIndex++;
-      } else if (isNew && !isCash) {
-        // Se for um pedido PIX/Cartão 'pending', adicione à memória, mas NÃO imprima
-        this.printedOrderIds.add(order.id);
-        console.log(`[OrderPollingService] Novo pedido PIX/Cartão #${order.order_number} detectado. Aguardando pagamento (não imprimir).`);
-      }
+        this.printService.autoPrintOrder(order);
+      }, index * 1000); // 1 segundo entre cada pedido
     });
   }
 

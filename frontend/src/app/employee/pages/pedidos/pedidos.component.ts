@@ -54,7 +54,7 @@ export class PedidosComponent implements OnInit, OnDestroy {
   orders: Order[] = [];
   displayedColumns = ['id', 'created_at', 'customer', 'address', 'items', 'total', 'status', 'actions'];
   loading = true;
-  selectedStatus: OrderStatus | 'all' = 'processing';
+  selectedStatus: OrderStatus | 'all' = 'pending';
   lastOrderCount = 0;
   hasNewOrders = false;
   

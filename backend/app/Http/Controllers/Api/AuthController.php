@@ -97,7 +97,11 @@ class AuthController extends Controller
 
     public function logout(Request $request)
     {
-        $request->user()->currentAccessToken()->delete();
+        // Correção: Para SPA (Sanctum via Cookie), usamos o Auth::guard('web')
+        // e invalidamos a sessão, em vez de deletar um token de API.
+        Auth::guard('web')->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
 
         return response()->json([
             'message' => 'Logout realizado com sucesso'

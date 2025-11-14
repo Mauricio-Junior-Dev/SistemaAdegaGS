@@ -39,12 +39,21 @@ export class EmployeeLayoutComponent {
     private orderPollingService: OrderPollingService
   ) {}
 
-  logout() {
-    this.authService.logout().subscribe(() => {
-      // Parar polling de pedidos
-      this.orderPollingService.stopPolling();
-      this.orderPollingService.clearPrintedCache();
-      // O redirecionamento é feito pelo interceptor
+  logout(): void {
+    this.authService.logout().subscribe({
+      next: () => {
+        // Parar polling de pedidos
+        this.orderPollingService.stopPolling();
+        this.orderPollingService.clearPrintedCache();
+        window.location.href = '/login';
+      },
+      error: (error) => {
+        console.error('Erro ao fazer logout:', error);
+        // Parar polling mesmo com erro
+        this.orderPollingService.stopPolling();
+        this.orderPollingService.clearPrintedCache();
+        window.location.href = '/login';
+      }
     });
   }
 }

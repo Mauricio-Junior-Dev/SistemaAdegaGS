@@ -68,7 +68,7 @@ class OrderController extends Controller
             $query->where('status', $request->status);
         }
 
-        $orders = $query->latest()->get();
+        $orders = $query->orderBy('created_at', 'desc')->get();
         return response()->json($orders);
     }
 
@@ -647,11 +647,6 @@ class OrderController extends Controller
 
         // Se for cliente, só pode ver seus próprios pedidos
         if ($user->type === 'customer' && $order->user_id !== $user->id) {
-            Log::warning("Cliente tentou acessar pedido de outro usuário", [
-                'user_id' => $user->id,
-                'order_id' => $order->id,
-                'order_user_id' => $order->user_id
-            ]);
             return response()->json(['error' => 'Não autorizado.'], 403);
         }
 
@@ -859,7 +854,7 @@ class OrderController extends Controller
     public function updateStatus(Request $request, Order $order)
     {
         $request->validate([
-            'status' => 'required|in:pending,delivering,completed,cancelled'
+            'status' => 'required|in:pending,processing,delivering,completed,cancelled'
         ]);
 
         $order->status = $request->status;

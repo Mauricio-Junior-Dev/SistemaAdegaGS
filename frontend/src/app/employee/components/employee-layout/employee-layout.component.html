@@ -14,15 +14,18 @@
         <span>{{item.label}}</span>
       </a>
     </nav>
+
+    <div class="sidenav-footer">
+      <button mat-stroked-button color="warn" (click)="logout()" class="logout-btn">
+        <mat-icon>logout</mat-icon>
+        Sair
+      </button>
+    </div>
   </mat-sidenav>
 
   <mat-sidenav-content>
     <mat-toolbar color="primary" class="main-toolbar">
       <span>Painel do Funcionário</span>
-      <span class="spacer"></span>
-      <button mat-icon-button class="logout-button" (click)="logout()" matTooltip="Sair">
-        <mat-icon>logout</mat-icon>
-      </button>
     </mat-toolbar>
     <div class="content">
       <router-outlet></router-outlet>

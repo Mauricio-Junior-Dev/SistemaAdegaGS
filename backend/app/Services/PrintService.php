@@ -23,7 +23,7 @@ class PrintService
 
             // Garantir que o pedido está com relações carregadas
             $order->refresh();
-            $order->load(['items.product', 'items.combo', 'user', 'payment', 'deliveryAddress']);
+            $order->load(['items.product', 'items.combo', 'user', 'payment', 'delivery_address']);
 
             // Gerar HTML idêntico ao do frontend (print.service.ts)
             $html = $this->generateOrderHtml($order);

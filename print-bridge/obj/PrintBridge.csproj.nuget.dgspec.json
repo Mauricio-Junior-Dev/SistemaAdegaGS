@@ -1,27 +1,25 @@
 {
   "format": 1,
   "restore": {
-    "C:\\dev\\adega\\print-bridge\\PrintBridge.csproj": {}
+    "C:\\Users\\jasga\\Desktop\\Github\\adegags\\print-bridge\\PrintBridge.csproj": {}
   },
   "projects": {
-    "C:\\dev\\adega\\print-bridge\\PrintBridge.csproj": {
+    "C:\\Users\\jasga\\Desktop\\Github\\adegags\\print-bridge\\PrintBridge.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\dev\\adega\\print-bridge\\PrintBridge.csproj",
+        "projectUniqueName": "C:\\Users\\jasga\\Desktop\\Github\\adegags\\print-bridge\\PrintBridge.csproj",
         "projectName": "PrintBridge",
-        "projectPath": "C:\\dev\\adega\\print-bridge\\PrintBridge.csproj",
-        "packagesPath": "C:\\Users\\pomad\\.nuget\\packages\\",
-        "outputPath": "C:\\dev\\adega\\print-bridge\\obj\\",
+        "projectPath": "C:\\Users\\jasga\\Desktop\\Github\\adegags\\print-bridge\\PrintBridge.csproj",
+        "packagesPath": "C:\\Users\\jasga\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\jasga\\Desktop\\Github\\adegags\\print-bridge\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "C:\\Users\\pomad\\AppData\\Roaming\\NuGet\\NuGet.Config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+          "C:\\Users\\jasga\\AppData\\Roaming\\NuGet\\NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net9.0"
         ],
         "sources": {
-          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
@@ -78,7 +76,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.307/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.306/PortableRuntimeIdentifierGraph.json"
         }
       }
     }

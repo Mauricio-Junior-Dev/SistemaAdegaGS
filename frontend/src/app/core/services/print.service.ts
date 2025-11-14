@@ -50,7 +50,6 @@ export class PrintService {
       const current = this.loadConfig();
       const newConfig = { ...current, ...config };
       localStorage.setItem(this.configKey, JSON.stringify(newConfig));
-      console.log('Configuração de impressora salva:', newConfig);
     } catch (e) {
       console.error('Erro ao salvar configuração de impressora:', e);
     }
@@ -275,19 +274,14 @@ export class PrintService {
     // Enviar pedido completo para Print Bridge (1 via)
     this.printingBridge.printOrder(order).subscribe({
       next: (response) => {
-        if (response.success) {
-          console.log(`%c✅ ${response.message}`, 'color: green; font-weight: bold;');
-        } else {
+        if (!response.success) {
           console.error(`%c❌ ${response.message}`, 'color: red; font-weight: bold;');
-          console.log(`⚠️ Print Bridge não conseguiu imprimir. Verifique se o serviço está rodando.`);
           // Fallback: tentar método antigo via backend Laravel
           this.fallbackToBackendPrint(order);
         }
       },
       error: (error) => {
         console.error(`%c❌ Erro ao imprimir via Print Bridge:`, 'color: red; font-weight: bold;', error);
-        console.log(`⚠️ Print Bridge não está disponível ou ocorreu um erro.`);
-        console.log(`💡 Verifique: Print Bridge rodando em http://localhost:9000`);
         // Fallback: tentar método antigo via backend Laravel
         this.fallbackToBackendPrint(order);
       }
@@ -450,12 +444,9 @@ export class PrintService {
    * Fallback: método antigo via backend Laravel (caso Print Bridge não esteja disponível)
    */
   private fallbackToBackendPrint(order: Order): void {
-    console.log('🔄 Tentando impressão via backend Laravel (fallback)...');
     this.http.post<{success: boolean, message: string}>(`${this.apiUrl}/${order.id}/print`, {}).subscribe({
       next: (response) => {
-        if (response.success) {
-          console.log(`%c✅ ${response.message}`, 'color: green; font-weight: bold;');
-        } else {
+        if (!response.success) {
           console.error(`%c❌ ${response.message}`, 'color: red; font-weight: bold;');
         }
       },

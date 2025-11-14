@@ -8,6 +8,9 @@
   width: 280px;
   background: linear-gradient(180deg, #111827 0%, #1f2937 100%);
   color: #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 .sidenav-header {
   padding: 20px 16px;
@@ -21,7 +24,14 @@
 .brand mat-icon { color: #60a5fa; }
 .brand span { color: #fff; }
 
-.nav { display: flex; flex-direction: column; padding: 8px; gap: 4px; }
+.nav { 
+  display: flex; 
+  flex-direction: column; 
+  padding: 8px; 
+  flex: 1;
+  overflow-y: auto;
+  gap: 4px; 
+}
 .nav-item { display: flex; align-items: center; gap: 12px; height: 44px; padding: 0 12px; color: #cbd5e1; border-radius: 8px; text-decoration: none; transition: background .2s, color .2s; }
 .nav-item mat-icon { color: #9ca3af; }
 .nav-item:hover { background: rgba(255,255,255,0.06); color: #fff; }
@@ -85,13 +95,16 @@ mat-toolbar.main-toolbar {
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-/* Botão de logout */
-.logout-button {
-  margin-left: 8px;
+/* Footer do sidenav com botão de logout */
+.sidenav-footer {
+  margin-top: auto;
+  padding: 16px;
+  border-top: 1px solid rgba(255,255,255,0.06);
 }
 
-.logout-button mat-icon {
-  font-size: 20px;
+.logout-btn {
+  width: 100%;
+  justify-content: center;
 }
 
 /* Esconder o footer na área do funcionário */

@@ -25,20 +25,16 @@ class WebhookController extends Controller
     public function handleMercadoPago(Request $request)
     {
         try {
-            Log::info('Webhook MercadoPago recebido:', $request->all());
-
             // O Mercado Pago envia o webhook com 'type' e 'data'
             $type = $request->input('type');
             $data = $request->input('data');
 
             // Verificar se é um evento de pagamento
             if ($type !== 'payment' || !isset($data['id'])) {
-                Log::warning('Webhook ignorado - tipo inválido ou sem ID:', ['type' => $type, 'data' => $data]);
                 return response()->json(['status' => 'ignored'], 200);
             }
 
             $paymentId = $data['id'];
-            Log::info("Processando webhook para payment_id: {$paymentId}");
 
             // Buscar o pagamento na API do Mercado Pago
             try {
@@ -53,8 +49,6 @@ class WebhookController extends Controller
 
             $mpStatus = $mpPayment->status ?? null;
             $externalReference = $mpPayment->external_reference ?? null;
-
-            Log::info("Status do pagamento MP: {$mpStatus}, external_reference: {$externalReference}");
 
             if (!$externalReference) {
                 Log::warning("Pagamento sem external_reference: {$paymentId}");
@@ -108,7 +102,6 @@ class WebhookController extends Controller
                         break;
                     default:
                         // Status como 'pending', 'in_process', etc. - não fazemos nada ainda
-                        Log::info("Status do pagamento ainda não finalizado: {$mpStatus}");
                         break;
                 }
 
@@ -121,8 +114,6 @@ class WebhookController extends Controller
                     // (Pago, Aguardando Preparo)
                     $order->status = 'processing';
                     $order->save();
-
-                    Log::info("Status atualizado - Order #{$order->id}: {$order->status}, Payment #{$payment->id}: {$newPaymentStatus}");
                 } else {
                     // Atualizar apenas o status do pagamento se mudou
                     if ($newPaymentStatus && $payment->status !== $newPaymentStatus) {
@@ -134,8 +125,6 @@ class WebhookController extends Controller
                             $order->status = 'cancelled';
                             $order->save();
                         }
-                        
-                        Log::info("Status do pagamento atualizado - Payment #{$payment->id}: {$newPaymentStatus}");
                     }
                 }
 

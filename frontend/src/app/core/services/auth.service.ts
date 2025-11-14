@@ -3,7 +3,6 @@ import { HttpClient } from '@angular/common/http';
 import { BehaviorSubject, Observable, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { AuthResponse, LoginRequest, RegisterRequest, UpdateProfileRequest, User } from '../models/auth.model';
-import { OrderService } from '../../employee/services/order.service';
 
 @Injectable({
   providedIn: 'root'
@@ -12,13 +11,14 @@ export class AuthService {
   private apiUrl = environment.apiUrl;
   private userSubject = new BehaviorSubject<User | null>(null);
   private tokenSubject = new BehaviorSubject<string | null>(null);
+  private authStatus = new BehaviorSubject<boolean>(this.isAuthenticated());
 
   user$ = this.userSubject.asObservable();
   token$ = this.tokenSubject.asObservable();
+  public authStatus$ = this.authStatus.asObservable();
 
   constructor(
-    private http: HttpClient,
-    private orderService: OrderService
+    private http: HttpClient
   ) {
     this.loadStoredAuth();
   }
@@ -31,7 +31,11 @@ export class AuthService {
       const user = JSON.parse(storedUser) as User;
       this.userSubject.next(user);
       this.tokenSubject.next(storedToken);
-      this.handleAutoRefresh(user);
+      // Garantir que o authStatus está sincronizado com o estado real
+      this.authStatus.next(true);
+    } else {
+      // Garantir que o authStatus está false se não há token
+      this.authStatus.next(false);
     }
   }
 
@@ -40,7 +44,7 @@ export class AuthService {
     localStorage.setItem('token', response.access_token);
     this.userSubject.next(response.user);
     this.tokenSubject.next(response.access_token);
-    this.handleAutoRefresh(response.user);
+    this.authStatus.next(true);
   }
 
   register(data: RegisterRequest): Observable<AuthResponse> {
@@ -56,13 +60,11 @@ export class AuthService {
   logout(): Observable<any> {
     return this.http.post(`${this.apiUrl}/logout`, {}).pipe(
       tap(() => {
-        console.log('Limpando dados de autenticação');
         localStorage.removeItem('user');
         localStorage.removeItem('token');
         this.userSubject.next(null);
         this.tokenSubject.next(null);
-        console.log('Usuário após logout:', this.userSubject.value);
-        this.orderService.stopAutoRefresh();
+        this.authStatus.next(false);
       })
     );
   }
@@ -110,11 +112,12 @@ export class AuthService {
     this.saveAuthInternal(response);
   }
 
-  private handleAutoRefresh(user: User | null): void {
-    if (user && user.type === 'employee') {
-      this.orderService.startAutoRefresh();
-    } else {
-      this.orderService.stopAutoRefresh();
-    }
+  private isAuthenticated(): boolean {
+    return !!localStorage.getItem('token');
+  }
+
+  getUserType(): string | null {
+    const user = this.userSubject.value;
+    return user?.type || null;
   }
 }
