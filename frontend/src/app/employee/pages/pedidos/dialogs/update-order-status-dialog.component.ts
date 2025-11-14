@@ -164,12 +164,17 @@ export class UpdateOrderStatusDialogComponent {
       { 
         value: 'pending', 
         label: 'Pendente',
-        disabled: this.data.currentStatus !== 'pending' && this.data.currentStatus !== 'delivering'
+        disabled: this.data.currentStatus !== 'pending'
+      },
+      { 
+        value: 'processing', 
+        label: 'Em Processamento',
+        disabled: this.data.currentStatus !== 'processing' && this.data.currentStatus !== 'pending'
       },
       { 
         value: 'delivering', 
         label: 'Em Entrega',
-        disabled: this.data.currentStatus !== 'pending' && this.data.currentStatus !== 'delivering'
+        disabled: this.data.currentStatus !== 'processing' && this.data.currentStatus !== 'delivering'
       },
       { 
         value: 'completed', 

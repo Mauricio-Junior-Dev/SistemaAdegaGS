@@ -154,7 +154,7 @@ export class OrderPollingService implements OnDestroy {
     return this.orderService.fetchOrders({
       page: 1,
       per_page: 50, // Buscar mais pedidos para detectar todos os novos
-      status: 'pending'
+      status: 'processing'
     }).pipe(
       catchError((error) => {
         console.error('Erro ao buscar pedidos pendentes:', error);
@@ -178,9 +178,9 @@ export class OrderPollingService implements OnDestroy {
         const newPendingOrders = response.data.filter(order => {
           const isNew = !this.lastPendingOrderIds.has(order.id);
           const notPrinted = !this.printedOrderIds.has(order.id);
-          const isPending = order.status === 'pending';
+          const isProcessing = order.status === 'processing';
           
-          return isNew && notPrinted && isPending;
+          return isNew && notPrinted && isProcessing;
         });
         
         // Atualizar lista de IDs conhecidos

@@ -1,6 +1,6 @@
 <div class="pedidos-container">
-  <!-- Desembrulhar Observable uma única vez quando filtro for 'pending' -->
-  <ng-container *ngIf="selectedStatus === 'pending' && (pedidos$ | async) as pedidosObservable; else noPendingObservable">
+  <!-- Desembrulhar Observable uma única vez quando filtro for 'processing' -->
+  <ng-container *ngIf="selectedStatus === 'processing' && (pedidos$ | async) as pedidosObservable; else noPendingObservable">
     <div class="header-section">
       <h1>📦 Controle de Pedidos</h1>
       <div class="header-stats" *ngIf="!loading">
@@ -61,6 +61,17 @@
               <mat-badge *ngIf="pedidosObservable.length" 
                         [matBadge]="pedidosObservable.length"
                         matBadgeColor="warn"
+                        matBadgePosition="above after"
+                        matBadgeSize="small">
+              </mat-badge>
+            </div>
+          </mat-button-toggle>
+          <mat-button-toggle value="processing">
+            <div class="toggle-content">
+              <span>Em Processamento</span>
+              <mat-badge *ngIf="getProcessingCount()" 
+                        [matBadge]="getProcessingCount()"
+                        matBadgeColor="accent"
                         matBadgePosition="above after"
                         matBadgeSize="small">
               </mat-badge>
@@ -249,9 +260,9 @@
           <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
         </table>
 
-        <!-- Paginação (desabilitada quando usar Observable para pending) -->
+        <!-- Paginação (desabilitada quando usar Observable para processing) -->
         <mat-paginator
-          *ngIf="selectedStatus !== 'pending'"
+          *ngIf="selectedStatus !== 'processing'"
           [length]="totalItems"
           [pageSize]="pageSize"
           [pageIndex]="currentPage"
@@ -283,6 +294,11 @@
           <mat-icon>schedule</mat-icon>
           <span class="stat-number">{{getPendingCount()}}</span>
           <span class="stat-label">Pendentes</span>
+        </div>
+        <div class="stat-card processing">
+          <mat-icon>payment</mat-icon>
+          <span class="stat-number">{{getProcessingCount()}}</span>
+          <span class="stat-label">Em Processamento</span>
         </div>
         <div class="stat-card delivering">
           <mat-icon>local_shipping</mat-icon>
@@ -331,6 +347,17 @@
                 <mat-badge *ngIf="getPendingCount()" 
                           [matBadge]="getPendingCount()"
                           matBadgeColor="warn"
+                          matBadgePosition="above after"
+                          matBadgeSize="small">
+                </mat-badge>
+              </div>
+            </mat-button-toggle>
+            <mat-button-toggle value="processing">
+              <div class="toggle-content">
+                <span>Em Processamento</span>
+                <mat-badge *ngIf="getProcessingCount()" 
+                          [matBadge]="getProcessingCount()"
+                          matBadgeColor="accent"
                           matBadgePosition="above after"
                           matBadgeSize="small">
                 </mat-badge>

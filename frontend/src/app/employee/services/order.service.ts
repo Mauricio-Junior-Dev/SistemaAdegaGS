@@ -9,6 +9,7 @@ export interface OrderSummary {
   total_amount: number;
   total_orders: number;
   pending: number;
+  processing: number;
   delivering: number;
   completed: number;
 }
@@ -21,7 +22,7 @@ export interface OrderResponse {
   last_page: number;
 }
 
-export type OrderStatus = 'pending' | 'delivering' | 'completed' | 'cancelled';
+export type OrderStatus = 'pending' | 'processing' | 'delivering' | 'completed' | 'cancelled';
 export type PaymentMethod = 'dinheiro' | 'cartão de débito' | 'cartão de crédito' | 'pix';
 export type PaymentStatus = 'pending' | 'completed' | 'failed' | 'refunded';
 
@@ -148,7 +149,7 @@ export class OrderService {
     this.autoRefreshSubscription = interval(this.autoRefreshInterval)
       .pipe(
         startWith(0),
-        switchMap(() => this.fetchOrders({ status: 'pending' })) // Só buscar pendentes
+        switchMap(() => this.fetchOrders({ status: 'processing' })) // Só buscar pedidos pagos aguardando preparo
       )
       .subscribe({
         error: (error) => {
@@ -257,6 +258,7 @@ export class OrderService {
     // Fazer chamadas reais à API para obter os totais atualizados por status
     // Similar ao que o componente de pedidos faz no método loadStats()
     const pendingRequest = this.fetchOrders({ page: 1, per_page: 1, status: 'pending' });
+    const processingRequest = this.fetchOrders({ page: 1, per_page: 1, status: 'processing' });
     const deliveringRequest = this.fetchOrders({ page: 1, per_page: 1, status: 'delivering' });
     const completedRequest = this.fetchOrders({ page: 1, per_page: 1, status: 'completed' });
     
@@ -269,11 +271,12 @@ export class OrderService {
 
     return forkJoin({
       pending: pendingRequest,
+      processing: processingRequest,
       delivering: deliveringRequest,
       completed: completedRequest,
       todayCompleted: todayCompletedRequest
     }).pipe(
-      map(({ pending, delivering, completed, todayCompleted }) => {
+      map(({ pending, processing, delivering, completed, todayCompleted }) => {
         // Calcular vendas do dia (pedidos completos de hoje)
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -292,6 +295,7 @@ export class OrderService {
           total_amount: totalAmount, // Vendas do dia
           total_orders: totalOrdersToday, // Pedidos completos de hoje
           pending: pending.total, // Todos os pedidos pendentes
+          processing: processing.total, // Todos os pedidos em processamento (pagos, aguardando preparo)
           delivering: delivering.total, // Todos os pedidos em entrega
           completed: completed.total // Todos os pedidos completos
         };
@@ -334,6 +338,7 @@ export class OrderService {
   private getStatusLabel(status: OrderStatus): string {
     const labels = {
       pending: 'Pendente',
+      processing: 'Em Processamento',
       delivering: 'Em Entrega',
       completed: 'Concluído',
       cancelled: 'Cancelado'

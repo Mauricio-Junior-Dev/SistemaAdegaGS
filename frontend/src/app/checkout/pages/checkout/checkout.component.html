@@ -407,36 +407,33 @@
   </div>
 
   <div *ngIf="checkoutState === 'awaiting_payment'" class="pix-payment-container">
-    <mat-card>
-      <mat-card-header>
-        <mat-card-title>Pague com PIX para Concluir</mat-card-title>
-        <mat-card-subtitle>Seu pedido só será confirmado após o pagamento.</mat-card-subtitle>
-      </mat-card-header>
+    <div class="pix-container">
+      <h2>Pague com PIX para Concluir</h2>
+      <p>Seu pedido só será confirmado após o pagamento.</p>
 
-      <mat-card-content>
-        <p>Escaneie o QR Code abaixo com o app do seu banco:</p>
+      <p>Escaneie o QR Code abaixo com o app do seu banco:</p>
 
-        <img *ngIf="pixQrCodeBase64" [src]="pixQrCodeBase64" alt="PIX QR Code" style="max-width: 250px; height: auto;">
+      <img *ngIf="safeQrCodeUrl" [src]="safeQrCodeUrl" alt="QR Code PIX" class="qr-code-image">
 
-        <p>Ou copie o código "Copia e Cola":</p>
+      <p>Ou copie o código "Copia e Cola":</p>
 
-        <mat-form-field appearance="outline" style="width: 100%;">
-          <mat-label>PIX Copia e Cola</mat-label>
-          <input matInput readonly [value]="pixCopiaECola">
-          <button mat-icon-button matSuffix (click)="copiarPix()" [disabled]="!pixCopiaECola">
-            <mat-icon>content_copy</mat-icon>
-          </button>
-        </mat-form-field>
+      <div class="copy-paste-area">
+        <label>PIX Copia e Cola</label>
+        <textarea readonly [value]="pixCopiaECola || ''" rows="4"></textarea>
+        <button mat-raised-button color="primary" (click)="copiarPix()" [disabled]="!pixCopiaECola">
+          <mat-icon>content_copy</mat-icon>
+          Copiar Código
+        </button>
+      </div>
 
-        <p style="font-weight: bold; margin-top: 15px;">
-          Aguardando pagamento...
+        <p style="font-weight: bold; margin-top: 1.5rem;">
+          {{ loadingMessage }}
         </p>
         <mat-progress-bar mode="indeterminate"></mat-progress-bar>
-        <p style="font-size: 0.9em; color: #555;">
+        <p style="font-size: 0.9em; color: #555; margin-top: 0.5rem;">
           Não feche esta página. Você será redirecionado automaticamente
           assim que o pagamento for aprovado.
         </p>
-      </mat-card-content>
-    </mat-card>
+    </div>
   </div>
 </div>

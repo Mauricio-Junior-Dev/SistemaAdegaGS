@@ -18,6 +18,7 @@ import { FormsModule } from '@angular/forms';
 import { Observable, firstValueFrom, Subscription, timer, switchMap, takeWhile, tap } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { ToastrService } from 'ngx-toastr';
+import { DomSanitizer, SafeUrl } from '@angular/platform-browser';
 import { CartService } from '../../../core/services/cart.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { OrderService } from '../../../core/services/order.service';
@@ -71,7 +72,9 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   public checkoutState: 'form' | 'awaiting_payment' = 'form';
   public pixQrCodeBase64: string | null = null;
   public pixCopiaECola: string | null = null;
+  public safeQrCodeUrl: SafeUrl | null = null;
   public isProcessingPayment = false;
+  public loadingMessage: string = 'Aguardando pagamento...';
   private paymentPollingSub?: Subscription;
   
   // Endereços
@@ -102,7 +105,8 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     private router: Router,
     private cdr: ChangeDetectorRef,
     private toastr: ToastrService,
-    private clipboard: Clipboard
+    private clipboard: Clipboard,
+    private sanitizer: DomSanitizer
   ) {
     this.deliveryForm = this.fb.group({
       address: ['', Validators.required],
@@ -544,11 +548,18 @@ export class CheckoutComponent implements OnInit, OnDestroy {
 
           this.pixQrCodeBase64 = null;
           this.pixCopiaECola = null;
+          this.safeQrCodeUrl = null;
 
           this.orderService.createPixPayment(newlyCreatedOrder.id).subscribe({
             next: (pixData: PixPaymentResponse) => {
               this.pixQrCodeBase64 = pixData.pix_qr_code_base64;
               this.pixCopiaECola = pixData.pix_copia_e_cola;
+
+              if (this.pixQrCodeBase64) {
+                this.safeQrCodeUrl = this.sanitizer.bypassSecurityTrustUrl(
+                  'data:image/png;base64,' + this.pixQrCodeBase64
+                );
+              }
 
               this.checkoutState = 'awaiting_payment';
               this.isProcessingPayment = false;
@@ -636,23 +647,72 @@ export class CheckoutComponent implements OnInit, OnDestroy {
    */
   startPaymentPolling(orderId: number): void {
     this.stopPaymentPolling();
+    this.loadingMessage = 'Aguardando pagamento...';
 
     this.paymentPollingSub = timer(0, 5000).pipe(
       switchMap(() => this.orderService.getOrderById(orderId)),
-      tap((order: Order) => console.log(`[Polling] Status do pedido: ${order.status}`)),
-      takeWhile((order: Order) => order.status === 'pending' || order.status === 'pending_pix', true)
+      tap((order: Order) => {
+        // O Laravel retorna 'payment' (singular) mesmo sendo HasMany
+        const payments = (order as any).payment || order.payments || [];
+        const paymentStatus = payments.length > 0 
+          ? payments[0].status 
+          : 'unknown';
+        console.log(`[Polling] Status do pedido: ${order.status}, Status do pagamento: ${paymentStatus}`);
+      }),
+      takeWhile((order: Order) => {
+        // Continua o polling enquanto:
+        // 1. O pedido está pendente (aguardando pagamento) E
+        // 2. Não há nenhum pagamento com status 'completed', 'failed' ou 'cancelled'
+        // O Laravel retorna 'payment' (singular) mesmo sendo HasMany
+        const payments = (order as any).payment || order.payments || [];
+        const hasFinalStatus = payments.some(
+          (payment: any) => ['completed', 'failed', 'cancelled', 'refunded'].includes(payment.status)
+        );
+        // Para quando o pagamento for completado (status muda para 'processing' ou outro)
+        return order.status === 'pending' && !hasFinalStatus;
+      }, true)
     ).subscribe({
       next: (order: Order) => {
-        if (order.status !== 'pending' && order.status !== 'pending_pix') {
+        // O Laravel retorna 'payment' (singular) mesmo sendo HasMany
+        const payments = (order as any).payment || order.payments || [];
+        // Pega o primeiro pagamento (ou o único)
+        const payment = Array.isArray(payments) ? payments[0] : payments;
+
+        // Verificar se o pagamento foi completado OU se o pedido mudou para 'processing'
+        // 'processing' significa que o pagamento foi aprovado e o pedido está aguardando preparo
+        if ((payment && payment.status === 'completed') || order.status === 'processing') {
+          // 1. PARE O POLLING (MUITO IMPORTANTE)
           this.stopPaymentPolling();
-          this.toastr.success('Seu pagamento foi aprovado!', 'Pagamento Recebido!');
+          
+          // 2. MOSTRE A MENSAGEM DE SUCESSO
+          this.loadingMessage = 'Pagamento Aprovado!';
+          this.toastr.success('Pagamento aprovado! Redirecionando...', 'Sucesso!');
+          
+          // 3. LIMPE O CARRINHO
           this.cartService.clearCart();
-          this.router.navigate(['/pedidos', order.id]);
+          
+          // 4. REDIRECIONE O USUÁRIO
+          setTimeout(() => {
+            this.router.navigate(['/pedidos']);
+          }, 2500); // Espera 2.5s para o usuário ler a msg
+          
+        } else if (payment && (payment.status === 'failed' || payment.status === 'cancelled')) {
+          // Se o pagamento falhar ou for cancelado
+          this.stopPaymentPolling();
+          this.loadingMessage = 'Pagamento não aprovado';
+          this.toastr.error('O pagamento falhou ou foi cancelado. Tente novamente.', 'Erro');
+          
+          // Opcional: redirecionar de volta ao checkout após alguns segundos
+          setTimeout(() => {
+            this.checkoutState = 'form';
+            this.loadingMessage = 'Aguardando pagamento...';
+          }, 3000);
         }
       },
       error: (err) => {
         console.error('Erro durante o polling do pagamento', err);
-        this.toastr.error('Houve um erro ao verificar seu pagamento.');
+        this.toastr.error('Houve um erro ao verificar seu pagamento. Tente recarregar a página.', 'Erro');
+        // Não para o polling em caso de erro, para tentar novamente na próxima iteração
       }
     });
   }

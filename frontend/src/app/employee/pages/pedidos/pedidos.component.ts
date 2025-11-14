@@ -54,7 +54,7 @@ export class PedidosComponent implements OnInit, OnDestroy {
   orders: Order[] = [];
   displayedColumns = ['id', 'created_at', 'customer', 'address', 'items', 'total', 'status', 'actions'];
   loading = true;
-  selectedStatus: OrderStatus | 'all' = 'pending';
+  selectedStatus: OrderStatus | 'all' = 'processing';
   lastOrderCount = 0;
   hasNewOrders = false;
   
@@ -69,6 +69,7 @@ export class PedidosComponent implements OnInit, OnDestroy {
   stats = {
     total: 0,
     pending: 0,
+    processing: 0,
     delivering: 0,
     completed: 0,
     cancelled: 0
@@ -107,8 +108,8 @@ export class PedidosComponent implements OnInit, OnDestroy {
     this.pedidos$.pipe(
       takeUntil(this.destroy$)
     ).subscribe(pendingOrders => {
-      // Atualizar apenas se o filtro estiver em 'pending'
-      if (this.selectedStatus === 'pending') {
+      // Atualizar apenas se o filtro estiver em 'processing'
+      if (this.selectedStatus === 'processing') {
         this.orders = pendingOrders;
         this.totalItems = pendingOrders.length;
         this.loading = false;
@@ -116,11 +117,11 @@ export class PedidosComponent implements OnInit, OnDestroy {
     });
     
     // Para outros status, usa a busca HTTP tradicional
-    // Para 'pending', o Observable do OrderPollingService já fornece os dados automaticamente
-    if (this.selectedStatus !== 'pending') {
+    // Para 'processing', o Observable do OrderPollingService já fornece os dados automaticamente
+    if (this.selectedStatus !== 'processing') {
       this.loadOrders();
     } else {
-      // Quando for 'pending', o loading será desativado quando o Observable emitir os dados
+      // Quando for 'processing', o loading será desativado quando o Observable emitir os dados
       // O OrderPollingService já busca os dados a cada 10 segundos e atualiza o BehaviorSubject
     }
     
@@ -166,7 +167,7 @@ export class PedidosComponent implements OnInit, OnDestroy {
 
   loadStats(): void {
     // Carregar estatísticas para cada status
-    const statuses: (OrderStatus | 'all')[] = ['all', 'pending', 'delivering', 'completed', 'cancelled'];
+    const statuses: (OrderStatus | 'all')[] = ['all', 'pending', 'processing', 'delivering', 'completed', 'cancelled'];
     let completedRequests = 0;
     
     statuses.forEach(status => {
@@ -196,13 +197,13 @@ export class PedidosComponent implements OnInit, OnDestroy {
     this.selectedStatus = status;
     this.currentPage = 0;
     
-    // Se mudar para 'pending', usar o Observable do OrderPollingService
+    // Se mudar para 'processing', usar o Observable do OrderPollingService
     // O Observable já atualiza automaticamente através da subscription no ngOnInit
     // Caso contrário, usar busca HTTP tradicional
-    if (status !== 'pending') {
+    if (status !== 'processing') {
       this.loadOrders();
     }
-    // Se for 'pending', a subscription já atualiza a lista automaticamente
+    // Se for 'processing', a subscription já atualiza a lista automaticamente
     
     // Recarregar estatísticas quando mudar o filtro
     this.loadStats();
@@ -270,11 +271,12 @@ export class PedidosComponent implements OnInit, OnDestroy {
   getStatusColor(status: OrderStatus): string {
     const colors = {
       pending: '#ff9800',      // Laranja
+      processing: '#9c27b0',   // Roxo
       delivering: '#2196f3',   // Azul
       completed: '#4caf50',    // Verde
       cancelled: '#f44336'     // Vermelho
     };
-    return colors[status];
+    return colors[status] || '#757575'; // Cinza como fallback
   }
 
   getStatusLabel(status: OrderStatus): string {
@@ -283,6 +285,7 @@ export class PedidosComponent implements OnInit, OnDestroy {
     }
     const labels = {
       pending: 'Pendente',
+      processing: 'Em Processamento',
       delivering: 'Em Entrega',
       completed: 'Concluído',
       cancelled: 'Cancelado'
@@ -293,6 +296,10 @@ export class PedidosComponent implements OnInit, OnDestroy {
   // Métodos computados para contagem de pedidos por status
   getPendingCount(): number {
     return this.stats.pending;
+  }
+
+  getProcessingCount(): number {
+    return this.stats.processing;
   }
 
   getDeliveringCount(): number {

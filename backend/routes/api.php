@@ -140,6 +140,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::patch('/addresses/{address}/default', [AddressController::class, 'setDefault']);
     });
 
+    // Rota compartilhada: clientes podem ver seus próprios pedidos, funcionários podem ver todos
+    Route::get('/orders/{order}', [OrderController::class, 'show']);
+
     // Rotas de funcionário e admin
     Route::middleware('employee')->group(function () {
         // Caixa
@@ -151,7 +154,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/cash/report', [CashController::class, 'report']);
         // Pedidos
         Route::get('/orders', [OrderController::class, 'index']);
-        Route::get('/orders/{order}', [OrderController::class, 'show']);
         Route::patch('/orders/{order}/status', [OrderController::class, 'updateStatus']);
         Route::post('/orders/create', [OrderController::class, 'store']);
         Route::post('/orders/manual', [OrderController::class, 'createManualOrder']);

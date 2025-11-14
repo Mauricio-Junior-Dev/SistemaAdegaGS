@@ -395,7 +395,7 @@ export class OrderDetailsDialogComponent {
         return status !== 'pending';
       case 'processing':
         // Em Preparo está concluído quando o pedido está em entrega ou concluído
-        return status === 'delivering' || status === 'completed';
+        return status === 'processing' || status === 'delivering' || status === 'completed';
       case 'delivering':
         // Em Entrega está concluído quando o pedido está concluído
         return status === 'completed';
@@ -414,9 +414,8 @@ export class OrderDetailsDialogComponent {
       case 'pending':
         return status === 'pending';
       case 'processing':
-        // Não há status "processing" no backend, então nunca será ativo
-        // A etapa "Em Preparo" é uma etapa intermediária lógica
-        return false;
+        // Status "processing" significa que o pedido está pago e aguardando preparo
+        return status === 'processing';
       case 'delivering':
         return status === 'delivering';
       case 'completed':

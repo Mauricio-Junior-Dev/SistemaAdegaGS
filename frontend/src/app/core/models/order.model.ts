@@ -1,7 +1,7 @@
 import { User } from './user.model';
 import { Product } from './product.model';
 
-export type OrderStatus = 'pending' | 'pending_pix' | 'delivering' | 'completed' | 'cancelled';
+export type OrderStatus = 'pending' | 'pending_pix' | 'processing' | 'delivering' | 'completed' | 'cancelled';
 
 export interface Order {
     id: number;
@@ -25,7 +25,8 @@ export interface Order {
     updated_at?: string;
     user?: User;
     items?: OrderItem[];
-    payments?: Payment[];
+    payments?: Payment[]; // Plural (para compatibilidade)
+    payment?: Payment[]; // Singular (como o Laravel retorna no JSON)
 }
 
 export interface OrderItem {
@@ -44,7 +45,7 @@ export interface OrderItem {
     combo?: any; // Combo interface
 }
 
-export type PaymentStatus = 'pending' | 'pending_pix' | 'processing' | 'approved' | 'declined' | 'refunded' | 'cancelled';
+export type PaymentStatus = 'pending' | 'pending_pix' | 'processing' | 'approved' | 'completed' | 'declined' | 'failed' | 'refunded' | 'cancelled';
 
 export interface Payment {
     id: number;
