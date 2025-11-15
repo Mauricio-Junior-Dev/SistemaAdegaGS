@@ -32,16 +32,16 @@ import { Order } from '../../../../core/models/order.model';
                 </div>
 
                 <!-- Linha conectora -->
-                <div class="step-connector" [ngClass]="{'completed': isStepCompleted('processing')}"></div>
+                <div class="step-connector" [ngClass]="{'completed': isStepCompleted('preparing')}"></div>
 
                 <!-- Etapa 2: Em Preparo -->
                 <div class="status-step" [ngClass]="{
-                  'completed': isStepCompleted('processing'),
-                  'active': isStepActive('processing')
+                  'completed': isStepCompleted('preparing'),
+                  'active': isStepActive('preparing')
                 }">
                   <div class="step-circle">
-                    <mat-icon *ngIf="isStepCompleted('processing')">check</mat-icon>
-                    <span *ngIf="!isStepCompleted('processing')" class="step-number">2</span>
+                    <mat-icon *ngIf="isStepCompleted('preparing')">check</mat-icon>
+                    <span *ngIf="!isStepCompleted('preparing')" class="step-number">2</span>
                   </div>
                   <span class="step-label">Em Preparo</span>
                 </div>
@@ -393,9 +393,9 @@ export class OrderDetailsDialogComponent {
       case 'pending':
         // Pendente está concluído quando o pedido passou desta etapa
         return status !== 'pending';
-      case 'processing':
+      case 'preparing':
         // Em Preparo está concluído quando o pedido está em entrega ou concluído
-        return status === 'processing' || status === 'delivering' || status === 'completed';
+        return status === 'preparing' || status === 'delivering' || status === 'completed';
       case 'delivering':
         // Em Entrega está concluído quando o pedido está concluído
         return status === 'completed';
@@ -413,9 +413,9 @@ export class OrderDetailsDialogComponent {
     switch (step) {
       case 'pending':
         return status === 'pending';
-      case 'processing':
-        // Status "processing" significa que o pedido está pago e aguardando preparo
-        return status === 'processing';
+      case 'preparing':
+        // Status "processing" ou "preparing" significa que o pedido está em preparo
+        return status === 'processing' || status === 'preparing';
       case 'delivering':
         return status === 'delivering';
       case 'completed':

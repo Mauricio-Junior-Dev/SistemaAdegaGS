@@ -14,8 +14,10 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatPaginatorModule, MatPaginator, PageEvent } from '@angular/material/paginator';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatTabsModule } from '@angular/material/tabs';
 import { FormsModule } from '@angular/forms';
-import { Subject, takeUntil, debounceTime, distinctUntilChanged, Observable, combineLatest, map } from 'rxjs';
+import { Subject, takeUntil, debounceTime, distinctUntilChanged, Observable, combineLatest, map, Subscription } from 'rxjs';
+import { finalize } from 'rxjs/operators';
 
 import { OrderService, Order, OrderStatus, OrderResponse } from '../../services/order.service';
 import { PrintService } from '../../../core/services/print.service';
@@ -44,6 +46,7 @@ import { OrderDetailsDialogComponent } from './dialogs/order-details-dialog.comp
     MatPaginatorModule,
     MatInputModule,
     MatFormFieldModule,
+    MatTabsModule,
     FormsModule
   ]
 })
@@ -51,6 +54,13 @@ export class PedidosComponent implements OnInit, OnDestroy {
   // Observable para pedidos pendentes (atualizado automaticamente pelo OrderPollingService)
   public pedidos$!: Observable<Order[]>;
   
+  pedidos: Order[] = [];
+  pedidosTodos: Order[] = [];
+  pedidosNovos: Order[] = [];
+  pedidosEmPreparo: Order[] = [];
+  pedidosEmEntrega: Order[] = [];
+  pedidosConcluidos: Order[] = [];
+  concluidosLoading = true;
   orders: Order[] = [];
   displayedColumns = ['id', 'created_at', 'customer', 'address', 'items', 'total', 'status', 'actions'];
   loading = true;
@@ -70,6 +80,7 @@ export class PedidosComponent implements OnInit, OnDestroy {
     total: 0,
     pending: 0,
     processing: 0,
+    preparing: 0,
     delivering: 0,
     completed: 0,
     cancelled: 0
@@ -79,6 +90,7 @@ export class PedidosComponent implements OnInit, OnDestroy {
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   private destroy$ = new Subject<void>();
   private searchSubject = new Subject<string>();
+  private pollingSub?: Subscription;
 
   constructor(
     private orderService: OrderService,
@@ -105,36 +117,66 @@ export class PedidosComponent implements OnInit, OnDestroy {
     this.pedidos$ = this.orderPollingService.pendingOrders$;
     
     // Subscrever ao Observable para atualizar a lista local quando houver mudanças
-    this.pedidos$.pipe(
-      takeUntil(this.destroy$)
-    ).subscribe(pendingOrders => {
-      // Atualizar apenas se o filtro estiver em 'processing'
-      if (this.selectedStatus === 'processing') {
-        this.orders = pendingOrders;
-        this.totalItems = pendingOrders.length;
+    // Esta subscrição será sempre ativa e atualizará todas as listas filtradas para o Kanban
+    this.pollingSub = this.orderPollingService.pendingOrders$.subscribe(
+      (pedidosRecebidos: Order[]) => {
+        this.pedidos = pedidosRecebidos;
+        this.pedidosTodos = pedidosRecebidos;
+        this.filtrarPedidosPorStatus();
         this.loading = false;
       }
-    });
+    );
     
-    // Para outros status, usa a busca HTTP tradicional
-    // Para 'processing', o Observable do OrderPollingService já fornece os dados automaticamente
-    if (this.selectedStatus !== 'processing') {
-      this.loadOrders();
-    } else {
-      // Quando for 'processing', o loading será desativado quando o Observable emitir os dados
-      // O OrderPollingService já busca os dados a cada 10 segundos e atualiza o BehaviorSubject
-    }
+    // O loading será desativado quando o Observable emitir os dados
+    // O OrderPollingService já busca os dados a cada 10 segundos e atualiza o BehaviorSubject
     
     this.loadStats();
+    this.loadConcluidos();
   }
 
   ngOnDestroy(): void {
+    if (this.pollingSub) {
+      this.pollingSub.unsubscribe();
+    }
     this.destroy$.next();
     this.destroy$.complete();
   }
 
   // Método removido: A impressão automática agora é feita pelo OrderPollingService
   // que roda globalmente quando o funcionário está logado
+
+  loadConcluidos(): void {
+    this.concluidosLoading = true;
+    // Busca os últimos 50 pedidos concluídos
+    this.orderService.fetchOrders({ status: 'completed', per_page: 50, page: 1 })
+      .pipe(finalize(() => this.concluidosLoading = false))
+      .subscribe({
+        next: (response) => {
+          this.pedidosConcluidos = response.data;
+        },
+        error: (err) => {
+          console.error('Erro ao carregar pedidos concluídos', err);
+          this.snackBar.open('Não foi possível carregar os pedidos concluídos.', 'Fechar', { duration: 3000 });
+        }
+      });
+  }
+
+  filtrarPedidosPorStatus(): void {
+    // Novos pedidos: pending ou processing
+    this.pedidosNovos = this.pedidosTodos.filter(
+      p => p.status === 'pending' || p.status === 'processing'
+    );
+    
+    // Em preparo
+    this.pedidosEmPreparo = this.pedidosTodos.filter(
+      p => p.status === 'preparing'
+    );
+    
+    // Em entrega
+    this.pedidosEmEntrega = this.pedidosTodos.filter(
+      p => p.status === 'delivering'
+    );
+  }
 
   loadOrders(): void {
     this.loading = true;
@@ -167,7 +209,7 @@ export class PedidosComponent implements OnInit, OnDestroy {
 
   loadStats(): void {
     // Carregar estatísticas para cada status
-    const statuses: (OrderStatus | 'all')[] = ['all', 'pending', 'processing', 'delivering', 'completed', 'cancelled'];
+    const statuses: (OrderStatus | 'all')[] = ['all', 'pending', 'processing', 'preparing', 'delivering', 'completed', 'cancelled'];
     let completedRequests = 0;
     
     statuses.forEach(status => {
@@ -197,13 +239,21 @@ export class PedidosComponent implements OnInit, OnDestroy {
     this.selectedStatus = status;
     this.currentPage = 0;
     
-    // Se mudar para 'processing', usar o Observable do OrderPollingService
+    // Se mudar para 'pending' ou 'processing', usar os dados do Observable do OrderPollingService
     // O Observable já atualiza automaticamente através da subscription no ngOnInit
-    // Caso contrário, usar busca HTTP tradicional
-    if (status !== 'processing') {
+    if (status === 'pending' || status === 'processing') {
+      // Filtrar pedidos de acordo com o status selecionado
+      if (status === 'pending') {
+        this.orders = this.pedidos.filter(order => order.status === 'pending');
+      } else if (status === 'processing') {
+        this.orders = this.pedidos.filter(order => order.status === 'processing');
+      }
+      this.totalItems = this.orders.length;
+      this.loading = false;
+    } else {
+      // Para outros status, usar busca HTTP tradicional
       this.loadOrders();
     }
-    // Se for 'processing', a subscription já atualiza a lista automaticamente
     
     // Recarregar estatísticas quando mudar o filtro
     this.loadStats();
@@ -240,6 +290,63 @@ export class PedidosComponent implements OnInit, OnDestroy {
     });
   }
 
+  quickUpdateStatus(order: Order, newStatus: OrderStatus): void {
+    // Atualizar o status localmente imediatamente para feedback visual
+    const oldStatus = order.status;
+    order.status = newStatus;
+
+    // Chamar o serviço para atualizar no backend
+    this.orderService.updateOrderStatus(order.id, newStatus).subscribe({
+      next: (updatedOrder) => {
+        // Atualizar o objeto order com os dados do servidor
+        Object.assign(order, updatedOrder);
+        
+        // Atualizar o pedido na lista pedidosTodos
+        const index = this.pedidosTodos.findIndex(p => p.id === order.id);
+        if (index !== -1) {
+          this.pedidosTodos[index] = updatedOrder;
+        } else {
+          // Se não estava na lista, adicionar (caso tenha voltado para pending/processing)
+          if (updatedOrder.status === 'pending' || updatedOrder.status === 'processing' || 
+              updatedOrder.status === 'preparing' || updatedOrder.status === 'delivering') {
+            this.pedidosTodos.push(updatedOrder);
+          }
+        }
+
+        // Se o status foi alterado para 'completed', adiciona manualmente na lista de concluídos para UI instantânea
+        if (newStatus === 'completed') {
+          // .unshift() coloca o pedido no topo da lista
+          this.pedidosConcluidos.unshift(updatedOrder);
+        }
+
+        this.loadStats();
+        
+        // Re-filtrar as listas para que o pedido "pule" de uma coluna para outra
+        // Esta chamada vai remover o pedido das abas ativas
+        this.filtrarPedidosPorStatus();
+        
+        // Mensagem de sucesso personalizada baseada no novo status
+        const messages: { [key: string]: string } = {
+          'preparing': 'Pedido iniciado para preparo!',
+          'delivering': 'Pedido saiu para entrega!',
+          'completed': 'Pedido marcado como concluído!'
+        };
+        const message = messages[newStatus] || 'Status atualizado com sucesso';
+        this.snackBar.open(message, 'Fechar', { duration: 3000 });
+      },
+      error: (error: Error) => {
+        // Reverter o status local em caso de erro
+        order.status = oldStatus;
+        console.error('Erro ao atualizar status:', error);
+        this.snackBar.open('Erro ao atualizar status', 'Fechar', { duration: 3000 });
+      }
+    });
+  }
+
+  openManualStatusModal(order: Order): void {
+    this.updateStatus(order);
+  }
+
   updateStatus(order: Order): void {
     const dialogRef = this.dialog.open(UpdateOrderStatusDialogComponent, {
       width: '400px',
@@ -250,8 +357,25 @@ export class PedidosComponent implements OnInit, OnDestroy {
       if (newStatus) {
         this.orderService.updateOrderStatus(order.id, newStatus).subscribe({
           next: (updatedOrder) => {
-            // Recarregar a lista e estatísticas para garantir consistência
-            this.loadOrders();
+            // Atualizar o objeto order com os dados do servidor
+            Object.assign(order, updatedOrder);
+
+            // Se o filtro for 'pending' ou 'processing', atualizar a lista local manualmente
+            // pois a subscrição atualizará automaticamente na próxima verificação do OrderPollingService
+            if (this.selectedStatus === 'pending' || this.selectedStatus === 'processing') {
+              // Remover o pedido atualizado da lista se mudou de status
+              this.orders = this.orders.filter(o => o.id !== order.id);
+              // Se o novo status corresponde ao filtro atual, adicionar de volta
+              if (updatedOrder.status === this.selectedStatus) {
+                this.orders.push(updatedOrder);
+                // Ordenar por data de criação (mais recentes primeiro)
+                this.orders.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+              }
+              this.totalItems = this.orders.length;
+            } else {
+              // Para outros status, usar busca HTTP tradicional
+              this.loadOrders();
+            }
             this.loadStats();
             this.snackBar.open('Status atualizado com sucesso', 'Fechar', { duration: 3000 });
           },
@@ -268,29 +392,76 @@ export class PedidosComponent implements OnInit, OnDestroy {
     this.printService.printOrder(order);
   }
 
-  getStatusColor(status: OrderStatus): string {
-    const colors = {
-      pending: '#ff9800',      // Laranja
-      processing: '#9c27b0',   // Roxo
-      delivering: '#2196f3',   // Azul
-      completed: '#4caf50',    // Verde
-      cancelled: '#f44336'     // Vermelho
-    };
-    return colors[status] || '#757575'; // Cinza como fallback
+  getStatusColor(order: Order): string {
+    // Pega o método de pagamento (com segurança)
+    const payment = order.payment || [];
+    const paymentMethod = Array.isArray(payment) 
+      ? payment[0]?.payment_method 
+      : payment?.payment_method;
+
+    switch (order.status) {
+      case 'pending':
+        if (paymentMethod === 'pix') {
+          return '#757575'; // Cinza para "Aguardando PIX"
+        }
+        return '#ff9800'; // Laranja para "Pendente (Preparar)"
+      
+      case 'processing':
+        return '#9c27b0'; // Roxo para "PIX Aprovado"
+      
+      case 'preparing':
+        return '#007bff'; // Azul para "Em Preparo"
+      
+      case 'delivering':
+        return '#2196f3'; // Azul para "Em Entrega"
+      
+      case 'completed':
+        return '#4caf50'; // Verde para "Concluído"
+      
+      case 'cancelled':
+        return '#f44336'; // Vermelho para "Cancelado"
+      
+      default:
+        return '#757575'; // Cinza como fallback
+    }
   }
 
-  getStatusLabel(status: OrderStatus): string {
-    if (!status) {
+  getStatusLabel(order: Order): string {
+    if (!order || !order.status) {
       return 'Status inválido';
     }
-    const labels = {
-      pending: 'Pendente',
-      processing: 'Em Processamento',
-      delivering: 'Em Entrega',
-      completed: 'Concluído',
-      cancelled: 'Cancelado'
-    };
-    return labels[status] || 'Status desconhecido';
+
+    // Pega o método de pagamento (com segurança)
+    const payment = order.payment || [];
+    const paymentMethod = Array.isArray(payment) 
+      ? payment[0]?.payment_method 
+      : payment?.payment_method;
+
+    switch (order.status) {
+      case 'pending':
+        if (paymentMethod === 'pix') {
+          return 'Aguardando PIX'; // PIX ainda não pago
+        }
+        return 'Pendente (Preparar)'; // Dinheiro ou Cartão na Entrega
+
+      case 'processing':
+        return 'PIX Aprovado'; // PIX foi pago
+
+      case 'preparing':
+        return 'Em Preparo';
+
+      case 'delivering':
+        return 'Em Entrega';
+
+      case 'completed':
+        return 'Concluído';
+
+      case 'cancelled':
+        return 'Cancelado';
+
+      default:
+        return order.status;
+    }
   }
 
   // Métodos computados para contagem de pedidos por status

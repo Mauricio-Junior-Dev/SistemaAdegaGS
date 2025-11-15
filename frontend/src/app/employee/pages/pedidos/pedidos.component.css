@@ -381,6 +381,13 @@
 }
 
 /* Estilos dos botões de ação */
+.actions-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .mat-mdc-icon-button {
   margin: 0 4px;
   border-radius: 50%;
@@ -407,6 +414,68 @@
   color: #9e9e9e;
 }
 
+/* Estilos para botões de ação rápida */
+.btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.btn-preparo {
+  background-color: #007bff;
+  color: white;
+}
+
+.btn-preparo:hover {
+  background-color: #0056b3;
+}
+
+.btn-entrega {
+  background-color: #ffc107;
+  color: black;
+}
+
+.btn-entrega:hover {
+  background-color: #e0a800;
+}
+
+.btn-concluido {
+  background-color: #28a745;
+  color: white;
+}
+
+.btn-concluido:hover {
+  background-color: #218838;
+}
+
+.btn-manual {
+  background-color: #6c757d;
+  color: white;
+}
+
+.btn-manual:hover {
+  background-color: #5a6268;
+}
+
 /* Melhorias no loading */
 .loading-container {
   background: white;
@@ -425,4 +494,39 @@
 
 .empty-state mat-icon {
   color: #9e9e9e;
+}
+
+/* Estilos para abas Kanban */
+.kanban-tabs {
+  margin-top: 20px;
+}
+
+.tab-content {
+  padding: 20px 0;
+}
+
+.tab-badge {
+  margin-left: 8px;
+}
+
+/* Estilos para stat-card preparando */
+.stat-card.preparing mat-icon {
+  color: #007bff;
+}
+
+/* Estilos para abas do Material */
+::ng-deep .mat-mdc-tab-group.kanban-tabs .mat-mdc-tab-header {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 8px 8px 0 0;
+}
+
+::ng-deep .mat-mdc-tab-group.kanban-tabs .mat-mdc-tab-label {
+  font-weight: 500;
+  min-width: 150px;
+}
+
+::ng-deep .mat-mdc-tab-group.kanban-tabs .mat-mdc-tab-body-wrapper {
+  padding: 20px;
+  background: white;
+  border-radius: 0 0 8px 8px;
 }

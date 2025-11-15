@@ -65,7 +65,9 @@ export class OrdersListComponent implements OnInit {
   getStatusLabel(status: string): string {
     const statusMap: { [key: string]: string } = {
       'pending': 'Pendente',
-      'processing': 'Em Processamento',
+      'processing': 'PIX Aprovado',
+      'preparing': 'Em Preparo',
+      'delivering': 'Em Entrega',
       'paid': 'Pago',
       'shipped': 'Enviado',
       'delivered': 'Entregue',
@@ -80,6 +82,8 @@ export class OrdersListComponent implements OnInit {
     const classMap: { [key: string]: string } = {
       'pending': 'status-pending',
       'processing': 'status-processing',
+      'preparing': 'status-preparing',
+      'delivering': 'status-delivering',
       'paid': 'status-paid',
       'shipped': 'status-shipped',
       'delivered': 'status-delivered',

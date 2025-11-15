@@ -21,7 +21,26 @@ class OrderController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Order::with(['user', 'items.product', 'payment', 'delivery_address']);
+        $query = Order::with([
+            'user',
+            'items.product',
+            'items.combo',
+            'delivery_address',
+            'payment' => function ($query) {
+                // Garantir que received_amount e change_amount sejam selecionados explicitamente
+                $query->select(
+                    'id',
+                    'order_id',
+                    'payment_method',
+                    'amount',
+                    'status',
+                    'received_amount',
+                    'change_amount',
+                    'created_at',
+                    'updated_at'
+                );
+            }
+        ]);
         $user = $request->user();
 
         // --- CORREÇÃO DE PERMISSÃO ---
@@ -854,7 +873,7 @@ class OrderController extends Controller
     public function updateStatus(Request $request, Order $order)
     {
         $request->validate([
-            'status' => 'required|in:pending,processing,delivering,completed,cancelled'
+            'status' => 'required|in:pending,processing,preparing,delivering,completed,cancelled'
         ]);
 
         $order->status = $request->status;

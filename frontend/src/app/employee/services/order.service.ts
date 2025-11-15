@@ -22,7 +22,7 @@ export interface OrderResponse {
   last_page: number;
 }
 
-export type OrderStatus = 'pending' | 'processing' | 'delivering' | 'completed' | 'cancelled';
+export type OrderStatus = 'pending' | 'processing' | 'preparing' | 'delivering' | 'completed' | 'cancelled';
 export type PaymentMethod = 'dinheiro' | 'cartão de débito' | 'cartão de crédito' | 'pix';
 export type PaymentStatus = 'pending' | 'completed' | 'failed' | 'refunded';
 
@@ -339,6 +339,7 @@ export class OrderService {
     const labels = {
       pending: 'Pendente',
       processing: 'Em Processamento',
+      preparing: 'Preparando',
       delivering: 'Em Entrega',
       completed: 'Concluído',
       cancelled: 'Cancelado'

@@ -15,9 +15,9 @@ import { Order, OrderStatus } from '../../../services/order.service';
     <mat-dialog-content>
       <!-- Status -->
       <div class="status-section">
-        <mat-chip [style.background-color]="data.getStatusColor(data.order.status)"
+        <mat-chip [style.background-color]="data.getStatusColor(data.order)"
                  [style.color]="'white'">
-          {{data.getStatusLabel(data.order.status)}}
+          {{data.getStatusLabel(data.order)}}
         </mat-chip>
       </div>
 
@@ -188,8 +188,8 @@ export class OrderDetailsDialogComponent {
     public dialogRef: MatDialogRef<OrderDetailsDialogComponent>,
     @Inject(MAT_DIALOG_DATA) public data: {
       order: Order;
-      getStatusColor: (status: OrderStatus) => string;
-      getStatusLabel: (status: OrderStatus) => string;
+      getStatusColor: (order: Order) => string;
+      getStatusLabel: (order: Order) => string;
       formatCurrency: (value: number) => string;
       formatDate: (date: string) => string;
       printOrder: (order: Order) => void;

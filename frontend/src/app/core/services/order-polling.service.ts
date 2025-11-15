@@ -1,7 +1,7 @@
 import { Injectable, OnDestroy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { interval, Subscription, Observable, of, BehaviorSubject, forkJoin } from 'rxjs';
-import { switchMap, catchError, takeWhile, startWith, tap } from 'rxjs/operators';
+import { switchMap, catchError, takeWhile, take } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import { OrderService, OrderResponse, Order, Payment } from '../../employee/services/order.service';
 import { PrintService } from './print.service';
@@ -20,12 +20,12 @@ import { ToastrService } from 'ngx-toastr';
 })
 export class OrderPollingService implements OnDestroy {
   private readonly apiUrl = `${environment.apiUrl}/orders`;
+  private readonly PRINTED_IDS_KEY = 'adega_impressao_ids';
   private pollingSubscription?: Subscription;
   private isPollingActive = false;
   
   // Controle de pedidos já impressos
   private printedOrderIds = new Set<number>();
-  private lastPendingOrderIds = new Set<number>();
 
   // BehaviorSubject para manter estado dos pedidos pendentes
   private pendingOrdersSubject = new BehaviorSubject<Order[]>([]);
@@ -40,8 +40,38 @@ export class OrderPollingService implements OnDestroy {
     private authService: AuthService,
     private toastr: ToastrService
   ) {
+    // Carregar a memória de impressão persistida
+    this.loadPrintedIdsFromStorage();
     // Iniciar o listener para mudanças de autenticação
     this.listenToAuthStatus();
+  }
+
+  /**
+   * Carrega os IDs de pedidos já impressos do localStorage
+   */
+  private loadPrintedIdsFromStorage(): void {
+    const storedIds = localStorage.getItem(this.PRINTED_IDS_KEY);
+    if (storedIds) {
+      try {
+        this.printedOrderIds = new Set(JSON.parse(storedIds));
+        console.log(`[Polling] Memória de impressão carregada. ${this.printedOrderIds.size} IDs já impressos.`);
+      } catch (error) {
+        console.error('[Polling] Erro ao carregar memória de impressão:', error);
+        this.printedOrderIds = new Set<number>();
+      }
+    }
+  }
+
+  /**
+   * Salva os IDs de pedidos já impressos no localStorage
+   */
+  private savePrintedIdsToStorage(): void {
+    try {
+      // Converte o Set para um Array para poder salvar como JSON
+      localStorage.setItem(this.PRINTED_IDS_KEY, JSON.stringify(Array.from(this.printedOrderIds)));
+    } catch (error) {
+      console.error('[Polling] Erro ao salvar memória de impressão:', error);
+    }
   }
 
   private listenToAuthStatus(): void {
@@ -75,6 +105,7 @@ export class OrderPollingService implements OnDestroy {
   /**
    * Inicia o polling de novos pedidos
    * Deve ser chamado após o login de um funcionário
+   * Implementa "priming" para ignorar a fila atual e imprimir apenas novos pedidos
    */
   startPolling(): void {
     if (this.isPollingActive) {
@@ -91,28 +122,107 @@ export class OrderPollingService implements OnDestroy {
     if (currentUser.type !== 'employee' && currentUser.type !== 'admin') {
       return;
     }
+    
     this.isPollingActive = true;
-    this.lastPendingOrderIds.clear(); // Reset para detectar todos os pedidos atuais
+    console.log('[Polling] Iniciando... "Priming" da memória de impressão...');
 
-    // Verificar a cada 10 segundos (startWith(0) inicia imediatamente)
-    this.pollingSubscription = interval(10000)
-      .pipe(
-        startWith(0), // Fazer primeira verificação imediatamente
-        takeWhile(() => this.isPollingActive),
-        switchMap(() => {
-          return this.checkForNewPendingOrders();
-        })
-      )
-      .subscribe({
-        next: (newOrders) => {
-          if (newOrders && newOrders.length > 0) {
-            this.printNewOrders(newOrders);
-          }
-        },
-        error: (error) => {
-          console.error('❌ Erro no polling de pedidos:', error);
-        }
-      });
+    // ETAPA 1: "PRIMING" (Busca a fila ATUAL para IGNORAR)
+    // Busca todos os status ativos do Kanban em paralelo
+    const pendingRequest = this.orderService.fetchOrders({
+      page: 1,
+      per_page: 200,
+      status: 'pending'
+    }).pipe(
+      catchError((error) => {
+        console.error('Erro ao buscar pedidos pending no priming:', error);
+        return of({ data: [], total: 0, current_page: 1, per_page: 200, last_page: 1 } as OrderResponse);
+      })
+    );
+
+    const processingRequest = this.orderService.fetchOrders({
+      page: 1,
+      per_page: 200,
+      status: 'processing'
+    }).pipe(
+      catchError((error) => {
+        console.error('Erro ao buscar pedidos processing no priming:', error);
+        return of({ data: [], total: 0, current_page: 1, per_page: 200, last_page: 1 } as OrderResponse);
+      })
+    );
+
+    const preparingRequest = this.orderService.fetchOrders({
+      page: 1,
+      per_page: 200,
+      status: 'preparing'
+    }).pipe(
+      catchError((error) => {
+        console.error('Erro ao buscar pedidos preparing no priming:', error);
+        return of({ data: [], total: 0, current_page: 1, per_page: 200, last_page: 1 } as OrderResponse);
+      })
+    );
+
+    const deliveringRequest = this.orderService.fetchOrders({
+      page: 1,
+      per_page: 200,
+      status: 'delivering'
+    }).pipe(
+      catchError((error) => {
+        console.error('Erro ao buscar pedidos delivering no priming:', error);
+        return of({ data: [], total: 0, current_page: 1, per_page: 200, last_page: 1 } as OrderResponse);
+      })
+    );
+
+    forkJoin({
+      pending: pendingRequest,
+      processing: processingRequest,
+      preparing: preparingRequest,
+      delivering: deliveringRequest
+    }).pipe(
+      take(1) // Só precisamos da primeira resposta
+    ).subscribe({
+      next: (response) => {
+        // Combinar todos os pedidos
+        const allOrders = [...response.pending.data, ...response.processing.data, 
+                          ...response.preparing.data, ...response.delivering.data];
+        
+        // Remover duplicatas
+        const uniqueOrders = Array.from(
+          new Map(allOrders.map(order => [order.id, order])).values()
+        );
+        
+        // Adiciona TODOS os IDs atuais à memória, SEM imprimir
+        uniqueOrders.forEach(order => {
+          // Apenas adiciona ao Set, não chama printNewOrders()
+          this.printedOrderIds.add(order.id);
+        });
+        
+        this.savePrintedIdsToStorage(); // Salva a memória "preparada"
+        console.log(`[Polling] 'Priming' concluído. ${uniqueOrders.length} pedidos existentes foram adicionados à memória para ignorar.`);
+
+        // ETAPA 2: INICIAR O POLLING REAL (só agora)
+        // (Inicia o loop 10s APÓS o priming)
+        this.pollingSubscription = interval(10000) // Sem startWith(0)
+          .pipe(
+            takeWhile(() => this.isPollingActive),
+            switchMap(() => this.checkForNewPendingOrders()) // Agora sim, busca por NOVOS
+          )
+          .subscribe({
+            next: (newOrders) => {
+              if (newOrders && newOrders.length > 0) {
+                console.log(`[Polling] ${newOrders.length} novos pedidos detectados para impressão.`);
+                this.printNewOrders(newOrders);
+              }
+            },
+            error: (error) => {
+              console.error('❌ Erro no polling de pedidos:', error);
+            }
+          });
+      },
+      error: (err) => {
+        console.error('❌ Erro ao "primar" o poller:', err);
+        this.isPollingActive = false; // Para o serviço se o priming falhar
+      }
+    });
   }
 
   /**
@@ -130,17 +240,16 @@ export class OrderPollingService implements OnDestroy {
       this.pollingSubscription.unsubscribe();
       this.pollingSubscription = undefined;
     }
-
-    // Limpar estado de polling (impressedOrderIds é limpo separadamente no logout)
-    this.lastPendingOrderIds.clear();
   }
 
   /**
    * Limpa o cache de pedidos impressos
    * Deve ser chamado no logout
+   * NOTA: O localStorage NUNCA deve ser limpo aqui - a memória é permanente
    */
   clearPrintedCache(): void {
     this.printedOrderIds.clear();
+    // O localStorage permanece intacto para preservar a memória de impressão
   }
 
   /**
@@ -151,7 +260,7 @@ export class OrderPollingService implements OnDestroy {
       return of([]);
     }
 
-    // Buscar pedidos com status 'pending' e 'processing' em paralelo
+    // Buscar pedidos com status ativos do Kanban ('pending', 'processing', 'preparing', 'delivering') em paralelo
     const pendingRequest = this.orderService.fetchOrders({
       page: 1,
       per_page: 50,
@@ -174,14 +283,38 @@ export class OrderPollingService implements OnDestroy {
       })
     );
 
-    // Combinar os resultados das duas requisições em paralelo
+    const preparingRequest = this.orderService.fetchOrders({
+      page: 1,
+      per_page: 50,
+      status: 'preparing'
+    }).pipe(
+      catchError((error) => {
+        console.error('Erro ao buscar pedidos preparing:', error);
+        return of({ data: [], total: 0, current_page: 1, per_page: 50, last_page: 1 } as OrderResponse);
+      })
+    );
+
+    const deliveringRequest = this.orderService.fetchOrders({
+      page: 1,
+      per_page: 50,
+      status: 'delivering'
+    }).pipe(
+      catchError((error) => {
+        console.error('Erro ao buscar pedidos delivering:', error);
+        return of({ data: [], total: 0, current_page: 1, per_page: 50, last_page: 1 } as OrderResponse);
+      })
+    );
+
+    // Combinar os resultados das quatro requisições em paralelo
     return forkJoin({
       pending: pendingRequest,
-      processing: processingRequest
+      processing: processingRequest,
+      preparing: preparingRequest,
+      delivering: deliveringRequest
     }).pipe(
-      switchMap(({ pending, processing }) => {
-        // Combinar todos os pedidos
-        const allOrders = [...pending.data, ...processing.data];
+      switchMap(({ pending, processing, preparing, delivering }) => {
+        // Combinar todos os pedidos de todos os status ativos do Kanban
+        const allOrders = [...pending.data, ...processing.data, ...preparing.data, ...delivering.data];
         
         // Remover duplicatas por ID (caso algum pedido apareça em ambas)
         const uniqueOrders = Array.from(
@@ -191,17 +324,8 @@ export class OrderPollingService implements OnDestroy {
         // Sempre atualizar o BehaviorSubject com TODOS os pedidos pendentes
         this.pendingOrdersSubject.next(uniqueOrders);
         
-        // Se for a primeira vez, apenas armazenar os IDs
-        if (this.lastPendingOrderIds.size === 0) {
-          uniqueOrders.forEach(order => {
-            this.lastPendingOrderIds.add(order.id);
-          });
-          return of([]);
-        }
-        
-        // Encontrar novos pedidos que ainda não foram impressos
+        // Encontrar pedidos que ainda não foram impressos
         const newPendingOrders = uniqueOrders.filter(order => {
-          const isNew = !this.lastPendingOrderIds.has(order.id);
           const notPrinted = !this.printedOrderIds.has(order.id);
           
           // Extrair método de pagamento
@@ -218,12 +342,7 @@ export class OrderPollingService implements OnDestroy {
           const isOnDelivery = order.status === 'pending' && 
                               (paymentMethod === 'dinheiro' || paymentMethod === 'cartão de débito');
           
-          return isNew && notPrinted && (isPaidPix || isOnDelivery);
-        });
-        
-        // Atualizar lista de IDs conhecidos
-        uniqueOrders.forEach(order => {
-          this.lastPendingOrderIds.add(order.id);
+          return notPrinted && (isPaidPix || isOnDelivery);
         });
         
         return of(newPendingOrders);
@@ -259,6 +378,8 @@ export class OrderPollingService implements OnDestroy {
       
       // Marcar como impresso IMEDIATAMENTE para evitar duplicação
       this.printedOrderIds.add(order.id);
+      // SALVAR A MEMÓRIA PERMANENTE
+      this.savePrintedIdsToStorage();
       
       // Adicionar pequeno delay entre cada impressão para evitar sobrecarga
       setTimeout(() => {
