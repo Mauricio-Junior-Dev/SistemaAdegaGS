@@ -51,10 +51,12 @@ export interface Payment {
     id: number;
     order_id: number;
     transaction_id?: string;
-    payment_method: 'credit_card' | 'debit_card' | 'pix' | 'cash' | 'other';
+    payment_method: 'credit_card' | 'debit_card' | 'pix' | 'cash' | 'other' | 'dinheiro' | 'cartão de débito' | 'cartão de crédito';
     status: PaymentStatus;
     amount: number;
     payment_details?: any;
+    qr_code?: string;
+    expires_at?: string;
 }
 
 export interface PixPaymentResponse {

@@ -59,6 +59,9 @@ public function createPixPayment(Request $request, Order $order)
 
     // --- FIM DAS CORREÇÕES ---
 
+    // Definir expiração de 15 minutos
+    $expiresAt = now()->addMinutes(15);
+
     try {
         $paymentRequest = [
             // 'id' => '1234567890', // <-- REMOVIDO! (Erro 3)
@@ -68,6 +71,8 @@ public function createPixPayment(Request $request, Order $order)
             'payment_method_id' => 'pix',
             'external_reference' => (string) $order->id,
             'notification_url' => 'https://jordy-sluglike-corruptively.ngrok-free.dev/api/webhooks/mercadopago', // Mantenha seu ngrok
+            // Adiciona milissegundos (.v) e timezone (P) para satisfazer o validador estrito do MP
+            'date_of_expiration' => $expiresAt->format('Y-m-d\TH:i:s.vP'),
             
             // --- PAYER CORRIGIDO ---
             'payer' => [
@@ -85,11 +90,28 @@ public function createPixPayment(Request $request, Order $order)
         // Passando os $requestOptions como segundo argumento
         $payment = $this->paymentClient->create($paymentRequest, $requestOptions);
 
-        // Seu código para atualizar o banco (Já estava certo)
-        $order->payment()->update([
-            'transaction_id' => $payment->id,
-            'status' => 'pending_pix',
-        ]);
+        // Atualizar o banco com transaction_id, status, qr_code e expires_at
+        $qrCode = $payment->point_of_interaction->transaction_data->qr_code ?? null;
+        
+        // Buscar ou criar o pagamento do pedido
+        $orderPayment = $order->payment()->latest()->first();
+        if ($orderPayment) {
+            $orderPayment->update([
+                'transaction_id' => $payment->id,
+                'status' => 'pending_pix',
+                'qr_code' => $qrCode,
+                'expires_at' => $expiresAt,
+            ]);
+        } else {
+            $order->payment()->create([
+                'amount' => $order->total,
+                'payment_method' => 'pix',
+                'status' => 'pending_pix',
+                'transaction_id' => $payment->id,
+                'qr_code' => $qrCode,
+                'expires_at' => $expiresAt,
+            ]);
+        }
 
         return response()->json([
             'payment_id' => $payment->id ?? null,

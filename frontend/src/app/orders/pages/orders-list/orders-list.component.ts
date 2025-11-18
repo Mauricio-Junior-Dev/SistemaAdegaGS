@@ -1,14 +1,15 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
-import { MatDialog } from '@angular/material/dialog';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { OrderService } from '../../../core/services/order.service';
 import { Order } from '../../../core/models/order.model';
 import { OrderDetailsDialogComponent } from './dialogs/order-details-dialog.component';
+import { PixPaymentDialogComponent } from './dialogs/pix-payment-dialog.component';
 import { OrderStatusTrackerComponent } from '../../../shared/components/order-status-tracker/order-status-tracker.component';
 import { environment } from '../../../../environments/environment';
 
@@ -24,22 +25,32 @@ import { environment } from '../../../../environments/environment';
     MatIconModule,
     MatChipsModule,
     MatSnackBarModule,
+    MatDialogModule,
     OrderStatusTrackerComponent
   ]
 })
-export class OrdersListComponent implements OnInit {
+export class OrdersListComponent implements OnInit, OnDestroy {
   orders: Order[] = [];
   loading = true;
   error: string | null = null;
+  private countdownInterval?: any;
 
   constructor(
     private orderService: OrderService,
     private dialog: MatDialog,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
     this.loadOrders();
+    this.startCountdown();
+  }
+
+  ngOnDestroy(): void {
+    if (this.countdownInterval) {
+      clearInterval(this.countdownInterval);
+    }
   }
 
   loadOrders(): void {
@@ -53,12 +64,97 @@ export class OrdersListComponent implements OnInit {
         console.log('OrdersListComponent: Orders received:', orders);
         this.orders = orders;
         this.loading = false;
+        this.startCountdown();
       },
       error: (error) => {
         console.error('OrdersListComponent: Error loading orders:', error);
         this.error = error.error?.message || 'Erro ao carregar pedidos';
         this.loading = false;
       }
+    });
+  }
+
+  startCountdown(): void {
+    // Limpar intervalo anterior se existir
+    if (this.countdownInterval) {
+      clearInterval(this.countdownInterval);
+    }
+
+    // Atualizar contador a cada segundo
+    this.countdownInterval = setInterval(() => {
+      // Forçar detecção de mudanças para atualizar a UI
+      this.cdr.detectChanges();
+    }, 1000);
+  }
+
+  getTimeRemaining(expiresAt: string | undefined): string {
+    if (!expiresAt) return '';
+    
+    const now = new Date().getTime();
+    const expiration = new Date(expiresAt).getTime();
+    const diff = expiration - now;
+
+    if (diff <= 0) {
+      return 'Expirado';
+    }
+
+    const minutes = Math.floor(diff / 60000);
+    const seconds = Math.floor((diff % 60000) / 1000);
+
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  }
+
+  isPixExpired(expiresAt: string | undefined): boolean {
+    if (!expiresAt) return false;
+    const now = new Date().getTime();
+    const expiration = new Date(expiresAt).getTime();
+    return expiration <= now;
+  }
+
+  getPayment(order: Order): any {
+    if (order.payment) {
+      if (Array.isArray(order.payment) && order.payment.length > 0) {
+        return order.payment[0];
+      } else if (!Array.isArray(order.payment)) {
+        return order.payment;
+      }
+    }
+    if (order.payments && order.payments.length > 0) {
+      return order.payments[0];
+    }
+    return null;
+  }
+
+  isPixPending(order: Order): boolean {
+    const payment = this.getPayment(order);
+    if (!payment) return false;
+    
+    const paymentMethod = payment.payment_method?.toLowerCase();
+    const isPix = paymentMethod === 'pix';
+    const isPending = order.status === 'pending' || order.status === 'pending_pix';
+    const notExpired = !this.isPixExpired(payment.expires_at);
+    
+    return isPending && isPix && notExpired;
+  }
+
+  openPixModal(order: Order): void {
+    const payment = this.getPayment(order);
+    if (!payment || !payment.qr_code) {
+      this.snackBar.open('QR Code não disponível para este pedido', 'Fechar', {
+        duration: 3000,
+        horizontalPosition: 'center',
+        verticalPosition: 'top'
+      });
+      return;
+    }
+
+    this.dialog.open(PixPaymentDialogComponent, {
+      data: {
+        qrCode: payment.qr_code,
+        expiresAt: payment.expires_at
+      },
+      width: '500px',
+      maxHeight: '90vh'
     });
   }
 

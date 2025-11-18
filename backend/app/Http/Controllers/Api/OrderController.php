@@ -36,6 +36,9 @@ class OrderController extends Controller
                     'status',
                     'received_amount',
                     'change_amount',
+                    'transaction_id',
+                    'qr_code',
+                    'expires_at',
                     'created_at',
                     'updated_at'
                 );
@@ -77,6 +80,9 @@ class OrderController extends Controller
                     'status',
                     'received_amount',
                     'change_amount',
+                    'transaction_id',
+                    'qr_code',
+                    'expires_at',
                     'created_at',
                     'updated_at'
                 );
@@ -685,6 +691,9 @@ class OrderController extends Controller
                     'status',
                     'received_amount',
                     'change_amount',
+                    'transaction_id',
+                    'qr_code',
+                    'expires_at',
                     'created_at',
                     'updated_at'
                 );
@@ -971,6 +980,9 @@ class OrderController extends Controller
                     'status',
                     'received_amount',
                     'change_amount',
+                    'transaction_id',
+                    'qr_code',
+                    'expires_at',
                     'created_at',
                     'updated_at'
                 );

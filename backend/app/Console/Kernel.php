@@ -13,6 +13,9 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule): void
     {
         // $schedule->command('inspire')->hourly();
+        
+        // Cancelar pedidos PIX expirados a cada minuto
+        $schedule->command('pix:cancel-expired')->everyMinute();
     }
 
     /**

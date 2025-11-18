@@ -79,6 +79,28 @@
           </div>
         </div>
 
+        <!-- PIX Payment Section -->
+        <div class="pix-payment-section" *ngIf="isPixPending(order) || (order.status === 'pending' && getPayment(order)?.payment_method?.toLowerCase() === 'pix')">
+          <div class="pix-countdown" [class.expired]="isPixExpired(getPayment(order)?.expires_at)">
+            <mat-icon>schedule</mat-icon>
+            <span *ngIf="!isPixExpired(getPayment(order)?.expires_at)">
+              Expira em: <strong>{{ getTimeRemaining(getPayment(order)?.expires_at) }}</strong>
+            </span>
+            <span *ngIf="isPixExpired(getPayment(order)?.expires_at)" class="expired-text">
+              Expirado
+            </span>
+          </div>
+          <button 
+            mat-raised-button 
+            color="primary" 
+            *ngIf="!isPixExpired(getPayment(order)?.expires_at)"
+            (click)="openPixModal(order)"
+            class="pix-pay-button">
+            <mat-icon>qr_code</mat-icon>
+            Pagar Agora
+          </button>
+        </div>
+
         <div class="order-actions">
           <button mat-raised-button 
                   color="success" 

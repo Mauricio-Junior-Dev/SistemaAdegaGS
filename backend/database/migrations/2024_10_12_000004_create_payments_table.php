@@ -15,8 +15,10 @@ return new class extends Migration
             $table->decimal('received_amount', 10, 2)->nullable();
             $table->decimal('change_amount', 10, 2)->nullable();
             $table->enum('payment_method', ['dinheiro', 'cartão de débito', 'cartão de crédito', 'pix']);
-            $table->enum('status', ['pending', 'pending_pix', 'completed', 'failed', 'refunded'])->default('pending');
+            $table->enum('status', ['pending', 'pending_pix', 'completed', 'failed', 'refunded', 'cancelled'])->default('pending');
             $table->string('transaction_id')->nullable();
+            $table->text('qr_code')->nullable();
+            $table->dateTime('expires_at')->nullable();
             $table->timestamps();
         });
     }
