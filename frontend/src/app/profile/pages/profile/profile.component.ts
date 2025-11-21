@@ -8,6 +8,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatIconModule } from '@angular/material/icon';
 import { AuthService } from '../../../core/services/auth.service';
 import { User } from '../../../core/models/auth.model';
+import { EnderecosComponent } from '../../../user/pages/enderecos/enderecos.component';
 
 @Component({
   selector: 'app-profile',
@@ -21,7 +22,8 @@ import { User } from '../../../core/models/auth.model';
     MatButtonModule,
     MatFormFieldModule,
     MatInputModule,
-    MatIconModule
+    MatIconModule,
+    EnderecosComponent
   ]
 })
 export class ProfileComponent implements OnInit {
@@ -30,6 +32,7 @@ export class ProfileComponent implements OnInit {
   success = false;
   error: string | null = null;
   user: User | null = null;
+  activeTab: 'personal' | 'addresses' = 'personal';
 
   constructor(
     private fb: FormBuilder,
@@ -56,6 +59,10 @@ export class ProfileComponent implements OnInit {
         });
       }
     });
+  }
+
+  switchTab(tab: 'personal' | 'addresses'): void {
+    this.activeTab = tab;
   }
 
   onSubmit(): void {

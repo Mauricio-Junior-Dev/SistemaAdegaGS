@@ -65,45 +65,39 @@ import { CepService, CepFormatted } from '../../../core/services/cep.service';
 
           <!-- Addresses List -->
           <div *ngIf="!loading && addresses.length > 0" class="addresses-section">
-            <div class="section-header">
-              <h2>Endereços Cadastrados</h2>
-              <button mat-raised-button color="primary" (click)="openAddressDialog()">
-                <mat-icon>add</mat-icon>
-                Novo Endereço
-              </button>
-            </div>
+            <!-- Botão Adicionar -->
+            <button class="btn btn-primary add-address-btn" (click)="openAddressDialog()">
+              <mat-icon>add</mat-icon>
+              Adicionar Novo Endereço
+            </button>
 
-            <div class="addresses-grid">
-              <div *ngFor="let address of addresses" class="address-card" [class.default]="address.is_default">
-                <div class="card-header">
-                  <div class="address-info">
-                    <h3>{{address.name || 'Endereço'}}</h3>
-                    <mat-chip *ngIf="address.is_default" color="primary" class="default-chip">
-                      <mat-icon>star</mat-icon>
-                      Padrão
-                    </mat-chip>
-                  </div>
-                  <div class="card-actions">
-                    <button mat-icon-button (click)="editAddress(address)" matTooltip="Editar">
-                      <mat-icon>edit</mat-icon>
-                    </button>
-                    <button mat-icon-button (click)="deleteAddress(address)" matTooltip="Excluir" color="warn">
-                      <mat-icon>delete</mat-icon>
-                    </button>
+            <!-- Grid de Endereços -->
+            <div class="address-grid">
+              <div *ngFor="let address of addresses" class="address-card" [class.is-default]="address.is_default">
+                <div class="address-header">
+                  <div class="address-title-section">
+                    <span class="street-text">{{address.street}}, {{address.number}}</span>
+                    <span *ngIf="address.is_default" class="badge-default">Padrão</span>
                   </div>
                 </div>
 
                 <div class="address-details">
-                  <p><strong>Endereço:</strong> {{address.street}}, {{address.number}}</p>
-                  <p *ngIf="address.complement"><strong>Complemento:</strong> {{address.complement}}</p>
-                  <p><strong>Bairro:</strong> {{address.neighborhood}}</p>
-                  <p><strong>Cidade:</strong> {{address.city}}/{{address.state}}</p>
-                  <p><strong>CEP:</strong> {{address.zipcode}}</p>
-                  <p *ngIf="address.notes"><strong>Observações:</strong> {{address.notes}}</p>
+                  <p *ngIf="address.complement" class="details-text">{{address.complement}}</p>
+                  <p class="details-text">{{address.neighborhood}}, {{address.city}}/{{address.state}}</p>
+                  <p class="details-text">CEP: {{address.zipcode}}</p>
+                  <p *ngIf="address.notes" class="details-text">{{address.notes}}</p>
                 </div>
 
-                <div class="card-actions" *ngIf="!address.is_default">
-                  <button mat-button color="primary" (click)="setDefaultAddress(address)">
+                <div class="actions">
+                  <button mat-button class="action-btn edit-btn" (click)="editAddress(address)">
+                    <mat-icon>edit</mat-icon>
+                    Editar
+                  </button>
+                  <button mat-button class="action-btn delete-btn" (click)="deleteAddress(address)">
+                    <mat-icon>delete</mat-icon>
+                    Excluir
+                  </button>
+                  <button *ngIf="!address.is_default" mat-button class="action-btn default-btn" (click)="setDefaultAddress(address)">
                     <mat-icon>star</mat-icon>
                     Definir como Padrão
                   </button>

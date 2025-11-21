@@ -1,6 +1,8 @@
 import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
+import { MatIconModule } from '@angular/material/icon';
+import { MatButtonModule } from '@angular/material/button';
 import { Product } from '../../../core/models/product.model';
 import { environment } from '../../../../environments/environment';
 
@@ -9,7 +11,7 @@ import { environment } from '../../../../environments/environment';
   templateUrl: './product-card.component.html',
   styleUrls: ['./product-card.component.css'],
   standalone: true,
-  imports: [CommonModule, RouterModule]
+  imports: [CommonModule, RouterModule, MatIconModule, MatButtonModule]
 })
 export class ProductCardComponent {
   @Input() product!: Product;
@@ -68,9 +70,9 @@ export class ProductCardComponent {
     return (product as any).original_price || product.price;
   }
 
-  getDiscountPercentage(product: Product): number {
-    const originalPrice = (product as any).original_price;
-    if (!originalPrice || originalPrice <= product.price) return 0;
-    return Math.round(((originalPrice - product.price) / originalPrice) * 100);
+  getDiscountPercentage(): number {
+    const originalPrice = (this.product as any).original_price;
+    if (!originalPrice || originalPrice <= this.product.price) return 0;
+    return Math.round(((originalPrice - this.product.price) / originalPrice) * 100);
   }
 }

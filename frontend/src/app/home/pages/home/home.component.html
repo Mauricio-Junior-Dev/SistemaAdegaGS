@@ -94,34 +94,11 @@
 
       <!-- Products Grid (Real Products) -->
       <div *ngIf="!isLoadingProducts && !loading.featured && !error.filtered && !error.featured" class="products-grid">
-        <div *ngFor="let product of filteredProducts; trackBy: trackByProductId" 
-             class="product-card">
-          <!-- Nome do Produto -->
-          <h3 class="product-name">{{ product.name }}</h3>
-          
-          <!-- Imagem do Produto -->
-          <div class="product-image-container">
-            <img [src]="getProductImage(product)" [alt]="product.name" class="product-image">
-          </div>
-
-          <!-- Preços -->
-          <div class="price-container">
-            <div *ngIf="product.original_price && product.original_price > product.price" class="price-original">
-              R$ {{ product.original_price | number:'1.2-2' }}
-            </div>
-            <div class="price-current">
-              R$ {{ product.price | number:'1.2-2' }}
-            </div>
-          </div>
-
-          <!-- Botão Adicionar ao Carrinho -->
-          <button (click)="addToCart(product)" class="add-to-cart-btn">
-            <svg class="cart-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-            <span>Adicionar</span>
-          </button>
-        </div>
+        <app-product-card 
+          *ngFor="let product of filteredProducts; trackBy: trackByProductId"
+          [product]="product"
+          (addToCart)="addToCart($event)">
+        </app-product-card>
       </div>
 
       <!-- Empty State -->
@@ -181,34 +158,11 @@
 
       <!-- Products Grid -->
       <div *ngIf="!loading.popular && !error.popular" class="products-grid">
-        <div *ngFor="let product of popularProducts; trackBy: trackByProductId" 
-             class="product-card">
-          <!-- Nome do Produto -->
-          <h3 class="product-name">{{ product.name }}</h3>
-          
-          <!-- Imagem do Produto -->
-          <div class="product-image-container">
-            <img [src]="getProductImage(product)" [alt]="product.name" class="product-image">
-          </div>
-
-          <!-- Preços -->
-          <div class="price-container">
-            <div *ngIf="product.original_price && product.original_price > product.price" class="price-original">
-              R$ {{ product.original_price | number:'1.2-2' }}
-            </div>
-            <div class="price-current">
-              R$ {{ product.price | number:'1.2-2' }}
-            </div>
-          </div>
-
-          <!-- Botão Adicionar ao Carrinho -->
-          <button (click)="addToCart(product)" class="add-to-cart-btn">
-            <svg class="cart-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-            <span>Adicionar</span>
-          </button>
-        </div>
+        <app-product-card 
+          *ngFor="let product of popularProducts; trackBy: trackByProductId"
+          [product]="product"
+          (addToCart)="addToCart($event)">
+        </app-product-card>
       </div>
 
       <!-- Empty State -->

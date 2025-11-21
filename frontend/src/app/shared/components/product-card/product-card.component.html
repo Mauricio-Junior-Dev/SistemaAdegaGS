@@ -1,35 +1,37 @@
 <div class="product-card">
-  <!-- Nome do Produto -->
-  <h3 class="product-name">{{ product.name }}</h3>
-  
-  <!-- Imagem do Produto -->
-  <div class="product-image-container">
-    <img [src]="getImageUrl(product)"
-         [alt]="product.name"
-         class="product-image">
+  <!-- Tag de Desconto -->
+  <div class="discount-tag" *ngIf="product.original_price && product.original_price > product.price">
+    {{ getDiscountPercentage() | number:'1.0-0' }}% OFF
   </div>
 
-  <!-- Preços -->
-  <div class="price-container">
-    <div *ngIf="product.original_price && product.original_price > product.price" class="price-original">
-      R$ {{ product.original_price | number:'1.2-2' }}
+  <!-- Conteúdo do Card (Imagem e Título) -->
+  <div class="card-content">
+    <!-- Imagem do Produto -->
+    <div class="card-image-container">
+      <img [src]="getImageUrl(product)"
+           [alt]="product.name"
+           class="card-img">
     </div>
-    <div class="price-current">
-      R$ {{ product.price | number:'1.2-2' }}
+
+    <!-- Título do Produto -->
+    <h3 class="product-title" [title]="product.name">{{ product.name }}</h3>
+  </div>
+
+  <!-- Footer com Preços e Botão -->
+  <div class="card-footer">
+    <div class="price-block">
+      <span class="old-price" *ngIf="product.original_price && product.original_price > product.price">
+        {{ product.original_price | currency:'BRL' }}
+      </span>
+      <span class="current-price">
+        {{ product.price | currency:'BRL' }}
+      </span>
     </div>
+    <button mat-icon-button 
+            class="btn-quick-add" 
+            (click)="onAddToCart($event)"
+            aria-label="Adicionar ao carrinho">
+      <mat-icon>add_shopping_cart</mat-icon>
+    </button>
   </div>
-
-  <!-- Mensagem de Estoque Baixo -->
-  <div *ngIf="hasLowStock(product)" class="low-stock-message">
-    {{ getStockMessage(product) }}
-  </div>
-
-  <!-- Botão Adicionar ao Carrinho -->
-  <button (click)="onAddToCart($event)"
-          class="add-to-cart-btn">
-    <svg class="cart-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-    </svg>
-    <span>Adicionar</span>
-  </button>
 </div>

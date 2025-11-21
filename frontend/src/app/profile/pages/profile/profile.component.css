@@ -4,56 +4,40 @@
   background-color: #f8f9fa;
 }
 
-/* Cards de Navegação */
-.profile-nav-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 1.5rem;
-  margin-bottom: 2rem;
-}
-
-.nav-card {
+/* Menu de Navegação (Abas) */
+.profile-tabs {
   display: flex;
-  align-items: center;
   gap: 1rem;
-  padding: 1.5rem;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  text-decoration: none;
-  color: inherit;
-  transition: transform 0.2s, box-shadow 0.2s;
-  border: 2px solid transparent;
+  margin-bottom: 2rem;
+  border-bottom: 2px solid #eee;
+  padding-bottom: 0;
 }
 
-.nav-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.nav-card.active {
-  border-color: var(--primary);
-  background-color: #fffef0;
-}
-
-.nav-card mat-icon {
-  font-size: 40px;
-  width: 40px;
-  height: 40px;
-  color: var(--primary);
-}
-
-.nav-card-content h3 {
-  margin: 0 0 0.25rem 0;
-  font-size: 1.1rem;
+.tab-button {
+  padding: 12px 24px;
+  border-radius: 8px 8px 0 0;
+  background: transparent;
+  color: #666;
   font-weight: 600;
+  cursor: pointer;
+  border: none;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s;
+  font-size: 16px;
+  position: relative;
+  bottom: -2px;
+}
+
+.tab-button:hover {
+  background: #f5f5f5;
   color: #1A1A1A;
 }
 
-.nav-card-content p {
-  margin: 0;
-  font-size: 0.875rem;
-  color: #666;
+.tab-button.active {
+  background: white;
+  color: #1A1A1A;
+  border-bottom-color: var(--primary);
+  font-weight: 700;
 }
 
 .container {
@@ -83,6 +67,32 @@
   border-radius: 8px;
   padding: 2rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Ajustes para o componente de endereços quando usado dentro do perfil */
+.profile-content app-enderecos {
+  display: block;
+}
+
+.profile-content app-enderecos ::ng-deep .enderecos-page {
+  padding: 0;
+  min-height: auto;
+  background-color: transparent;
+}
+
+.profile-content app-enderecos ::ng-deep .container {
+  max-width: 100%;
+  padding: 0;
+}
+
+.profile-content app-enderecos ::ng-deep .enderecos-header {
+  display: none;
+}
+
+.profile-content app-enderecos ::ng-deep .enderecos-content {
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
 }
 
 .form-section {
@@ -153,9 +163,17 @@ mat-form-field {
 
 /* Responsividade */
 @media (max-width: 768px) {
-  .profile-nav-cards {
-    grid-template-columns: 1fr;
-    gap: 1rem;
+  .profile-tabs {
+    gap: 0.5rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tab-button {
+    padding: 10px 16px;
+    font-size: 14px;
+    white-space: nowrap;
+    flex-shrink: 0;
   }
 
   .profile-content {

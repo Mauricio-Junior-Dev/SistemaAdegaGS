@@ -10,6 +10,7 @@ import { Product, Category } from '../../../core/models/product.model';
 import { environment } from '../../../../environments/environment';
 import { Subscription } from 'rxjs';
 import { map } from 'rxjs/operators';
+import { ToastrService } from 'ngx-toastr';
 
 @Component({
   selector: 'app-product-list-page',
@@ -43,7 +44,8 @@ export class ProductListPageComponent implements OnInit, OnDestroy {
     private productService: ProductService,
     private cartService: CartService,
     private route: ActivatedRoute,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private toastr: ToastrService
   ) {}
 
   getCategoryImageUrl(category: Category): string {
@@ -172,7 +174,24 @@ export class ProductListPageComponent implements OnInit, OnDestroy {
   }
 
   addToCart(product: Product): void {
+    const currentQuantity = this.getQuantity(product);
     this.cartService.addItem(product);
+    
+    // Mostrar notificação apenas quando a quantidade for de 0 para 1 (primeira adição)
+    if (currentQuantity === 0) {
+      const productName = product.name;
+      const isFeminine = productName.toLowerCase().endsWith('a') || 
+                         productName.toLowerCase().endsWith('ão') ||
+                         productName.toLowerCase().endsWith('ade');
+      const message = isFeminine ? `${productName} adicionada!` : `${productName} adicionado!`;
+      
+      this.toastr.success(message, '', {
+        timeOut: 1500,
+        positionClass: 'toast-bottom-center',
+        progressBar: false
+      });
+    }
+    
     // Não abrir o carrinho automaticamente - o usuário decide quando ver o carrinho
   }
 
@@ -190,6 +209,22 @@ export class ProductListPageComponent implements OnInit, OnDestroy {
     }
     
     this.cartService.addItem(product);
+    
+    // Mostrar notificação apenas quando a quantidade for de 0 para 1 (primeira adição)
+    if (currentQuantity === 0) {
+      const productName = product.name;
+      const isFeminine = productName.toLowerCase().endsWith('a') || 
+                         productName.toLowerCase().endsWith('ão') ||
+                         productName.toLowerCase().endsWith('ade');
+      const message = isFeminine ? `${productName} adicionada!` : `${productName} adicionado!`;
+      
+      this.toastr.success(message, '', {
+        timeOut: 1500,
+        positionClass: 'toast-bottom-center',
+        progressBar: false
+      });
+    }
+    
     // A subscription no ngOnInit já atualiza o cache automaticamente
     this.cdr.detectChanges();
   }

@@ -208,8 +208,8 @@
 }
 
 .qty-btn {
-  width: 28px;
-  height: 28px;
+  width: 36px;
+  height: 36px;
   border: none;
   background: var(--white);
   border-radius: 50%;
@@ -221,6 +221,7 @@
   align-items: center;
   justify-content: center;
   transition: all 0.2s;
+  min-width: 36px;
 }
 
 .qty-btn:hover:not(:disabled) {
@@ -235,8 +236,9 @@
 }
 
 .qty-btn svg {
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 20px;
+  stroke-width: 2.5;
 }
 
 .quantity {
@@ -251,24 +253,28 @@
 .remove-button {
   background: none;
   border: none;
-  padding: var(--spacing-xs);
+  padding: 8px;
   cursor: pointer;
-  color: var(--text-secondary);
+  color: #ef4444;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--border-radius-sm);
+  border-radius: 50%;
   transition: all 0.2s;
+  min-width: 40px;
+  min-height: 40px;
 }
 
-.remove-button:hover {
-  background-color: #fee;
-  color: #e00;
+.remove-button:hover,
+.remove-button:focus {
+  background-color: #fee2e2;
+  color: #ef4444;
 }
 
 .remove-button svg {
-  width: 18px;
-  height: 18px;
+  width: 24px;
+  height: 24px;
+  stroke-width: 2;
 }
 
 /* Footer (Fixo) */
@@ -405,13 +411,25 @@
   }
   
   .qty-btn {
-    width: 24px;
-    height: 24px;
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
   }
-  
+
   .qty-btn svg {
-    width: 14px;
-    height: 14px;
+    width: 18px;
+    height: 18px;
+  }
+
+  .remove-button {
+    min-width: 36px;
+    min-height: 36px;
+    padding: 6px;
+  }
+
+  .remove-button svg {
+    width: 20px;
+    height: 20px;
   }
   
   .quantity {
