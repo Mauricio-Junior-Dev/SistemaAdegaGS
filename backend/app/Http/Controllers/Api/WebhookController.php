@@ -28,6 +28,7 @@ class WebhookController extends Controller
             // O Mercado Pago envia o webhook com 'type' e 'data'
             $type = $request->input('type');
             $data = $request->input('data');
+            $action = $request->input('action'); // Action do webhook (ex: payment.created)
 
             // Verificar se é um evento de pagamento
             if ($type !== 'payment' || !isset($data['id'])) {
@@ -49,6 +50,21 @@ class WebhookController extends Controller
 
             $mpStatus = $mpPayment->status ?? null;
             $externalReference = $mpPayment->external_reference ?? null;
+
+            // LÓGICA DE TESTE: Se action for payment.created e valor for R$ 1,99, forçar aprovação
+            if ($action === 'payment.created') {
+                $transactionAmount = $mpPayment->transaction_amount ?? null;
+                $testAmount = 1.99; // Valor configurável para testes
+                
+                if ($transactionAmount !== null && abs($transactionAmount - $testAmount) < 0.01) {
+                    Log::info("Simulação de pagamento aprovado ativada para teste", [
+                        'payment_id' => $paymentId,
+                        'transaction_amount' => $transactionAmount,
+                        'original_status' => $mpStatus
+                    ]);
+                    $mpStatus = 'approved';
+                }
+            }
 
             if (!$externalReference) {
                 Log::warning("Pagamento sem external_reference: {$paymentId}");

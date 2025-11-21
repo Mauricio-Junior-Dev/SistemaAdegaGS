@@ -89,6 +89,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   deliveryFee = 0;
   estimatedTime = '';
   loadingDeliveryZones = false;
+  isDeliveryAreaValid = false; // Flag para indicar se a área de entrega é válida
   
   // Controle de Steps
   currentStep = 1;
@@ -150,6 +151,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     if (!cep || cep.replace(/\D/g, '').length < 8) {
       this.deliveryFee = 0;
       this.estimatedTime = '';
+      this.isDeliveryAreaValid = false;
       return;
     }
 
@@ -158,13 +160,17 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       next: (response) => {
         this.deliveryFee = parseFloat(String(response?.valor_frete ?? '0')) || 0;
         this.estimatedTime = response?.tempo_estimado || '';
+        this.isDeliveryAreaValid = true; // Área válida quando frete é calculado
         this.loadingDeliveryZones = false;
         this.updateCartTotals();
       },
       error: (error) => {
         console.error('Erro ao calcular frete:', error);
+        // Limpar valores de frete quando houver erro
         this.deliveryFee = 0;
         this.estimatedTime = 'Não disponível';
+        // Definir flag de erro - área fora de entrega
+        this.isDeliveryAreaValid = false;
         this.loadingDeliveryZones = false;
         if (error.status === 404) {
           this.snackBar.open('Infelizmente, ainda não atendemos este CEP.', 'Fechar', { duration: 5000 });
@@ -246,6 +252,8 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       // Dispara cálculo de frete pelo CEP do endereço selecionado
       if (address.zipcode) {
         this._fetchFrete(address.zipcode);
+      } else {
+        this.isDeliveryAreaValid = false;
       }
     }
   }
@@ -280,6 +288,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     this.useSavedAddress = false;
     this.selectedAddressId = null;
     this.deliveryForm.reset();
+    this.isDeliveryAreaValid = false; // Resetar flag ao usar novo endereço
     
     // Manter o telefone se já estiver preenchido
     const phone = this.deliveryForm.get('phone')?.value;
@@ -342,13 +351,33 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     
     this.cepService.searchCep(zipcode).subscribe({
       next: (cepData) => {
+        // Verificar se o bairro do CEP existe na lista de deliveryZones
+        const matchingZone = this.deliveryZones.find(zone => 
+          zone.nome_bairro.toLowerCase().includes(cepData.neighborhood.toLowerCase()) ||
+          cepData.neighborhood.toLowerCase().includes(zone.nome_bairro.toLowerCase())
+        );
+        
         // Preenche automaticamente os campos do endereço
-        this.deliveryForm.patchValue({
-          address: cepData.street,
-          neighborhood: cepData.neighborhood,
-          city: cepData.city,
-          state: cepData.state
-        });
+        const patchData: any = {
+          address: cepData.street || '',
+          city: cepData.city || '',
+          state: cepData.state || ''
+        };
+        
+        // Se encontrou uma zona correspondente, usar o nome exato da zona
+        if (matchingZone) {
+          patchData.neighborhood = matchingZone.nome_bairro;
+          this.selectedNeighborhood = matchingZone.nome_bairro;
+        } else {
+          // Se não encontrou, tentar usar o bairro do CEP diretamente
+          patchData.neighborhood = cepData.neighborhood || '';
+          this.selectedNeighborhood = cepData.neighborhood || '';
+        }
+        
+        this.deliveryForm.patchValue(patchData);
+        
+        // Dispara a validação de área de entrega e cálculo de frete
+        this.calculateFreteFromCep();
         
         this.loading = false;
       },
@@ -394,6 +423,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     } else {
       this.deliveryFee = 0;
       this.estimatedTime = '';
+      this.isDeliveryAreaValid = false;
     }
   }
 
@@ -408,6 +438,19 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     if (this.currentStep > 1) {
       this.currentStep--;
     }
+  }
+
+  /**
+   * Faz scroll suave até o campo de valor recebido e foca nele
+   */
+  private scrollToCashInput(): void {
+    setTimeout(() => {
+      const element = document.getElementById('received-amount-input');
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        element.focus();
+      }
+    }, 100);
   }
 
   public async onSubmit(): Promise<void> {
@@ -431,6 +474,12 @@ export class CheckoutComponent implements OnInit, OnDestroy {
 
     if (!this.isDeliveryFormValid() || this.paymentForm.invalid) {
       this.error = 'Por favor, preencha todos os campos obrigatórios';
+      return;
+    }
+
+    // Validar se a área de entrega é válida
+    if (!this.isDeliveryAreaValid) {
+      this.toastr.warning('Infelizmente não entregamos neste endereço. Por favor, escolha outro endereço ou CEP.', 'Fora da Área de Entrega');
       return;
     }
 
@@ -463,19 +512,49 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       const mappedPaymentMethod = paymentMethodMap[paymentMethodValue] || 'dinheiro';
       const isCashPayment = mappedPaymentMethod === 'dinheiro';
 
+      // Validação para pagamento em dinheiro
+      if (isCashPayment) {
+        const receivedValue = this.paymentForm.value.received_amount || this.paymentForm.value.change;
+        
+        // Verificar se o valor foi preenchido
+        if (!receivedValue || receivedValue === '' || receivedValue === null || receivedValue === undefined) {
+          this.isProcessingPayment = false;
+          this.loading = false;
+          this.toastr.warning('Informe o valor para troco', 'Valor Obrigatório');
+          this.scrollToCashInput();
+          return;
+        }
+
+        const parsedReceived = Number(receivedValue);
+
+        // Verificar se o valor é válido e maior ou igual ao total
+        if (!Number.isFinite(parsedReceived) || parsedReceived <= 0) {
+          this.isProcessingPayment = false;
+          this.loading = false;
+          this.toastr.warning('Informe um valor válido para troco', 'Valor Inválido');
+          this.scrollToCashInput();
+          return;
+        }
+
+        if (parsedReceived < orderTotal) {
+          this.isProcessingPayment = false;
+          this.loading = false;
+          this.toastr.warning(`O valor informado (R$ ${parsedReceived.toFixed(2)}) é menor que o total do pedido (R$ ${orderTotal.toFixed(2)})`, 'Valor Insuficiente');
+          this.scrollToCashInput();
+          return;
+        }
+      }
+
       let receivedAmount: number | undefined;
       let changeAmount: number | undefined;
 
       if (isCashPayment) {
         const receivedValue = this.paymentForm.value.received_amount || this.paymentForm.value.change;
+        const parsedReceived = Number(receivedValue);
 
-        if (receivedValue) {
-          const parsedReceived = Number(receivedValue);
-
-          if (Number.isFinite(parsedReceived) && parsedReceived > 0) {
-            receivedAmount = parsedReceived;
-            changeAmount = parsedReceived >= orderTotal ? parsedReceived - orderTotal : 0;
-          }
+        if (Number.isFinite(parsedReceived) && parsedReceived > 0) {
+          receivedAmount = parsedReceived;
+          changeAmount = parsedReceived >= orderTotal ? parsedReceived - orderTotal : 0;
         }
       } else {
         receivedAmount = undefined;
@@ -537,11 +616,13 @@ export class CheckoutComponent implements OnInit, OnDestroy {
 
       this.orderService.createOrder(orderPayload).subscribe({
         next: (newlyCreatedOrder: Order) => {
+          // Limpar carrinho imediatamente após criar o pedido com sucesso
+          this.cartService.clearCart();
+          
           if (paymentMethodValue !== 'pix') {
             this.loading = false;
             this.isProcessingPayment = false;
             this.toastr.success('Pedido recebido! (Pagamento na entrega)');
-            this.cartService.clearCart();
             this.router.navigate(['/pedidos']);
             return;
           }
@@ -576,9 +657,11 @@ export class CheckoutComponent implements OnInit, OnDestroy {
             }
           });
         },
-        error: (err: unknown) => {
+        error: (err: any) => {
           console.error('Erro ao criar pedido:', err);
-          this.toastr.error('Erro ao criar seu pedido. Verifique os dados.', 'Falha');
+          // Extrair mensagem de erro específica do backend
+          const errorMessage = err?.error?.error || err?.error?.message || 'Erro ao criar seu pedido. Verifique os dados.';
+          this.toastr.error(errorMessage, 'Falha');
           this.isProcessingPayment = false;
           this.loading = false;
         }

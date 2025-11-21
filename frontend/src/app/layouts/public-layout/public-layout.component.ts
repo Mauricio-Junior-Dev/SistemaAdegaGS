@@ -4,6 +4,7 @@ import { RouterModule } from '@angular/router';
 import { HeaderComponent } from '../../shared/components/header/header.component';
 import { FooterComponent } from '../../shared/components/footer/footer.component';
 import { CartSidebarComponent } from '../../shared/components/cart-sidebar/cart-sidebar.component';
+import { BottomNavComponent } from '../../shared/components/bottom-nav/bottom-nav.component';
 
 @Component({
   selector: 'app-public-layout',
@@ -13,7 +14,8 @@ import { CartSidebarComponent } from '../../shared/components/cart-sidebar/cart-
     RouterModule,
     HeaderComponent,
     FooterComponent,
-    CartSidebarComponent
+    CartSidebarComponent,
+    BottomNavComponent
   ],
   template: `
     <div class="app-container">
@@ -25,6 +27,7 @@ import { CartSidebarComponent } from '../../shared/components/cart-sidebar/cart-
 
       <app-footer></app-footer>
       <app-cart-sidebar></app-cart-sidebar>
+      <app-bottom-nav></app-bottom-nav>
     </div>
   `,
   styles: [`

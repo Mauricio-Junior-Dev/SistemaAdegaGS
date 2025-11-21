@@ -31,14 +31,9 @@
     </div>
   </section>
 
-  <!-- Menu de Categorias -->
-  <section class="categories-menu">
+  <!-- Menu de Categorias Sticky -->
+  <div class="categories-wrapper">
     <div class="container">
-      <div class="section-header">
-        <h2>Nosso Menu</h2>
-        <a routerLink="/produtos" class="view-all">Ver Tudo</a>
-      </div>
-      
       <!-- Loading State -->
       <div *ngIf="loading.categories" class="loading-container">
         <div class="loading-spinner"></div>
@@ -49,51 +44,57 @@
         {{ error.categories }}
       </div>
 
-      <!-- Categories Grid -->
-      <div *ngIf="!loading.categories && !error.categories" class="categories-grid">
+      <!-- Categories Horizontal Scroll -->
+      <div *ngIf="!loading.categories && !error.categories" class="categories-scroll">
         <!-- Categoria Combos -->
-        <a routerLink="/combos" class="category-card combo-category">
-          <div class="category-icon">
-            <div class="combo-icon">📦</div>
-          </div>
-          <span class="category-name">Combos</span>
-        </a>
+        <button 
+          type="button"
+          class="category-pill"
+          [class.active]="selectedCategory === null"
+          (click)="selectCategory(null)">
+          Combos
+        </button>
         
         <!-- Outras Categorias -->
-        <a *ngFor="let category of categories; trackBy: trackByCategoryId" 
-           [routerLink]="['/produtos']" 
-           [queryParams]="{categoria: category.id}" 
-           class="category-card">
-          <div class="category-icon">
-            <img [src]="getCategoryImage(category)" [alt]="category.name">
-          </div>
-          <span class="category-name">{{ category.name }}</span>
-        </a>
+        <button 
+          type="button"
+          *ngFor="let category of categories; trackBy: trackByCategoryId" 
+          class="category-pill"
+          [class.active]="selectedCategory === category.id"
+          (click)="selectCategory(category)">
+          {{ category.name }}
+        </button>
       </div>
     </div>
-  </section>
+  </div>
 
-  <!-- Produtos em Destaque -->
+  <!-- Produtos (Filtrados ou em Destaque) -->
   <section class="featured-products">
     <div class="container">
       <div class="section-header">
-        <h2>Itens Em Destaque</h2>
+        <h2>{{ selectedCategory ? 'Produtos da Categoria' : 'Itens Em Destaque' }}</h2>
         <a routerLink="/produtos" class="view-all">Ver Mais</a>
       </div>
 
-      <!-- Loading State -->
-      <div *ngIf="loading.featured" class="loading-container">
-        <div class="loading-spinner"></div>
-      </div>
-
       <!-- Error State -->
-      <div *ngIf="error.featured" class="error-message">
-        {{ error.featured }}
+      <div *ngIf="error.filtered || error.featured" class="error-message">
+        {{ error.filtered || error.featured }}
       </div>
 
-      <!-- Products Grid -->
-      <div *ngIf="!loading.featured && !error.featured" class="products-grid">
-        <div *ngFor="let product of featuredProducts; trackBy: trackByProductId" 
+      <!-- Skeleton Screens (Loading State) -->
+      <div *ngIf="isLoadingProducts" class="products-grid skeleton-grid">
+        <div *ngFor="let item of skeletonItems; let i = index" class="product-card-skeleton">
+          <div class="skeleton skeleton-img"></div>
+          <div class="skeleton skeleton-text"></div>
+          <div class="skeleton skeleton-text" style="width: 60%"></div>
+          <div class="skeleton skeleton-price"></div>
+          <div class="skeleton skeleton-button"></div>
+        </div>
+      </div>
+
+      <!-- Products Grid (Real Products) -->
+      <div *ngIf="!isLoadingProducts && !loading.featured && !error.filtered && !error.featured" class="products-grid">
+        <div *ngFor="let product of filteredProducts; trackBy: trackByProductId" 
              class="product-card">
           <!-- Nome do Produto -->
           <h3 class="product-name">{{ product.name }}</h3>
@@ -124,9 +125,9 @@
       </div>
 
       <!-- Empty State -->
-      <div *ngIf="!loading.featured && !error.featured && featuredProducts.length === 0" 
+      <div *ngIf="!isLoadingProducts && !loading.featured && !error.filtered && !error.featured && filteredProducts.length === 0" 
            class="empty-state">
-        Nenhum produto em destaque disponível.
+        {{ selectedCategory ? 'Nenhum produto encontrado nesta categoria.' : 'Nenhum produto em destaque disponível.' }}
       </div>
     </div>
   </section>

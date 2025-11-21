@@ -45,10 +45,23 @@ export class CartSidebarComponent implements OnInit {
   updateQuantity(item: CartItem, change: number): void {
     const newQuantity = item.quantity + change;
     if (newQuantity > 0) {
+      // Validar estoque antes de aumentar (apenas para produtos, não combos)
+      if (change > 0 && item.product && !item.isCombo) {
+        if (newQuantity > item.product.current_stock) {
+          return; // O CartService já mostrará o toastr
+        }
+      }
       this.cartService.updateQuantity(item.id, newQuantity);
     } else {
       this.removeItem(item);
     }
+  }
+
+  canIncreaseQuantity(item: CartItem): boolean {
+    if (item.isCombo || !item.product) {
+      return true; // Combos não têm limite de estoque
+    }
+    return item.quantity < item.product.current_stock;
   }
 
   checkout(): void {

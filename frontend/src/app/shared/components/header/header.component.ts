@@ -30,7 +30,6 @@ import { Subscription } from 'rxjs';
 })
 export class HeaderComponent implements OnInit, OnDestroy {
   searchTerm: string = '';
-  isMobileMenuOpen = false;
   settings: PublicSettings | null = null;
   private settingsSubscription?: Subscription;
   
@@ -42,6 +41,9 @@ export class HeaderComponent implements OnInit, OnDestroy {
 
   cartTotal$ = this.cartService.cartItems$.pipe(
     map((items: CartItem[]) => items.reduce((total: number, item: CartItem) => total + (item.quantity * item.price), 0))
+  );
+  cartItemCount$ = this.cartService.cartItems$.pipe(
+    map((items: CartItem[]) => items.reduce((count: number, item: CartItem) => count + item.quantity, 0))
   );
   user$ = this.authService.user$;
 
@@ -86,21 +88,8 @@ export class HeaderComponent implements OnInit, OnDestroy {
     this.cartService.toggleCart();
   }
 
-  toggleMobileMenu(): void {
-    this.isMobileMenuOpen = !this.isMobileMenuOpen;
-    
-    // Prevenir scroll do body quando menu está aberto
-    if (this.isMobileMenuOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-  }
-
-  closeMobileMenu(): void {
-    this.isMobileMenuOpen = false;
-    // Restaurar scroll do body
-    document.body.style.overflow = '';
+  openCart(): void {
+    this.cartService.toggleCart();
   }
 
   logout(): void {

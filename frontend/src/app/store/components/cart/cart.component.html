@@ -30,7 +30,7 @@
               <button 
                 class="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center"
                 (click)="updateQuantity(item, item.quantity + 1)"
-                [disabled]="!isCombo(item) && item.product && item.quantity >= item.product.current_stock">
+                [disabled]="!canIncreaseQuantity(item)">
                 +
               </button>
             </div>

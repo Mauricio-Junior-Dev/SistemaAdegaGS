@@ -1,11 +1,15 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, ActivatedRoute } from '@angular/router';
-import { ProductSearchComponent } from '../../components/product-search/product-search.component';
+import { FormsModule } from '@angular/forms';
+import { MatIconModule } from '@angular/material/icon';
+import { MatButtonModule } from '@angular/material/button';
 import { ProductService } from '../../../core/services/product.service';
 import { CartService } from '../../../core/services/cart.service';
 import { Product, Category } from '../../../core/models/product.model';
 import { environment } from '../../../../environments/environment';
+import { Subscription } from 'rxjs';
+import { map } from 'rxjs/operators';
 
 @Component({
   selector: 'app-product-list-page',
@@ -15,23 +19,31 @@ import { environment } from '../../../../environments/environment';
   imports: [
     CommonModule,
     RouterModule,
-    ProductSearchComponent
+    FormsModule,
+    MatIconModule,
+    MatButtonModule
   ]
 })
-export class ProductListPageComponent implements OnInit {
+export class ProductListPageComponent implements OnInit, OnDestroy {
   products: Product[] = [];
+  filteredProducts: Product[] = [];
   categories: Category[] = [];
   loading = true;
   selectedCategory: number | null = null;
   searchTerm: string = '';
   error: string | null = null;
-  viewMode: 'grid' | 'list' = 'grid';
-  dietFilter: 'vegetariano' | 'nao-vegetariano' | null = null;
+  
+  // Agrupamento por categoria
+  productsByCategory: { category: Category; products: Product[] }[] = [];
+  
+  private cartSubscription?: Subscription;
+  private cartItemsCache: any[] = [];
 
   constructor(
     private productService: ProductService,
     private cartService: CartService,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
+    private cdr: ChangeDetectorRef
   ) {}
 
   getCategoryImageUrl(category: Category): string {
@@ -52,14 +64,25 @@ export class ProductListPageComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    console.log('ProductListPageComponent initialized');
     this.loadCategories();
+    
+    // Observar itens do carrinho para manter cache atualizado
+    this.cartSubscription = this.cartService.cartItems$.subscribe(items => {
+      this.cartItemsCache = items;
+      this.cdr.detectChanges(); // Forçar atualização da view
+    });
+    
     this.route.queryParams.subscribe(params => {
-      console.log('Query params:', params);
       this.selectedCategory = params['categoria'] ? +params['categoria'] : null;
       this.searchTerm = params['busca'] || '';
       this.loadProducts();
     });
+  }
+
+  ngOnDestroy(): void {
+    if (this.cartSubscription) {
+      this.cartSubscription.unsubscribe();
+    }
   }
 
   loadCategories(): void {
@@ -80,18 +103,18 @@ export class ProductListPageComponent implements OnInit {
       params.category_id = this.selectedCategory;
     }
     
-    if (this.searchTerm) {
-      params.search = this.searchTerm;
-    }
+    // Não usar search no backend, vamos filtrar localmente para tempo real
+    // if (this.searchTerm) {
+    //   params.search = this.searchTerm;
+    // }
 
-    console.log('Loading products with params:', params);
     this.loading = true;
     this.error = null;
 
     this.productService.getProducts(params).subscribe({
       next: (response) => {
-        console.log('Products loaded:', response);
         this.products = response.data || [];
+        this.filterAndGroupProducts();
         this.loading = false;
       },
       error: (err) => {
@@ -102,32 +125,92 @@ export class ProductListPageComponent implements OnInit {
     });
   }
 
+  filterAndGroupProducts(): void {
+    // Filtrar produtos por termo de busca
+    let filtered = this.products;
+    
+    if (this.searchTerm.trim()) {
+      const term = this.searchTerm.toLowerCase().trim();
+      filtered = this.products.filter(product => 
+        product.name.toLowerCase().includes(term) ||
+        (product.description && product.description.toLowerCase().includes(term))
+      );
+    }
+    
+    this.filteredProducts = filtered;
+    
+    // Agrupar por categoria
+    const grouped = new Map<number, { category: Category; products: Product[] }>();
+    
+    filtered.forEach(product => {
+      const categoryId = product.category_id;
+      const category = this.categories.find(c => c.id === categoryId);
+      
+      if (category) {
+        if (!grouped.has(categoryId)) {
+          grouped.set(categoryId, { category, products: [] });
+        }
+        grouped.get(categoryId)!.products.push(product);
+      }
+    });
+    
+    // Converter Map para Array e ordenar por nome da categoria
+    this.productsByCategory = Array.from(grouped.values()).sort((a, b) => 
+      a.category.name.localeCompare(b.category.name)
+    );
+  }
+
   onCategoryChange(categoryId: number | null): void {
-    console.log('Category changed:', categoryId);
     this.selectedCategory = categoryId;
     this.loadProducts();
   }
 
-  onSearch(term: string): void {
-    console.log('Search term:', term);
-    this.searchTerm = term;
-    this.loadProducts();
+  onSearchInput(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.searchTerm = input.value;
+    this.filterAndGroupProducts();
   }
 
   addToCart(product: Product): void {
-    console.log('Adding product to cart:', product);
     this.cartService.addItem(product);
-    // Abrir o carrinho ao adicionar um item
-    this.cartService.openCart();
+    // Não abrir o carrinho automaticamente - o usuário decide quando ver o carrinho
   }
 
-  setViewMode(mode: 'grid' | 'list'): void {
-    this.viewMode = mode;
+  getQuantity(product: Product): number {
+    const item = this.cartItemsCache.find(item => item.id === product.id);
+    return item ? item.quantity : 0;
   }
 
-  toggleDietFilter(filter: 'vegetariano' | 'nao-vegetariano'): void {
-    this.dietFilter = this.dietFilter === filter ? null : filter;
-    this.loadProducts();
+  increase(product: Product): void {
+    const currentQuantity = this.getQuantity(product);
+    
+    // Validação de estoque
+    if (currentQuantity >= product.current_stock) {
+      return;
+    }
+    
+    this.cartService.addItem(product);
+    // A subscription no ngOnInit já atualiza o cache automaticamente
+    this.cdr.detectChanges();
+  }
+
+  decrease(product: Product): void {
+    const quantity = this.getQuantity(product);
+    if (quantity > 1) {
+      this.cartService.updateQuantity(product.id, quantity - 1);
+    } else {
+      this.cartService.removeItem(product.id);
+    }
+    // A subscription no ngOnInit já atualiza o cache automaticamente
+    this.cdr.detectChanges();
+  }
+
+  increaseQuantity(product: Product): void {
+    this.increase(product);
+  }
+
+  decreaseQuantity(product: Product): void {
+    this.decrease(product);
   }
 
   getImageUrl(product: Product): string {

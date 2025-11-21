@@ -37,10 +37,6 @@ Route::get('/banners/active', [App\Http\Controllers\BannerController::class, 'ac
 Route::get('/delivery-zones', [DeliveryZoneController::class, 'index']);
 Route::get('/frete', [DeliveryZoneController::class, 'calculateFrete']);
 
-// --- ROTA DE TESTE PÚBLICA (TEMPORÁRIA) ---
-Route::post('/orders/{order}/create-payment', [PaymentController::class, 'createPixPayment']);
-// ----------------------------------------
-
 // --- WEBHOOKS (Rotas Públicas para Serviços Externos) ---
 Route::post('/webhooks/mercadopago', [WebhookController::class, 'handleMercadoPago'])
     ->name('webhooks.mercadopago');
@@ -130,6 +126,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/my-orders', [OrderController::class, 'myOrders']);
         Route::post('/orders', [OrderController::class, 'store']);
         Route::put('/orders/{order}/confirm-delivery', [OrderController::class, 'confirmDelivery']);
+        Route::post('/orders/{order}/create-payment', [PaymentController::class, 'createPixPayment']);
         
         // Endereços
         Route::get('/addresses', [AddressController::class, 'index']);

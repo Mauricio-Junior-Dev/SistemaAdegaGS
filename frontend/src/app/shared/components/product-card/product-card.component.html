@@ -19,6 +19,11 @@
     </div>
   </div>
 
+  <!-- Mensagem de Estoque Baixo -->
+  <div *ngIf="hasLowStock(product)" class="low-stock-message">
+    {{ getStockMessage(product) }}
+  </div>
+
   <!-- Botão Adicionar ao Carrinho -->
   <button (click)="onAddToCart($event)"
           class="add-to-cart-btn">

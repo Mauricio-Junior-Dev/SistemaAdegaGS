@@ -45,6 +45,19 @@ export class ProductCardComponent {
     return current <= min;
   }
 
+  hasLowStock(product: Product): boolean {
+    const current = product.current_stock ?? 0;
+    return current < 5 && current > 0;
+  }
+
+  getStockMessage(product: Product): string {
+    const current = product.current_stock ?? 0;
+    if (current < 5 && current > 0) {
+      return `Restam apenas ${current} unidades`;
+    }
+    return '';
+  }
+
   hasOffer(product: Product): boolean {
     // Verifica se há um preço original maior que o preço atual
     const originalPrice = (product as any).original_price;

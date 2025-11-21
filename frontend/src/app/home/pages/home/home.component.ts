@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { RouterModule, Router } from '@angular/router';
 import { ProductService } from '../../../core/services/product.service';
 import { ComboService } from '../../../core/services/combo.service';
 import { CartService } from '../../../core/services/cart.service';
@@ -24,6 +24,10 @@ export class HomeComponent implements OnInit {
   popularProducts: Product[] = [];
   featuredCombos: Combo[] = [];
   banners: Banner[] = [];
+  selectedCategory: number | null = null; // Categoria ativa para destaque visual
+  filteredProducts: Product[] = []; // Produtos filtrados exibidos na grade
+  isLoadingProducts: boolean = false; // Loading para filtro de produtos
+  skeletonItems = new Array(6); // Array para gerar 6 placeholders de skeleton
   loading = {
     categories: true,
     featured: true,
@@ -36,14 +40,16 @@ export class HomeComponent implements OnInit {
     featured: null as string | null,
     popular: null as string | null,
     banners: null as string | null,
-    combos: null as string | null
+    combos: null as string | null,
+    filtered: null as string | null
   };
 
   constructor(
     private productService: ProductService,
     private comboService: ComboService,
     private cartService: CartService,
-    private bannerService: BannerService
+    private bannerService: BannerService,
+    private router: Router
   ) {}
 
   ngOnInit(): void {
@@ -78,6 +84,10 @@ export class HomeComponent implements OnInit {
     this.productService.getFeaturedProducts().subscribe({
       next: (products) => {
         this.featuredProducts = products;
+        // Se não há categoria selecionada, mostrar produtos em destaque
+        if (this.selectedCategory === null) {
+          this.filteredProducts = products;
+        }
         this.loading.featured = false;
       },
       error: (error) => {
@@ -140,6 +150,66 @@ export class HomeComponent implements OnInit {
 
   trackByComboId(index: number, combo: Combo): number {
     return combo.id;
+  }
+
+  selectCategory(category: Category | null): void {
+    // Se clicou na mesma categoria, limpar o filtro
+    if (category && this.selectedCategory === category.id) {
+      this.selectedCategory = null;
+      this.loadAllProducts();
+      return;
+    }
+
+    // Se clicou em "Combos" (null)
+    if (category === null) {
+      // Se já estava selecionado, limpar
+      if (this.selectedCategory === null) {
+        this.loadAllProducts();
+        return;
+      }
+      this.selectedCategory = null;
+      this.loadAllProducts();
+      return;
+    }
+
+    // Nova categoria selecionada
+    this.selectedCategory = category.id;
+    this.loadProductsByCategory(category.id);
+  }
+
+  loadAllProducts(): void {
+    // Carregar todos os produtos (em destaque)
+    this.isLoadingProducts = true;
+    this.error.filtered = null;
+    
+    this.productService.getFeaturedProducts().subscribe({
+      next: (products) => {
+        this.filteredProducts = products;
+      },
+      error: (error) => {
+        console.error('Erro ao carregar produtos:', error);
+        this.error.filtered = 'Erro ao carregar produtos';
+      }
+    }).add(() => {
+      this.isLoadingProducts = false;
+    });
+  }
+
+  loadProductsByCategory(categoryId: number): void {
+    this.isLoadingProducts = true;
+    this.error.filtered = null;
+
+    this.productService.getProducts({ category_id: categoryId, per_page: 50 }).subscribe({
+      next: (response) => {
+        this.filteredProducts = response.data || [];
+      },
+      error: (error) => {
+        console.error('Erro ao carregar produtos da categoria:', error);
+        this.error.filtered = 'Erro ao carregar produtos desta categoria';
+      }
+    }).add(() => {
+      this.isLoadingProducts = false;
+    });
   }
 
   getCategoryImage(category: Category): string {

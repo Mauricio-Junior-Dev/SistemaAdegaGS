@@ -1,0 +1,51 @@
+<nav class="bottom-nav">
+  <!-- Home -->
+  <a routerLink="/" routerLinkActive="active" class="nav-item" [routerLinkActiveOptions]="{exact: true}">
+    <mat-icon>home</mat-icon>
+    <span class="nav-label">Home</span>
+  </a>
+
+  <!-- Cardápio -->
+  <a routerLink="/produtos" routerLinkActive="active" class="nav-item">
+    <mat-icon>restaurant_menu</mat-icon>
+    <span class="nav-label">Cardápio</span>
+  </a>
+
+  <!-- Carrinho (Central - Flutuante) -->
+  <button class="nav-item nav-item-cart" (click)="openCart()" aria-label="Carrinho de compras">
+    <mat-icon>shopping_cart</mat-icon>
+    <ng-container *ngIf="cartItemCount$ | async as count">
+      <span class="cart-badge" *ngIf="count > 0">
+        {{ count > 99 ? '99+' : count }}
+      </span>
+    </ng-container>
+  </button>
+
+  <!-- Meus Pedidos -->
+  <ng-container *ngIf="user$ | async; else ordersLogin">
+    <a routerLink="/pedidos" routerLinkActive="active" class="nav-item">
+      <mat-icon>receipt_long</mat-icon>
+      <span class="nav-label">Pedidos</span>
+    </a>
+  </ng-container>
+  <ng-template #ordersLogin>
+    <a routerLink="/login" class="nav-item">
+      <mat-icon>receipt_long</mat-icon>
+      <span class="nav-label">Pedidos</span>
+    </a>
+  </ng-template>
+
+  <!-- Perfil -->
+  <ng-container *ngIf="user$ | async; else profileLogin">
+    <a routerLink="/perfil" routerLinkActive="active" class="nav-item">
+      <mat-icon>person</mat-icon>
+      <span class="nav-label">Perfil</span>
+    </a>
+  </ng-container>
+  <ng-template #profileLogin>
+    <a routerLink="/login" class="nav-item">
+      <mat-icon>person</mat-icon>
+      <span class="nav-label">Perfil</span>
+    </a>
+  </ng-template>
+</nav>

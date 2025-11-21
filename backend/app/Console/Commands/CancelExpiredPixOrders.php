@@ -77,15 +77,12 @@ class CancelExpiredPixOrders extends Command
                     continue;
                 }
 
-                // Cancelar o pedido
                 $order->status = 'cancelled';
                 $order->save();
 
-                // Cancelar o pagamento
                 $payment->status = 'cancelled';
                 $payment->save();
 
-                // Estornar o estoque
                 $this->restoreStock($order);
 
                 DB::commit();

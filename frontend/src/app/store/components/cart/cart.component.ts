@@ -34,6 +34,13 @@ export class CartComponent {
     }
   }
 
+  canIncreaseQuantity(item: CartItem): boolean {
+    if (item.isCombo || !item.product) {
+      return true; // Combos não têm limite de estoque
+    }
+    return item.quantity < item.product.current_stock;
+  }
+
   removeItem(item: CartItem): void {
     this.cartService.removeItem(item.id);
   }

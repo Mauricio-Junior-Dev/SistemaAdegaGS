@@ -93,9 +93,7 @@ export class ProdutosComponent implements OnInit, OnDestroy {
     if (imageUrl.startsWith('/storage/') || imageUrl.startsWith('storage/')) {
       const base = environment.apiUrl.replace(/\/api$/, '');
       const path = imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
-      const fullUrl = `${base}${path}?v=${encodeURIComponent(product.updated_at)}`;
-      console.log('Generated product image URL:', fullUrl); // Debug
-      return fullUrl;
+      return `${base}${path}?v=${encodeURIComponent(product.updated_at)}`;
     }
     return `${imageUrl}?v=${encodeURIComponent(product.updated_at)}`;
   }

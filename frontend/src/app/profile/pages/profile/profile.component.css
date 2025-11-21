@@ -4,6 +4,58 @@
   background-color: #f8f9fa;
 }
 
+/* Cards de Navegação */
+.profile-nav-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.nav-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.2s, box-shadow 0.2s;
+  border: 2px solid transparent;
+}
+
+.nav-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.nav-card.active {
+  border-color: var(--primary);
+  background-color: #fffef0;
+}
+
+.nav-card mat-icon {
+  font-size: 40px;
+  width: 40px;
+  height: 40px;
+  color: var(--primary);
+}
+
+.nav-card-content h3 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1A1A1A;
+}
+
+.nav-card-content p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #666;
+}
+
 .container {
   max-width: 800px;
   margin: 0 auto;
@@ -101,6 +153,11 @@ mat-form-field {
 
 /* Responsividade */
 @media (max-width: 768px) {
+  .profile-nav-cards {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
   .profile-content {
     padding: 1.5rem;
   }

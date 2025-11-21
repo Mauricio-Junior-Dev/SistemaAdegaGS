@@ -5,6 +5,7 @@ import { Product } from '../models/product.model';
 import { Combo } from '../models/combo.model';
 import { AuthService } from './auth.service';
 import { HttpClient } from '@angular/common/http';
+import { ToastrService } from 'ngx-toastr';
 
 import { CartItem, CartState } from '../models/cart.model';
 
@@ -26,7 +27,8 @@ export class CartService {
 
   constructor(
     private authService: AuthService,
-    private http: HttpClient
+    private http: HttpClient,
+    private toastr: ToastrService
   ) {
     // Carregar carrinho do localStorage
     try {
@@ -83,6 +85,16 @@ export class CartService {
     const existingItem = items.find(item => item.id === product.id);
     console.log('Existing item:', existingItem);
 
+    // Calcular quantidade total após adição
+    const currentQuantity = existingItem ? existingItem.quantity : 0;
+    const newQuantity = currentQuantity + quantity;
+
+    // Validar estoque antes de adicionar
+    if (newQuantity > product.current_stock) {
+      this.toastr.warning(`Estoque máximo atingido para este produto. Restam apenas ${product.current_stock} unidades.`, 'Estoque Insuficiente');
+      return;
+    }
+
     let updatedItems;
     if (existingItem) {
       console.log('Updating existing item');
@@ -110,7 +122,7 @@ export class CartService {
       ...currentState,
       items: updatedItems,
       total,
-      isOpen: true
+      isOpen: currentState.isOpen // Manter o estado atual do carrinho (não abrir automaticamente)
     };
     console.log('New state:', newState);
 
@@ -207,6 +219,16 @@ export class CartService {
 
     const currentState = this.cartState.value || this.initialState;
     const items = currentState.items || [];
+    const item = items.find(i => i.id === productId);
+    
+    // Validar estoque antes de atualizar (apenas para produtos, não combos)
+    if (item && item.product && !item.isCombo) {
+      if (quantity > item.product.current_stock) {
+        this.toastr.warning(`Estoque máximo atingido para este produto. Restam apenas ${item.product.current_stock} unidades.`, 'Estoque Insuficiente');
+        return;
+      }
+    }
+
     const updatedItems = items.map(item =>
       item.id === productId ? { ...item, quantity } : item
     );

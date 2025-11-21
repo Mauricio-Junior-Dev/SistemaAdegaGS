@@ -5,6 +5,33 @@
       <p class="subtitle">Gerencie suas informações pessoais</p>
     </div>
 
+    <!-- Cards de Navegação -->
+    <div class="profile-nav-cards">
+      <a routerLink="/perfil" routerLinkActive="active" class="nav-card">
+        <mat-icon>account_circle</mat-icon>
+        <div class="nav-card-content">
+          <h3>Dados Pessoais</h3>
+          <p>Gerencie suas informações pessoais</p>
+        </div>
+      </a>
+
+      <a routerLink="/pedidos" class="nav-card">
+        <mat-icon>receipt_long</mat-icon>
+        <div class="nav-card-content">
+          <h3>Meus Pedidos</h3>
+          <p>Visualize seus pedidos e histórico</p>
+        </div>
+      </a>
+
+      <a routerLink="/enderecos" class="nav-card">
+        <mat-icon>location_on</mat-icon>
+        <div class="nav-card-content">
+          <h3>Meus Endereços</h3>
+          <p>Gerencie seus endereços de entrega</p>
+        </div>
+      </a>
+    </div>
+
     <div class="profile-content">
       <form [formGroup]="profileForm" (ngSubmit)="onSubmit()">
         <!-- Informações Pessoais -->

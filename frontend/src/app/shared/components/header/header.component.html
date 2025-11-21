@@ -9,25 +9,37 @@
       <span *ngIf="!settings?.logo_url" class="logo-text">{{settings?.site_name || 'ADEGA GS'}}</span>
     </a>
 
-    <!-- Menu Principal -->
-    <div class="main-menu">
+    <!-- Navegação Desktop -->
+    <nav class="desktop-nav">
       <a routerLink="/" 
          routerLinkActive="active"
          [routerLinkActiveOptions]="{exact: true}"
-         class="menu-item">
+         class="nav-link">
         Home
       </a>
       <a routerLink="/produtos" 
          routerLinkActive="active"
-         class="menu-item">
-        Menu
+         class="nav-link">
+        Cardápio
       </a>
-      <a routerLink="/ofertas" 
-         routerLinkActive="active"
-         class="menu-item">
-        Ofertas
-      </a>
-    </div>
+      <ng-container *ngIf="user$ | async; else navLogin">
+        <a routerLink="/pedidos" 
+           routerLinkActive="active"
+           class="nav-link">
+          Meus Pedidos
+        </a>
+        <a routerLink="/perfil" 
+           routerLinkActive="active"
+           class="nav-link">
+          Perfil
+        </a>
+      </ng-container>
+      <ng-template #navLogin>
+        <a routerLink="/login" class="nav-link">
+          Login
+        </a>
+      </ng-template>
+    </nav>
 
     <!-- Botões de Ação -->
     <div class="action-buttons">
@@ -41,11 +53,15 @@
                class="search-input">
       </div>
 
-      <!-- Valor da Comanda -->
-      <div class="cart-value" (click)="toggleCart()">
-        <span class="currency">R$</span>
-        <span class="amount">{{ cartTotal$ | async | number:'1.2-2' }}</span>
-      </div>
+      <!-- Ícone do Carrinho com Badge -->
+      <button mat-icon-button (click)="openCart()" class="cart-btn-icon" aria-label="Carrinho de compras">
+        <mat-icon>shopping_cart</mat-icon>
+        <ng-container *ngIf="cartItemCount$ | async as count">
+          <span class="cart-badge" *ngIf="count > 0">
+            {{ count > 99 ? '99+' : count }}
+          </span>
+        </ng-container>
+      </button>
 
       <!-- Botão de Login/Perfil -->
       <ng-container *ngIf="user$ | async as user; else loginButton">
@@ -57,14 +73,6 @@
           <button mat-menu-item routerLink="/perfil">
             <mat-icon>account_circle</mat-icon>
             <span>Meu Perfil</span>
-          </button>
-          <button mat-menu-item routerLink="/pedidos">
-            <mat-icon>receipt_long</mat-icon>
-            <span>Meus Pedidos</span>
-          </button>
-          <button mat-menu-item routerLink="/enderecos">
-            <mat-icon>location_on</mat-icon>
-            <span>Meus Endereços</span>
           </button>
           <button mat-menu-item (click)="logout()">
             <mat-icon>exit_to_app</mat-icon>
@@ -80,90 +88,8 @@
         </button>
       </ng-template>
 
-      <!-- Menu Mobile -->
-      <button mat-icon-button class="mobile-menu-button" (click)="toggleMobileMenu()">
-        <mat-icon>{{ isMobileMenuOpen ? 'close' : 'menu' }}</mat-icon>
-      </button>
     </div>
   </nav>
-
-  <!-- Menu Mobile Overlay -->
-  <div class="mobile-menu-overlay" [class.open]="isMobileMenuOpen" (click)="closeMobileMenu()">
-    <div class="mobile-menu-content" (click)="$event.stopPropagation()">
-      <div class="mobile-menu-header">
-        <h3>Menu</h3>
-      </div>
-
-      <nav class="mobile-nav">
-        <a routerLink="/" 
-           routerLinkActive="active"
-           [routerLinkActiveOptions]="{exact: true}"
-           class="mobile-menu-item"
-           (click)="closeMobileMenu()">
-          <mat-icon>home</mat-icon>
-          <span>Home</span>
-        </a>
-        
-        <a routerLink="/produtos" 
-           routerLinkActive="active"
-           class="mobile-menu-item"
-           (click)="closeMobileMenu()">
-          <mat-icon>restaurant_menu</mat-icon>
-          <span>Menu</span>
-        </a>
-        
-        <a routerLink="/ofertas" 
-           routerLinkActive="active"
-           class="mobile-menu-item"
-           (click)="closeMobileMenu()">
-          <mat-icon>local_offer</mat-icon>
-          <span>Ofertas</span>
-        </a>
-
-        <!-- Campo de Busca Mobile -->
-        <div class="mobile-search-field">
-          <mat-icon class="search-icon">search</mat-icon>
-          <input type="text" 
-                 [(ngModel)]="searchTerm" 
-                 (keyup)="onSearch($event)"
-                 placeholder="Buscar produtos..." 
-                 class="search-input">
-        </div>
-
-        <!-- Botões de Ação Mobile -->
-        <div class="mobile-action-buttons">
-          <button class="mobile-cart-button" (click)="toggleCart(); closeMobileMenu()">
-            <mat-icon>shopping_cart</mat-icon>
-            <span>Carrinho</span>
-            <span class="cart-total">R$ {{ cartTotal$ | async | number:'1.2-2' }}</span>
-          </button>
-
-          <!-- Login/Perfil Mobile -->
-          <ng-container *ngIf="user$ | async as user; else mobileLoginButton">
-            <a routerLink="/perfil" class="mobile-menu-item" (click)="closeMobileMenu()">
-              <mat-icon>account_circle</mat-icon>
-              <span>Meu Perfil</span>
-            </a>
-            <a routerLink="/pedidos" class="mobile-menu-item" (click)="closeMobileMenu()">
-              <mat-icon>receipt_long</mat-icon>
-              <span>Meus Pedidos</span>
-            </a>
-            <button class="mobile-menu-item logout-button" (click)="logout(); closeMobileMenu()">
-              <mat-icon>exit_to_app</mat-icon>
-              <span>Sair</span>
-            </button>
-          </ng-container>
-          
-          <ng-template #mobileLoginButton>
-            <a routerLink="/login" class="mobile-menu-item" (click)="closeMobileMenu()">
-              <mat-icon>login</mat-icon>
-              <span>Login</span>
-            </a>
-          </ng-template>
-        </div>
-      </nav>
-    </div>
-  </div>
 </header>
 
 <!-- Espaçador removido - usando position: sticky agora -->

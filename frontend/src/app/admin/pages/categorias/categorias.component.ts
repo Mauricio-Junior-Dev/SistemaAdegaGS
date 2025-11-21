@@ -106,9 +106,7 @@ export class CategoriasComponent implements OnInit, OnDestroy {
     if (imageUrl.startsWith('/storage/') || imageUrl.startsWith('storage/')) {
       const base = environment.apiUrl.replace(/\/api$/, '');
       const path = imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
-      const fullUrl = `${base}${path}`;
-      console.log('Generated image URL:', fullUrl); // Debug
-      return fullUrl;
+      return `${base}${path}`;
     }
     // Fallback
     return imageUrl;

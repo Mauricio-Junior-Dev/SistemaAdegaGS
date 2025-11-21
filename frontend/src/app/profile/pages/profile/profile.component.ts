@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RouterModule } from '@angular/router';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -16,6 +17,7 @@ import { User } from '../../../core/models/auth.model';
   imports: [
     CommonModule,
     ReactiveFormsModule,
+    RouterModule,
     MatButtonModule,
     MatFormFieldModule,
     MatInputModule,

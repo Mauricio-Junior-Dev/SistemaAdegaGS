@@ -1,6 +1,24 @@
 <div class="products-page">
-  <!-- Categorias no topo -->
-  <div class="categories-nav">
+  <!-- Barra de Busca Sticky -->
+  <div class="search-bar-sticky">
+    <div class="container">
+      <div class="search-wrapper">
+        <mat-icon class="search-icon">search</mat-icon>
+        <input 
+          type="text" 
+          [(ngModel)]="searchTerm"
+          (input)="onSearchInput($event)"
+          placeholder="Buscar produtos..." 
+          class="search-input">
+        <button *ngIf="searchTerm" (click)="searchTerm = ''; filterAndGroupProducts()" class="clear-search" mat-icon-button>
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Categorias no topo (opcional, pode remover se quiser) -->
+  <div class="categories-nav" *ngIf="!selectedCategory">
     <div class="container">
       <div class="categories-scroll">
         <a *ngFor="let category of categories" 
@@ -18,27 +36,6 @@
   </div>
 
   <div class="container">
-    <!-- Filtros e Opções -->
-    <div class="filters-toolbar">
-      <div class="filters-left">
-        <h3 class="filter-title">Produtos</h3>
-      </div>
-      <div class="filters-right">
-        <app-product-search 
-          [initialTerm]="searchTerm"
-          (search)="onSearch($event)">
-        </app-product-search>
-        <div class="view-options">
-          <button (click)="setViewMode('list')" [class.active]="viewMode === 'list'">
-            <i class="fas fa-list"></i>
-          </button>
-          <button (click)="setViewMode('grid')" [class.active]="viewMode === 'grid'">
-            <i class="fas fa-th-large"></i>
-          </button>
-        </div>
-      </div>
-    </div>
-
     <!-- Loading State -->
     <div *ngIf="loading" class="loading-container">
       <div class="loading-spinner"></div>
@@ -52,40 +49,65 @@
       </button>
     </div>
 
-    <!-- Lista de Produtos -->
-    <div *ngIf="!loading && !error" 
-         [class]="'products-container ' + (viewMode === 'grid' ? 'grid-view' : 'list-view')">
-      <div *ngFor="let product of products" class="product-card">
-        <!-- Nome do Produto -->
-        <h3 class="product-name">{{ product.name }}</h3>
+    <!-- Lista de Produtos Agrupada por Categoria -->
+    <div *ngIf="!loading && !error" class="menu-list">
+      <div *ngFor="let group of productsByCategory" class="category-group">
+        <h2 class="category-separator">{{ group.category.name }}</h2>
         
-        <!-- Imagem do Produto -->
-        <div class="product-image-container">
-          <img [src]="getImageUrl(product)" [alt]="product.name" class="product-image">
-        </div>
+        <div class="menu-items">
+          <div *ngFor="let product of group.products" class="menu-item">
+            <!-- Imagem -->
+            <div class="menu-item-image">
+              <img [src]="getImageUrl(product)" [alt]="product.name">
+            </div>
 
-        <!-- Preços -->
-        <div class="price-container">
-          <div *ngIf="product.original_price && product.original_price > product.price" class="price-original">
-            R$ {{ product.original_price | number:'1.2-2' }}
-          </div>
-          <div class="price-current">
-            R$ {{ product.price | number:'1.2-2' }}
+            <!-- Informações -->
+            <div class="menu-item-info">
+              <h3 class="menu-item-name">{{ product.name }}</h3>
+              <p class="menu-item-description" *ngIf="product.description">
+                {{ product.description }}
+              </p>
+            </div>
+
+            <!-- Ação (Preço e Botão) -->
+            <div class="menu-item-action">
+              <div class="item-actions">
+                <span class="price">R$ {{ product.price | number:'1.2-2' }}</span>
+                
+                <!-- Botão Adicionar (quando quantidade = 0) -->
+                <button 
+                  *ngIf="getQuantity(product) === 0" 
+                  (click)="increase(product)" 
+                  class="btn-add" 
+                  [disabled]="product.current_stock <= 0">
+                  {{ product.current_stock > 0 ? 'Adicionar' : 'Esgotado' }}
+                </button>
+                
+                <!-- Controles de Quantidade (quando quantidade > 0) -->
+                <div *ngIf="getQuantity(product) > 0" class="qty-controls">
+                  <button 
+                    (click)="decrease(product)" 
+                    class="qty-btn minus">
+                    -
+                  </button>
+                  <span class="qty-value">{{ getQuantity(product) }}</span>
+                  <button 
+                    (click)="increase(product)" 
+                    class="qty-btn plus"
+                    [disabled]="getQuantity(product) >= product.current_stock">
+                    +
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-
-        <!-- Botão Adicionar ao Carrinho -->
-        <button (click)="addToCart(product)" class="add-to-cart-btn">
-          <svg class="cart-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-          </svg>
-          <span>Adicionar</span>
-        </button>
       </div>
     </div>
 
     <!-- Estado Vazio -->
-    <div *ngIf="!loading && !error && products.length === 0" class="empty-state">
+    <div *ngIf="!loading && !error && productsByCategory.length === 0" class="empty-state">
+      <mat-icon class="empty-icon">restaurant_menu</mat-icon>
       <h2>Nenhum produto encontrado</h2>
       <p>Tente ajustar os filtros ou realizar uma nova busca</p>
     </div>

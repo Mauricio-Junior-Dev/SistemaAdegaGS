@@ -1,7 +1,14 @@
+<!-- Overlay de fundo -->
+<div class="cart-overlay" 
+     [class.open]="isOpen$ | async"
+     (click)="closeCart()">
+</div>
+
 <div class="cart-sidebar" [class.open]="isOpen$ | async" [class.item-added]="itemAdded$ | async">
+  <!-- Header -->
   <div class="cart-header">
-    <h2>Carrinho</h2>
-    <button class="close-button" (click)="closeCart()">
+    <h2>Seu Pedido</h2>
+    <button class="close-button" (click)="closeCart()" aria-label="Fechar carrinho">
       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
       </svg>
@@ -9,6 +16,7 @@
   </div>
 
   <ng-container *ngIf="cartItems$ | async as items">
+    <!-- Lista de Itens (Scroll) -->
     <div class="cart-content">
       <!-- Estado Vazio -->
       <div *ngIf="items.length === 0" class="empty-cart">
@@ -17,58 +25,76 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
           </svg>
         </div>
-        <p>Seu carrinho está vazio</p>
+        <p class="empty-cart-title">Seu carrinho está vazio</p>
         <p class="empty-cart-subtitle">Adicione itens para continuar</p>
       </div>
 
       <!-- Lista de Itens -->
       <div *ngIf="items.length > 0" class="cart-items">
         <div *ngFor="let item of items" class="cart-item">
+          <!-- Imagem -->
           <div class="item-image">
             <img [src]="getImageUrl(item)" [alt]="getItemName(item)">
           </div>
-          <div class="item-details">
+          
+          <!-- Informações (Nome e Preço) -->
+          <div class="item-info">
             <h3 class="item-name">{{ getItemName(item) }}</h3>
             <p class="item-price">R$ {{ item.price | number:'1.2-2' }}</p>
-            
+          </div>
+          
+          <!-- Controles de Quantidade -->
+          <div class="item-controls">
             <div class="quantity-controls">
-              <button (click)="updateQuantity(item, -1)" class="quantity-button">
+              <button (click)="updateQuantity(item, -1)" class="qty-btn minus" aria-label="Diminuir quantidade">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4" />
                 </svg>
               </button>
               <span class="quantity">{{ item.quantity }}</span>
-              <button (click)="updateQuantity(item, 1)" class="quantity-button">
+              <button (click)="updateQuantity(item, 1)" 
+                      class="qty-btn plus"
+                      [disabled]="!canIncreaseQuantity(item)"
+                      aria-label="Aumentar quantidade">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                 </svg>
               </button>
             </div>
+            
+            <!-- Botão Lixeira -->
+            <button class="remove-button" (click)="removeItem(item)" aria-label="Remover item">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
           </div>
-          <button class="remove-button" (click)="removeItem(item)">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-          </button>
         </div>
       </div>
     </div>
 
-    <!-- Rodapé do Carrinho -->
+    <!-- Footer (Fixo) -->
     <div *ngIf="items.length > 0" class="cart-footer">
-      <div class="cart-total">
-        <span>Total</span>
-        <span class="total-value">R$ {{ cartTotal$ | async | number:'1.2-2' }}</span>
+      <!-- Resumo de Valores -->
+      <div class="cart-summary">
+        <div class="summary-row">
+          <span class="summary-label">Subtotal</span>
+          <span class="summary-value">R$ {{ cartTotal$ | async | number:'1.2-2' }}</span>
+        </div>
+        <div class="summary-row">
+          <span class="summary-label">Entrega</span>
+          <span class="summary-value delivery-note">A calcular no checkout</span>
+        </div>
+        <div class="summary-row total-row">
+          <span class="summary-label">Total</span>
+          <span class="summary-value total-value">R$ {{ cartTotal$ | async | number:'1.2-2' }}</span>
+        </div>
       </div>
+      
+      <!-- Botão Finalizar Pedido -->
       <button class="checkout-button" (click)="checkout()">
         Finalizar Pedido
       </button>
     </div>
   </ng-container>
-</div>
-
-<!-- Overlay de fundo -->
-<div class="cart-overlay" 
-     [class.open]="isOpen$ | async"
-     (click)="closeCart()">
 </div>

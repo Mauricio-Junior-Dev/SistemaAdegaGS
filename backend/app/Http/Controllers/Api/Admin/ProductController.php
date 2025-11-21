@@ -104,7 +104,7 @@ class ProductController extends Controller
 
         if ($request->hasFile('image')) {
             $path = $request->file('image')->store('products', 'public');
-            $product->image_url = Storage::url($path);
+            $product->image_url = Storage::disk('public')->url($path);
         }
 
         $product->save();
@@ -180,7 +180,7 @@ class ProductController extends Controller
             }
 
             $path = $request->file('image')->store('products', 'public');
-            $product->image_url = Storage::url($path);
+            $product->image_url = Storage::disk('public')->url($path);
         }
 
         $product->save();
@@ -242,7 +242,7 @@ class ProductController extends Controller
         }
 
         $path = $request->file('image')->store('products', 'public');
-        $product->image_url = Storage::url($path);
+        $product->image_url = Storage::disk('public')->url($path);
         $product->save();
 
         return response()->json($product);

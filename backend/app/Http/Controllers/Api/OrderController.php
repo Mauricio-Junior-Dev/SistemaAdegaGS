@@ -148,13 +148,43 @@ class OrderController extends Controller
 
             // Criar ou usar endereço
             $deliveryAddressId = null;
+            $deliveryZipcode = null;
+            
             if ($request->has('delivery') && is_array($request->delivery)) {
                 $delivery = $request->delivery;
                 
                 // Se é um endereço salvo (tem ID)
                 if (isset($delivery['address_id']) && $delivery['address_id']) {
-                    $deliveryAddressId = $delivery['address_id'];
+                    $savedAddress = Address::find($delivery['address_id']);
+                    if (!$savedAddress || $savedAddress->user_id !== Auth::id()) {
+                        DB::rollBack();
+                        return response()->json([
+                            'error' => 'Endereço não encontrado ou não pertence ao usuário'
+                        ], 404);
+                    }
+                    $deliveryAddressId = $savedAddress->id;
+                    $deliveryZipcode = $savedAddress->zipcode;
                 } else {
+                    // Validar CEP antes de criar o endereço
+                    $zipcode = $delivery['zipcode'] ?? '';
+                    if ($zipcode) {
+                        // Limpar formatação do CEP
+                        $cleanZipcode = preg_replace('/[^0-9]/', '', $zipcode);
+                        
+                        // Verificar se existe zona de entrega ativa para este CEP
+                        $deliveryZone = DeliveryZone::ativo()
+                            ->where('cep_inicio', '<=', $cleanZipcode)
+                            ->where('cep_fim', '>=', $cleanZipcode)
+                            ->first();
+                        
+                        if (!$deliveryZone) {
+                            DB::rollBack();
+                            return response()->json([
+                                'error' => 'Infelizmente não entregamos neste endereço.'
+                            ], 422);
+                        }
+                    }
+                    
                     // Criar novo endereço
                     $address = Address::create([
                         'user_id' => Auth::id(),
@@ -171,6 +201,24 @@ class OrderController extends Controller
                         'is_active' => true
                     ]);
                     $deliveryAddressId = $address->id;
+                    $deliveryZipcode = $address->zipcode;
+                }
+                
+                // Validar CEP do endereço salvo também
+                if ($deliveryAddressId && $deliveryZipcode) {
+                    $cleanZipcode = preg_replace('/[^0-9]/', '', $deliveryZipcode);
+                    
+                    $deliveryZone = DeliveryZone::ativo()
+                        ->where('cep_inicio', '<=', $cleanZipcode)
+                        ->where('cep_fim', '>=', $cleanZipcode)
+                        ->first();
+                    
+                    if (!$deliveryZone) {
+                        DB::rollBack();
+                        return response()->json([
+                            'error' => 'Infelizmente não entregamos neste endereço.'
+                        ], 422);
+                    }
                 }
                 
                 $orderData['delivery_address_id'] = $deliveryAddressId;
@@ -201,7 +249,10 @@ class OrderController extends Controller
                     if ($saleType === 'garrafa') {
                         $currentStock = (int) $product->current_stock;
                         if ($currentStock < $item['quantity']) {
-                            throw new \Exception("Produto {$product->name} não possui estoque suficiente de garrafas");
+                            DB::rollBack();
+                            return response()->json([
+                                'error' => "Estoque insuficiente para {$product->name}. Restam apenas {$currentStock} unidades."
+                            ], 400);
                         }
                     } else {
                         // Para doses, verificar se há garrafas suficientes para converter
@@ -210,7 +261,10 @@ class OrderController extends Controller
                         $currentStock = (int) $product->current_stock;
                         
                         if ($currentStock < $garrafasNecessarias) {
-                            throw new \Exception("Produto {$product->name} não possui garrafas suficientes para as doses solicitadas");
+                            DB::rollBack();
+                            return response()->json([
+                                'error' => "Estoque insuficiente para {$product->name}. Restam apenas {$currentStock} garrafas para as doses solicitadas."
+                            ], 400);
                         }
                     }
 
@@ -258,7 +312,10 @@ class OrderController extends Controller
                         if ($saleType === 'garrafa') {
                             $currentStock = (int) $product->current_stock;
                             if ($currentStock < $quantity) {
-                                throw new \Exception("Produto {$product->name} do combo não possui estoque suficiente de garrafas");
+                                DB::rollBack();
+                                return response()->json([
+                                    'error' => "Estoque insuficiente para {$product->name} do combo {$combo->name}. Restam apenas {$currentStock} unidades."
+                                ], 400);
                             }
                         } else {
                             // Para doses, verificar se há garrafas suficientes para converter
@@ -267,7 +324,10 @@ class OrderController extends Controller
                             $currentStock = (int) $product->current_stock;
                             
                             if ($currentStock < $garrafasNecessarias) {
-                                throw new \Exception("Produto {$product->name} do combo não possui garrafas suficientes para as doses solicitadas");
+                                DB::rollBack();
+                                return response()->json([
+                                    'error' => "Estoque insuficiente para {$product->name} do combo {$combo->name}. Restam apenas {$currentStock} garrafas para as doses solicitadas."
+                                ], 400);
                             }
                         }
                     }

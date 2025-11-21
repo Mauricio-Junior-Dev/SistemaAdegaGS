@@ -25,7 +25,12 @@ class PaymentController extends Controller
 
 public function createPixPayment(Request $request, Order $order)
 {
-    // Sua validação (Está perfeita, mantenha)
+    // Verificação de segurança: usuário deve estar autenticado
+    if (!$request->user()) {
+        return response()->json(['error' => 'Usuário não autenticado.'], 401);
+    }
+    
+    // Verificar se o usuário autenticado é o dono do pedido
     if ($request->user()->id !== $order->user_id) {
         return response()->json(['error' => 'Não autorizado.'], 403);
     }
