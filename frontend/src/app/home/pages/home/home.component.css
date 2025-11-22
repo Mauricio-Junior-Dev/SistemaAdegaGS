@@ -104,6 +104,21 @@
   display: none;
 }
 
+/* Regras Desktop para Categorias */
+@media (min-width: 768px) {
+  .categories-wrapper {
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    padding: 16px 0;
+  }
+
+  .categories-scroll {
+    justify-content: center;
+    overflow-x: hidden;
+    gap: 16px;
+  }
+}
+
 .category-pill {
   padding: 8px 16px;
   border-radius: 20px;

@@ -53,27 +53,27 @@
 /* Etapa Ativa (Onde o pedido está) */
 .step-item.active .step-circle {
   background-color: #ffffff;
-  border-color: #007bff; /* Azul (Ativo) */
-  color: #007bff;
+  border-color: var(--primary); /* Amarelo (Ativo) */
+  color: var(--primary);
 }
 
 .step-item.active .step-label {
-  color: #007bff;
+  color: var(--primary);
   font-weight: bold;
 }
 
 /* Etapa Concluída (Que já passou) */
 .step-item.completed .step-circle {
-  background-color: #28a745; /* Verde (Concluído) */
-  border-color: #28a745;
+  background-color: var(--text-primary); /* Cinza escuro (Concluído) */
+  border-color: var(--text-primary);
   color: #ffffff;
 }
 
 .step-item.completed .step-label {
-  color: #28a745;
+  color: var(--text-primary);
 }
 
 .step-line.completed {
-  background-color: #28a745; /* Pinta a linha de conexão */
+  background-color: var(--text-primary); /* Pinta a linha de conexão */
 }
 

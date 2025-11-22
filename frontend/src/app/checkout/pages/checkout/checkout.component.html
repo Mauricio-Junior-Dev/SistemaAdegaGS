@@ -1,423 +1,5 @@
 <div class="checkout-page">
-  <!-- Header com Progresso -->
-  <div class="checkout-header">
-    <div class="container">
-      <div class="header-content">
-        <div class="logo-section">
-          <h1>Finalizar Pedido</h1>
-          <p class="subtitle">Complete sua compra de forma rápida e segura</p>
-        </div>
-        
-        <!-- Barra de Progresso -->
-        <div class="progress-container">
-          <div class="progress-steps">
-            <div class="step" [class.active]="currentStep >= 1" [class.completed]="currentStep > 1">
-              <div class="step-number">1</div>
-              <span class="step-label">Carrinho</span>
-            </div>
-            <div class="step-line" [class.completed]="currentStep > 1"></div>
-            
-            <div class="step" [class.active]="currentStep >= 2" [class.completed]="currentStep > 2">
-              <div class="step-number">2</div>
-              <span class="step-label">Entrega</span>
-            </div>
-            <div class="step-line" [class.completed]="currentStep > 2"></div>
-            
-            <div class="step" [class.active]="currentStep >= 3" [class.completed]="currentStep > 3">
-              <div class="step-number">3</div>
-              <span class="step-label">Pagamento</span>
-            </div>
-            <div class="step-line" [class.completed]="currentStep > 3"></div>
-            
-            <div class="step" [class.active]="currentStep >= 4">
-              <div class="step-number">4</div>
-              <span class="step-label">Confirmação</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div *ngIf="checkoutState === 'form'">
-  <div class="checkout-container">
-    <div class="checkout-layout">
-      <!-- Conteúdo Principal -->
-      <div class="checkout-main">
-        <div class="checkout-steps">
-          
-          <!-- Step 1: Resumo do Carrinho -->
-          <div class="step-card" [class.active]="currentStep === 1">
-            <div class="step-header">
-              <div class="step-icon">
-                <mat-icon>shopping_cart</mat-icon>
-              </div>
-              <div class="step-info">
-                <h2>Confirme seus itens</h2>
-                <p>Verifique os produtos que você está comprando</p>
-              </div>
-            </div>
-            
-            <div class="step-content" *ngIf="currentStep === 1">
-              <div class="cart-items-list">
-                <div *ngFor="let item of cartItems$ | async" class="cart-item-modern">
-                  <div class="item-image">
-                    <img [src]="getImageUrl(item)" [alt]="getItemName(item)">
-                    <div class="quantity-badge">{{ item.quantity }}</div>
-                  </div>
-                  <div class="item-details">
-                    <h4 class="item-name">{{ getItemName(item) }}</h4>
-                    <p class="item-category">{{ getItemCategory(item) }}</p>
-                    <div class="item-price">
-                      <span class="unit-price">R$ {{ (item.price * 1) | number:'1.2-2' }} cada</span>
-                      <span class="total-price">R$ {{ ((item.price * 1) * (item.quantity * 1)) | number:'1.2-2' }}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              <div class="step-actions">
-                <button mat-raised-button color="primary" (click)="nextStep()" class="continue-btn">
-                  <mat-icon>arrow_forward</mat-icon>
-                  Continuar para Entrega
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <!-- Step 2: Endereço de Entrega -->
-          <div class="step-card" [class.active]="currentStep === 2">
-            <div class="step-header">
-              <div class="step-icon">
-                <mat-icon>location_on</mat-icon>
-              </div>
-              <div class="step-info">
-                <h2>Onde entregar?</h2>
-                <p>Escolha ou cadastre um endereço de entrega</p>
-              </div>
-            </div>
-            
-            <div class="step-content" *ngIf="currentStep === 2">
-              <form [formGroup]="deliveryForm" class="delivery-form">
-                <!-- Seleção de Endereços Salvos -->
-                <div *ngIf="addresses.length > 0" class="address-selection">
-                  <div class="address-options">
-                    <mat-radio-group [value]="useSavedAddress" (change)="onAddressOptionChange($event)">
-                      <mat-radio-button [value]="true" *ngIf="addresses.length > 0" class="address-option">
-                        <div class="option-content">
-                          <mat-icon>bookmark</mat-icon>
-                          <span>Usar endereço salvo</span>
-                        </div>
-                      </mat-radio-button>
-                      <mat-radio-button [value]="false" class="address-option">
-                        <div class="option-content">
-                          <mat-icon>add_location</mat-icon>
-                          <span>Novo endereço</span>
-                        </div>
-                      </mat-radio-button>
-                    </mat-radio-group>
-                  </div>
-
-                  <!-- Lista de Endereços Salvos -->
-                  <div *ngIf="useSavedAddress" class="saved-addresses">
-                    <div *ngFor="let address of addresses" 
-                         class="address-card" 
-                         [class.selected]="selectedAddressId === address.id"
-                         (click)="selectAddress(address.id)">
-                      <div class="address-header">
-                        <h4>{{address.name || 'Endereço'}}</h4>
-                        <mat-chip *ngIf="address.is_default" color="primary" class="default-chip">
-                          <mat-icon>star</mat-icon>
-                          Padrão
-                        </mat-chip>
-                      </div>
-                      <div class="address-details">
-                        <p><strong>{{address.street}}, {{address.number}}</strong></p>
-                        <p *ngIf="address.complement">{{address.complement}}</p>
-                        <p>{{address.neighborhood}}, {{address.city}}/{{address.state}}</p>
-                        <p>CEP: {{address.zipcode}}</p>
-                        <p *ngIf="address.notes"><em>{{address.notes}}</em></p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Formulário de Endereço -->
-                <div class="address-form" *ngIf="!useSavedAddress">
-                  <div class="form-section">
-                    <h4>Informações do Endereço</h4>
-                    
-                    <div class="cep-field">
-                      <mat-form-field class="cep-input">
-                        <mat-label>CEP</mat-label>
-                        <input matInput formControlName="zipcode" placeholder="00000-000" (input)="formatZipcode($event); clearError()" (blur)="calculateFreteFromCep()">
-                        <mat-error *ngIf="deliveryForm.get('zipcode')?.errors?.['required']">CEP é obrigatório</mat-error>
-                        <mat-error *ngIf="deliveryForm.get('zipcode')?.errors?.['pattern']">CEP inválido</mat-error>
-                      </mat-form-field>
-                      <button mat-raised-button color="primary" (click)="searchCep()" 
-                              [disabled]="!deliveryForm.get('zipcode')?.value || deliveryForm.get('zipcode')?.errors || loading"
-                              class="cep-button">
-                        <mat-icon>search</mat-icon>
-                        <span *ngIf="!loading">Buscar</span>
-                        <span *ngIf="loading">Buscando...</span>
-                      </button>
-                    </div>
-
-                    <div class="form-grid">
-                      <mat-form-field>
-                        <mat-label>Endereço</mat-label>
-                        <input matInput formControlName="address" placeholder="Rua, Avenida, etc">
-                        <mat-error *ngIf="deliveryForm.get('address')?.errors?.['required']">Endereço é obrigatório</mat-error>
-                      </mat-form-field>
-
-                      <mat-form-field>
-                        <mat-label>Número</mat-label>
-                        <input matInput formControlName="number" placeholder="123">
-                        <mat-error *ngIf="deliveryForm.get('number')?.errors?.['required']">Número é obrigatório</mat-error>
-                      </mat-form-field>
-
-                      <mat-form-field>
-                        <mat-label>Complemento</mat-label>
-                        <input matInput formControlName="complement" placeholder="Apto, Bloco, etc">
-                      </mat-form-field>
-
-                      <mat-form-field>
-                        <mat-label>Bairro</mat-label>
-                        <mat-select formControlName="neighborhood" [(ngModel)]="selectedNeighborhood">
-                          <mat-option value="">Selecione seu bairro</mat-option>
-                          <mat-option *ngFor="let zone of deliveryZones" [value]="zone.nome_bairro">
-                            {{ zone.nome_bairro }}
-                          </mat-option>
-                        </mat-select>
-                        <mat-error *ngIf="deliveryForm.get('neighborhood')?.errors?.['required']">Bairro é obrigatório</mat-error>
-                      </mat-form-field>
-
-                      <mat-form-field>
-                        <mat-label>Cidade</mat-label>
-                        <input matInput formControlName="city" placeholder="Sua cidade">
-                        <mat-error *ngIf="deliveryForm.get('city')?.errors?.['required']">Cidade é obrigatória</mat-error>
-                      </mat-form-field>
-
-                      <mat-form-field>
-                        <mat-label>Estado</mat-label>
-                        <input matInput formControlName="state" placeholder="UF">
-                        <mat-error *ngIf="deliveryForm.get('state')?.errors?.['required']">Estado é obrigatório</mat-error>
-                      </mat-form-field>
-
-                      <mat-form-field>
-                        <mat-label>Telefone</mat-label>
-                        <input matInput formControlName="phone" placeholder="(00) 00000-0000" (input)="formatPhone($event)">
-                        <mat-error *ngIf="deliveryForm.get('phone')?.errors?.['required']">Telefone é obrigatório</mat-error>
-                        <mat-error *ngIf="deliveryForm.get('phone')?.errors?.['pattern']">Telefone inválido</mat-error>
-                      </mat-form-field>
-
-                      <mat-form-field class="full-width">
-                        <mat-label>Instruções para entrega</mat-label>
-                        <textarea matInput formControlName="instructions" placeholder="Instruções especiais para entrega"></textarea>
-                      </mat-form-field>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Seção de Frete -->
-                <div class="delivery-fee-section" *ngIf="selectedNeighborhood && isDeliveryAreaValid">
-                  <div class="fee-card">
-                    <div class="fee-header">
-                      <mat-icon>local_shipping</mat-icon>
-                      <h4>Frete para {{ selectedNeighborhood }}</h4>
-                    </div>
-                    <div class="fee-details">
-                      <div class="fee-amount">
-                        <span class="fee-label">Valor do frete:</span>
-                        <span class="fee-value">R$ {{ (deliveryFee * 1) | number:'1.2-2' }}</span>
-                      </div>
-                      <div class="delivery-time" *ngIf="estimatedTime">
-                        <mat-icon>schedule</mat-icon>
-                        <span>{{ estimatedTime }}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Alerta de Área de Entrega no Step 2 -->
-                <div *ngIf="!isDeliveryAreaValid && !loadingDeliveryZones && (deliveryForm.get('zipcode')?.value || selectedAddressId)" class="delivery-area-warning">
-                  <mat-icon color="warn">warning</mat-icon>
-                  <span>Fora da área de entrega</span>
-                </div>
-
-                <div class="step-actions">
-                  <button mat-button (click)="prevStep()" class="back-btn">
-                    <mat-icon>arrow_back</mat-icon>
-                    Voltar
-                  </button>
-                  <button mat-raised-button color="primary" (click)="nextStep()" [disabled]="!isDeliveryFormValid() || !isDeliveryAreaValid" class="continue-btn">
-                    <mat-icon>arrow_forward</mat-icon>
-                    Continuar para Pagamento
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-
-          <!-- Step 3: Forma de Pagamento -->
-          <div class="step-card" [class.active]="currentStep === 3">
-            <div class="step-header">
-              <div class="step-icon">
-                <mat-icon>payment</mat-icon>
-              </div>
-              <div class="step-info">
-                <h2>Como pagar?</h2>
-                <p>Escolha a forma de pagamento que preferir</p>
-              </div>
-            </div>
-            
-            <div class="step-content" *ngIf="currentStep === 3">
-              <form [formGroup]="paymentForm">
-                <div class="payment-methods">
-                  <mat-radio-group formControlName="method">
-                    <mat-radio-button value="cash" class="payment-option">
-                      <div class="payment-card">
-                        <div class="payment-icon">
-                          <mat-icon>money</mat-icon>
-                        </div>
-                        <div class="payment-info">
-                          <h4>Dinheiro</h4>
-                          <p>Pagamento na entrega</p>
-                        </div>
-                      </div>
-                    </mat-radio-button>
-
-                    <mat-radio-button value="card" class="payment-option">
-                      <div class="payment-card">
-                        <div class="payment-icon">
-                          <mat-icon>credit_card</mat-icon>
-                        </div>
-                        <div class="payment-info">
-                          <h4>Cartão</h4>
-                          <p>Cartão na entrega</p>
-                        </div>
-                      </div>
-                    </mat-radio-button>
-
-                    <mat-radio-button value="pix" class="payment-option">
-                      <div class="payment-card">
-                        <div class="payment-icon">
-                          <mat-icon>qr_code</mat-icon>
-                        </div>
-                        <div class="payment-info">
-                          <h4>PIX</h4>
-                          <p>Pagamento online via QR Code</p>
-                        </div>
-                      </div>
-                    </mat-radio-button>
-                  </mat-radio-group>
-
-                  <div *ngIf="paymentForm.get('method')?.value === 'cash'" class="change-field">
-                    <mat-form-field>
-                      <mat-label>Valor recebido</mat-label>
-                      <input id="received-amount-input" matInput formControlName="received_amount" type="number" step="0.01" min="0" placeholder="0.00">
-                      <mat-hint>Informe o valor que você vai usar para pagar (ex: R$ 50,00 para um pedido de R$ 29,70)</mat-hint>
-                    </mat-form-field>
-                    <div class="change-info" *ngIf="paymentForm.get('received_amount')?.value && (paymentForm.get('received_amount')?.value > ((cartTotal$ | async) || 0) * 1 + (deliveryFee * 1))">
-                      <mat-icon>info</mat-icon>
-                      <span>Troco: R$ {{ ((paymentForm.get('received_amount')?.value || 0) * 1 - ((cartTotal$ | async) || 0) * 1 - (deliveryFee * 1)) | number:'1.2-2' }}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- Mensagem de Erro -->
-                <div *ngIf="error" class="error-message">
-                  <mat-icon>error</mat-icon>
-                  <span>{{ error }}</span>
-                </div>
-
-                <!-- Alerta de Área de Entrega -->
-                <div *ngIf="!isDeliveryAreaValid && !loadingDeliveryZones && (deliveryForm.get('zipcode')?.value || selectedAddressId)" class="delivery-area-warning">
-                  <mat-icon color="warn">warning</mat-icon>
-                  <span>Fora da área de entrega</span>
-                </div>
-
-                <div class="step-actions">
-                  <button mat-button (click)="prevStep()" [disabled]="loading" class="back-btn">
-                    <mat-icon>arrow_back</mat-icon>
-                    Voltar
-                  </button>
-                  <button mat-raised-button color="primary" (click)="onSubmit()" [disabled]="paymentForm.invalid || loading || isProcessingPayment || !isDeliveryAreaValid" class="finalize-btn">
-                    <mat-spinner *ngIf="loading || isProcessingPayment" diameter="20" style="display: inline-block; margin-right: 8px;"></mat-spinner>
-                    <mat-icon *ngIf="!(loading || isProcessingPayment)">check</mat-icon>
-                    <span *ngIf="!(loading || isProcessingPayment)">Finalizar Pedido</span>
-                    <span *ngIf="loading || isProcessingPayment">Processando...</span>
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Sidebar com Resumo -->
-      <div class="checkout-sidebar">
-        <div class="order-summary-card">
-          <div class="summary-header">
-            <h3>Resumo do Pedido</h3>
-            <div class="item-count">{{ (cartItems$ | async)?.length || 0 }} itens</div>
-          </div>
-          
-          <div class="cart-items">
-            <div *ngFor="let item of cartItems$ | async" class="cart-item">
-              <div class="item-image">
-                <img [src]="getImageUrl(item)" [alt]="getItemName(item)">
-              </div>
-              <div class="item-details">
-                <h4 class="item-name">{{ getItemName(item) }}</h4>
-                <div class="item-info">
-                  <span class="item-quantity">Qtd: {{ item.quantity }}</span>
-                  <span class="item-price">R$ {{ (item.price * 1) | number:'1.2-2' }}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="order-totals">
-            <div class="total-row">
-              <span>Subtotal</span>
-              <span>R$ {{ ((cartTotal$ | async) || 0) * 1 | number:'1.2-2' }}</span>
-            </div>
-            <div class="total-row">
-              <span>Taxa de entrega</span>
-              <span *ngIf="deliveryFee > 0">R$ {{ (deliveryFee * 1) | number:'1.2-2' }}</span>
-              <span *ngIf="deliveryFee === 0" class="free-delivery">Grátis</span>
-            </div>
-            <div class="total-final">
-              <span>Total</span>
-              <span>R$ {{ ((cartTotal$ | async) || 0) * 1 + (deliveryFee * 1) | number:'1.2-2' }}</span>
-            </div>
-          </div>
-
-          <!-- Produtos Complementares -->
-          <app-product-suggestions [cartItems$]="cartItems$"></app-product-suggestions>
-
-          <!-- Garantias e Segurança -->
-          <div class="security-badges">
-            <div class="badge">
-              <mat-icon>security</mat-icon>
-              <span>Compra 100% Segura</span>
-            </div>
-            <div class="badge">
-              <mat-icon>local_shipping</mat-icon>
-              <span>Entrega Rápida</span>
-            </div>
-            <div class="badge">
-              <mat-icon>support_agent</mat-icon>
-              <span>Suporte 24/7</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-  </div>
-
+  <!-- Página de Pagamento PIX -->
   <div *ngIf="checkoutState === 'awaiting_payment'" class="pix-payment-container">
     <div class="pix-container">
       <h2>Pague com PIX para Concluir</h2>
@@ -438,14 +20,350 @@
         </button>
       </div>
 
-        <p style="font-weight: bold; margin-top: 1.5rem;">
-          {{ loadingMessage }}
-        </p>
-        <mat-progress-bar mode="indeterminate"></mat-progress-bar>
-        <p style="font-size: 0.9em; color: #555; margin-top: 0.5rem;">
-          Não feche esta página. Você será redirecionado automaticamente
-          assim que o pagamento for aprovado.
-        </p>
+      <p style="font-weight: bold; margin-top: 1.5rem;">
+        {{ loadingMessage }}
+      </p>
+      <mat-progress-bar mode="indeterminate"></mat-progress-bar>
+      <p style="font-size: 0.9em; color: #555; margin-top: 0.5rem;">
+        Não feche esta página. Você será redirecionado automaticamente
+        assim que o pagamento for aprovado.
+      </p>
+    </div>
+  </div>
+
+  <!-- Formulário de Checkout -->
+  <div *ngIf="checkoutState === 'form'">
+    <div class="checkout-container">
+      <div class="checkout-content">
+        
+        <!-- Bloco 1: Endereço -->
+        <div class="address-block card">
+          <div class="address-header">
+            <div class="address-info">
+              <mat-icon>place</mat-icon>
+              <div class="address-text">
+                <h3>Endereço de entrega</h3>
+                <div *ngIf="useSavedAddress && selectedAddressId">
+                  <ng-container *ngFor="let addr of addresses">
+                    <p *ngIf="addr.id === selectedAddressId" class="address-display">
+                      <strong>{{ addr.street }}, {{ addr.number }}</strong>
+                      <span *ngIf="addr.complement"> - {{ addr.complement }}</span><br>
+                      {{ addr.neighborhood }}, {{ addr.city }}/{{ addr.state }}<br>
+                      CEP: {{ addr.zipcode }}
+                    </p>
+                  </ng-container>
+                </div>
+                <div *ngIf="!useSavedAddress && deliveryForm.get('address')?.value" class="address-display">
+                  <strong>{{ deliveryForm.get('address')?.value }}, {{ deliveryForm.get('number')?.value }}</strong>
+                  <span *ngIf="deliveryForm.get('complement')?.value"> - {{ deliveryForm.get('complement')?.value }}</span><br>
+                  {{ deliveryForm.get('neighborhood')?.value }}, {{ deliveryForm.get('city')?.value }}/{{ deliveryForm.get('state')?.value }}<br>
+                  CEP: {{ deliveryForm.get('zipcode')?.value }}
+                </div>
+                <p *ngIf="!useSavedAddress && !deliveryForm.get('address')?.value" class="address-empty">
+                  Endereço não informado
+                </p>
+              </div>
+            </div>
+            <button mat-button class="alter-address-btn" (click)="showAddressForm = !showAddressForm">
+              <mat-icon>edit</mat-icon>
+              Alterar
+            </button>
+          </div>
+
+          <!-- Formulário de Endereço (Expansível) -->
+          <div class="address-form-expandable" *ngIf="showAddressForm">
+            <form [formGroup]="deliveryForm" class="delivery-form">
+              <!-- Seleção de Endereços Salvos -->
+              <div *ngIf="addresses.length > 0" class="address-selection">
+                <div class="address-options">
+                  <mat-radio-group [value]="useSavedAddress" (change)="onAddressOptionChange($event)">
+                    <mat-radio-button [value]="true" *ngIf="addresses.length > 0" class="address-option">
+                      <div class="option-content">
+                        <mat-icon>bookmark</mat-icon>
+                        <span>Usar endereço salvo</span>
+                      </div>
+                    </mat-radio-button>
+                    <mat-radio-button [value]="false" class="address-option">
+                      <div class="option-content">
+                        <mat-icon>add_location</mat-icon>
+                        <span>Novo endereço</span>
+                      </div>
+                    </mat-radio-button>
+                  </mat-radio-group>
+                </div>
+
+                <!-- Lista de Endereços Salvos -->
+                <div *ngIf="useSavedAddress" class="saved-addresses">
+                  <div *ngFor="let address of addresses" 
+                       class="address-card-small" 
+                       [class.selected]="selectedAddressId === address.id"
+                       (click)="selectAddress(address.id)">
+                    <div class="address-header-small">
+                      <h4>{{address.name || 'Endereço'}}</h4>
+                      <mat-chip *ngIf="address.is_default" color="primary" class="default-chip">
+                        <mat-icon>star</mat-icon>
+                        Padrão
+                      </mat-chip>
+                    </div>
+                    <div class="address-details-small">
+                      <p><strong>{{address.street}}, {{address.number}}</strong></p>
+                      <p *ngIf="address.complement">{{address.complement}}</p>
+                      <p>{{address.neighborhood}}, {{address.city}}/{{address.state}}</p>
+                      <p>CEP: {{address.zipcode}}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Formulário de Novo Endereço -->
+              <div class="address-form" *ngIf="!useSavedAddress">
+                <div class="cep-field">
+                  <mat-form-field class="cep-input">
+                    <mat-label>CEP</mat-label>
+                    <input matInput formControlName="zipcode" placeholder="00000-000" (input)="formatZipcode($event); clearError()" (blur)="calculateFreteFromCep()">
+                    <mat-error *ngIf="deliveryForm.get('zipcode')?.errors?.['required']">CEP é obrigatório</mat-error>
+                    <mat-error *ngIf="deliveryForm.get('zipcode')?.errors?.['pattern']">CEP inválido</mat-error>
+                  </mat-form-field>
+                  <button mat-raised-button color="primary" (click)="searchCep()" 
+                          [disabled]="!deliveryForm.get('zipcode')?.value || deliveryForm.get('zipcode')?.errors || loading"
+                          class="cep-button">
+                    <mat-icon>search</mat-icon>
+                    <span *ngIf="!loading">Buscar</span>
+                    <span *ngIf="loading">Buscando...</span>
+                  </button>
+                </div>
+
+                <div class="form-grid">
+                  <mat-form-field>
+                    <mat-label>Endereço</mat-label>
+                    <input matInput formControlName="address" placeholder="Rua, Avenida, etc">
+                    <mat-error *ngIf="deliveryForm.get('address')?.errors?.['required']">Endereço é obrigatório</mat-error>
+                  </mat-form-field>
+
+                  <mat-form-field>
+                    <mat-label>Número</mat-label>
+                    <input matInput formControlName="number" placeholder="123">
+                    <mat-error *ngIf="deliveryForm.get('number')?.errors?.['required']">Número é obrigatório</mat-error>
+                  </mat-form-field>
+
+                  <mat-form-field>
+                    <mat-label>Complemento</mat-label>
+                    <input matInput formControlName="complement" placeholder="Apto, Bloco, etc">
+                  </mat-form-field>
+
+                  <mat-form-field>
+                    <mat-label>Bairro</mat-label>
+                    <mat-select formControlName="neighborhood" [(ngModel)]="selectedNeighborhood">
+                      <mat-option value="">Selecione seu bairro</mat-option>
+                      <mat-option *ngFor="let zone of deliveryZones" [value]="zone.nome_bairro">
+                        {{ zone.nome_bairro }}
+                      </mat-option>
+                    </mat-select>
+                    <mat-error *ngIf="deliveryForm.get('neighborhood')?.errors?.['required']">Bairro é obrigatório</mat-error>
+                  </mat-form-field>
+
+                  <mat-form-field>
+                    <mat-label>Cidade</mat-label>
+                    <input matInput formControlName="city" placeholder="Sua cidade">
+                    <mat-error *ngIf="deliveryForm.get('city')?.errors?.['required']">Cidade é obrigatória</mat-error>
+                  </mat-form-field>
+
+                  <mat-form-field>
+                    <mat-label>Estado</mat-label>
+                    <input matInput formControlName="state" placeholder="UF">
+                    <mat-error *ngIf="deliveryForm.get('state')?.errors?.['required']">Estado é obrigatório</mat-error>
+                  </mat-form-field>
+
+                  <mat-form-field>
+                    <mat-label>Telefone</mat-label>
+                    <input matInput formControlName="phone" placeholder="(00) 00000-0000" (input)="formatPhone($event)">
+                    <mat-error *ngIf="deliveryForm.get('phone')?.errors?.['required']">Telefone é obrigatório</mat-error>
+                    <mat-error *ngIf="deliveryForm.get('phone')?.errors?.['pattern']">Telefone inválido</mat-error>
+                  </mat-form-field>
+
+                  <mat-form-field class="full-width">
+                    <mat-label>Instruções para entrega</mat-label>
+                    <textarea matInput formControlName="instructions" placeholder="Instruções especiais para entrega"></textarea>
+                  </mat-form-field>
+                </div>
+              </div>
+
+              <!-- Seção de Frete -->
+              <div class="delivery-fee-section" *ngIf="selectedNeighborhood && isDeliveryAreaValid">
+                <div class="fee-card">
+                  <div class="fee-header">
+                    <mat-icon>local_shipping</mat-icon>
+                    <h4>Frete para {{ selectedNeighborhood }}</h4>
+                  </div>
+                  <div class="fee-details">
+                    <div class="fee-amount">
+                      <span class="fee-label">Valor do frete:</span>
+                      <span class="fee-value">R$ {{ (deliveryFee * 1) | number:'1.2-2' }}</span>
+                    </div>
+                    <div class="delivery-time" *ngIf="estimatedTime">
+                      <mat-icon>schedule</mat-icon>
+                      <span>{{ estimatedTime }}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Alerta de Área de Entrega -->
+              <div *ngIf="!isDeliveryAreaValid && !loadingDeliveryZones && (deliveryForm.get('zipcode')?.value || selectedAddressId)" class="delivery-area-warning">
+                <mat-icon color="warn">warning</mat-icon>
+                <span>Fora da área de entrega</span>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <!-- Bloco 2: Sugestões de Produtos (Upsell) -->
+        <div class="suggestions-block">
+          <h2 class="section-title">
+            <mat-icon>shopping_bag</mat-icon>
+            Não esqueceu de nada?
+          </h2>
+          <app-product-suggestions [cartItems$]="cartItems$"></app-product-suggestions>
+        </div>
+
+        <!-- Bloco 3: Forma de Pagamento -->
+        <div class="payment-block card">
+          <h2 class="section-title">
+            <mat-icon>payment</mat-icon>
+            Forma de pagamento
+          </h2>
+
+          <form [formGroup]="paymentForm">
+            <div class="payment-cards">
+              <button type="button" 
+                      class="payment-card-selectable"
+                      [class.selected]="paymentForm.get('method')?.value === 'pix'"
+                      (click)="paymentForm.patchValue({ method: 'pix' })">
+                <div class="payment-icon-large">
+                  <mat-icon>qr_code</mat-icon>
+                </div>
+                <div class="payment-text">
+                  <h3>PIX</h3>
+                  <p>Pagamento online via QR Code</p>
+                </div>
+              </button>
+
+              <button type="button" 
+                      class="payment-card-selectable"
+                      [class.selected]="paymentForm.get('method')?.value === 'cash'"
+                      (click)="paymentForm.patchValue({ method: 'cash' })">
+                <div class="payment-icon-large">
+                  <mat-icon>money</mat-icon>
+                </div>
+                <div class="payment-text">
+                  <h3>Dinheiro</h3>
+                  <p>Pagamento na entrega</p>
+                </div>
+              </button>
+
+              <button type="button" 
+                      class="payment-card-selectable"
+                      [class.selected]="paymentForm.get('method')?.value === 'card'"
+                      (click)="paymentForm.patchValue({ method: 'card' })">
+                <div class="payment-icon-large">
+                  <mat-icon>credit_card</mat-icon>
+                </div>
+                <div class="payment-text">
+                  <h3>Cartão</h3>
+                  <p>Cartão na entrega</p>
+                </div>
+              </button>
+            </div>
+
+            <!-- Campo de Troco (Dinheiro) -->
+            <div class="change-field-expandable" *ngIf="paymentForm.get('method')?.value === 'cash'">
+              <mat-form-field class="full-width">
+                <mat-label>Valor recebido</mat-label>
+                <input id="received-amount-input" matInput formControlName="received_amount" type="number" step="0.01" min="0" placeholder="0.00">
+                <mat-hint>Informe o valor que você vai usar para pagar</mat-hint>
+              </mat-form-field>
+              <div class="change-info" *ngIf="paymentForm.get('received_amount')?.value && (paymentForm.get('received_amount')?.value > ((cartTotal$ | async) || 0) * 1 + (deliveryFee * 1))">
+                <mat-icon>info</mat-icon>
+                <span>Troco: R$ {{ ((paymentForm.get('received_amount')?.value || 0) * 1 - ((cartTotal$ | async) || 0) * 1 - (deliveryFee * 1)) | number:'1.2-2' }}</span>
+              </div>
+            </div>
+
+            <!-- Mensagem de Erro -->
+            <div *ngIf="error" class="error-message">
+              <mat-icon>error</mat-icon>
+              <span>{{ error }}</span>
+            </div>
+          </form>
+        </div>
+
+        <!-- Resumo do Pedido (Acordeão Discreto) -->
+        <div class="order-summary-block card">
+          <button type="button" class="summary-toggle" (click)="showOrderSummary = !showOrderSummary">
+            <div class="summary-header-toggle">
+              <div>
+                <h3>Resumo do pedido</h3>
+                <p>{{ (cartItems$ | async)?.length || 0 }} itens</p>
+              </div>
+              <mat-icon [class.rotated]="showOrderSummary">expand_more</mat-icon>
+            </div>
+          </button>
+
+          <div class="summary-content" *ngIf="showOrderSummary">
+            <div class="cart-items-summary">
+              <div *ngFor="let item of cartItems$ | async" class="cart-item-summary">
+                <div class="item-image-small">
+                  <img [src]="getImageUrl(item)" [alt]="getItemName(item)">
+                </div>
+                <div class="item-details-summary">
+                  <h4 class="item-name-summary">{{ getItemName(item) }}</h4>
+                  <div class="item-info-summary">
+                    <span class="item-quantity-summary">{{ item.quantity }}x</span>
+                    <span class="item-price-summary">R$ {{ (item.price * 1) | number:'1.2-2' }}</span>
+                  </div>
+                </div>
+                <div class="item-total-summary">
+                  R$ {{ ((item.price * 1) * (item.quantity * 1)) | number:'1.2-2' }}
+                </div>
+              </div>
+            </div>
+
+            <div class="order-totals-summary">
+              <div class="total-row-summary">
+                <span>Subtotal</span>
+                <span>R$ {{ ((cartTotal$ | async) || 0) * 1 | number:'1.2-2' }}</span>
+              </div>
+              <div class="total-row-summary">
+                <span>Taxa de entrega</span>
+                <span *ngIf="deliveryFee > 0">R$ {{ (deliveryFee * 1) | number:'1.2-2' }}</span>
+                <span *ngIf="deliveryFee === 0" class="free-delivery">Grátis</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Espaço para o footer fixo -->
+        <div class="bottom-spacer"></div>
+      </div>
+    </div>
+
+    <!-- Sticky Footer -->
+    <div class="sticky-footer">
+      <div class="footer-content">
+        <div class="footer-total">
+          <span class="total-label">Total</span>
+          <span class="total-value">R$ {{ ((cartTotal$ | async) || 0) * 1 + (deliveryFee * 1) | number:'1.2-2' }}</span>
+        </div>
+        <button mat-raised-button 
+                color="primary" 
+                class="finalize-button"
+                (click)="onSubmit()" 
+                [disabled]="!isDeliveryFormValid() || paymentForm.invalid || loading || isProcessingPayment || !isDeliveryAreaValid">
+          <mat-spinner *ngIf="loading || isProcessingPayment" diameter="20" style="display: inline-block; margin-right: 8px;"></mat-spinner>
+          <mat-icon *ngIf="!(loading || isProcessingPayment)">shopping_cart</mat-icon>
+          <span *ngIf="!(loading || isProcessingPayment)">Fazer Pedido</span>
+          <span *ngIf="loading || isProcessingPayment">Processando...</span>
+        </button>
+      </div>
     </div>
   </div>
 </div>

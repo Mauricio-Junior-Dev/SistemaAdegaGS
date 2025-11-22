@@ -93,6 +93,10 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   
   // Controle de Steps
   currentStep = 1;
+  
+  // Controle de UI
+  showAddressForm = false;
+  showOrderSummary = false;
 
   constructor(
     private fb: FormBuilder,
@@ -431,12 +435,32 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   nextStep(): void {
     if (this.currentStep < 4) {
       this.currentStep++;
+      this.scrollToTop();
     }
   }
 
   prevStep(): void {
     if (this.currentStep > 1) {
       this.currentStep--;
+      this.scrollToTop();
+    }
+  }
+
+  /**
+   * Faz scroll suave até o topo do container do checkout
+   */
+  private scrollToTop(): void {
+    // Rola suavemente para o topo do container do checkout
+    const element = document.querySelector('.checkout-container') || document.body;
+    if (element) {
+      // Ajuste o 'top' para compensar o Header Fixo (aprox -100px)
+      const headerOffset = 100;
+      const elementPosition = element.getBoundingClientRect().top;
+      const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      });
     }
   }
 

@@ -4,14 +4,14 @@
   align-items: center;
   justify-content: center;
   padding: 2rem;
-  background-color: #f8f9fa;
+  background-color: var(--background);
 }
 
 .auth-card {
   width: 100%;
   max-width: 400px;
-  background: white;
-  border-radius: 8px;
+  background: var(--white);
+  border-radius: var(--border-radius-md);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   padding: 2rem;
 }
@@ -23,12 +23,12 @@
 
 .auth-header h1 {
   font-size: 1.75rem;
-  color: #1A1A1A;
+  color: var(--text-primary);
   margin-bottom: 0.5rem;
 }
 
 .auth-header p {
-  color: #666;
+  color: var(--text-secondary);
 }
 
 .auth-form {
@@ -46,20 +46,21 @@
 label {
   font-size: 0.9rem;
   font-weight: 500;
-  color: #1A1A1A;
+  color: var(--text-primary);
 }
 
 input {
   padding: 0.75rem 1rem;
   border: 1px solid #ddd;
-  border-radius: 4px;
+  border-radius: var(--border-radius-sm);
   font-size: 1rem;
   transition: border-color 0.2s;
+  color: var(--text-primary);
 }
 
 input:focus {
   outline: none;
-  border-color: #00A868;
+  border-color: var(--primary);
 }
 
 input.invalid {
@@ -75,7 +76,7 @@ input.invalid {
   padding: 1rem;
   background-color: #fff5f5;
   border: 1px solid #fed7d7;
-  border-radius: 4px;
+  border-radius: var(--border-radius-sm);
   color: #dc3545;
   font-size: 0.9rem;
   text-align: center;
@@ -83,37 +84,40 @@ input.invalid {
 
 .submit-button {
   padding: 1rem;
-  background-color: #00A868;
-  color: white;
+  background-color: var(--primary);
+  color: var(--secondary);
   border: none;
-  border-radius: 4px;
+  border-radius: var(--border-radius-md);
   font-weight: 600;
   cursor: pointer;
   transition: background-color 0.2s;
 }
 
 .submit-button:hover:not(:disabled) {
-  background-color: #008F5A;
+  background-color: var(--primary-dark);
 }
 
 .submit-button:disabled {
   background-color: #ccc;
   cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .auth-links {
   text-align: center;
   font-size: 0.9rem;
-  color: #666;
+  color: var(--text-secondary);
 }
 
 .auth-links a {
-  color: #00A868;
+  color: var(--primary);
   text-decoration: none;
   font-weight: 500;
+  transition: color 0.2s;
 }
 
 .auth-links a:hover {
+  color: var(--primary-dark);
   text-decoration: underline;
 }
 
@@ -135,9 +139,9 @@ input.invalid {
 }
 
 .social-divider span {
-  background-color: white;
+  background-color: var(--white);
   padding: 0 1rem;
-  color: #666;
+  color: var(--text-secondary);
   font-size: 0.9rem;
 }
 
@@ -154,9 +158,9 @@ input.invalid {
   gap: 0.75rem;
   padding: 0.75rem 1rem;
   border: 1px solid #ddd;
-  border-radius: 4px;
-  background-color: white;
-  color: #333;
+  border-radius: var(--border-radius-sm);
+  background-color: var(--white);
+  color: var(--text-primary);
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
@@ -203,4 +207,26 @@ input.invalid {
     padding: 0.875rem 1rem;
     font-size: 0.9rem;
   }
+}
+
+/* Garantir que o tema seja aplicado corretamente */
+.submit-button {
+  background-color: var(--primary) !important;
+  color: var(--secondary) !important;
+}
+
+.submit-button:hover:not(:disabled) {
+  background-color: var(--primary-dark) !important;
+}
+
+input:focus {
+  border-color: var(--primary) !important;
+}
+
+.auth-links a {
+  color: var(--primary) !important;
+}
+
+.auth-links a:hover {
+  color: var(--primary-dark) !important;
 }

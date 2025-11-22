@@ -1,6 +1,6 @@
 .dashboard-container {
   padding: 24px;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  background: var(--background);
   min-height: 100vh;
 }
 
@@ -43,11 +43,10 @@
 }
 
 .modern-card {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: var(--white);
+  border-radius: var(--border-radius-md);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-top: 4px solid var(--primary);
   transition: all 0.3s ease;
   overflow: hidden;
 }
@@ -61,8 +60,8 @@
   display: flex;
   align-items: center;
   padding: 20px 24px 16px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  background: transparent;
+  color: var(--text-primary);
   margin: 0;
 }
 
@@ -74,8 +73,7 @@
   align-items: center;
   justify-content: center;
   margin-right: 16px;
-  background: rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(10px);
+  background: rgba(255, 204, 0, 0.1);
 }
 
 .card-icon mat-icon {
@@ -85,32 +83,48 @@
 }
 
 .sales-icon {
-  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  background: rgba(255, 204, 0, 0.15);
+}
+
+.sales-icon mat-icon {
+  color: var(--primary);
 }
 
 .orders-icon {
-  background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+  background: rgba(255, 204, 0, 0.15);
+}
+
+.orders-icon mat-icon {
+  color: var(--primary);
 }
 
 .stock-icon {
-  background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+  background: rgba(76, 175, 80, 0.15);
+}
+
+.stock-icon mat-icon {
+  color: #4caf50;
 }
 
 .users-icon {
-  background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+  background: rgba(255, 204, 0, 0.15);
+}
+
+.users-icon mat-icon {
+  color: var(--primary);
 }
 
 .card-title h2 {
   margin: 0;
   font-size: 20px;
   font-weight: 600;
-  color: white;
+  color: var(--text-primary);
 }
 
 .card-subtitle {
   margin: 4px 0 0;
   font-size: 14px;
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--text-secondary);
 }
 
 .card-content {
@@ -121,9 +135,10 @@
   text-align: center;
   margin-bottom: 20px;
   padding: 16px;
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-  border-radius: 12px;
-  color: white;
+  background: var(--background);
+  border-radius: var(--border-radius-sm);
+  color: var(--text-primary);
+  border: 1px solid #e0e0e0;
 }
 
 .main-value {
@@ -236,28 +251,27 @@
 /* Gráfico */
 .chart-card {
   margin-bottom: 32px;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: var(--white);
+  border-radius: var(--border-radius-md);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-top: 4px solid var(--primary);
 }
 
 .chart-card mat-card-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  background: transparent;
+  color: var(--text-primary);
   margin: 0;
   padding: 20px 24px;
 }
 
 .chart-card mat-card-title {
-  color: white;
+  color: var(--text-primary);
   font-size: 20px;
   font-weight: 600;
 }
 
 .chart-card mat-card-subtitle {
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--text-secondary);
   font-size: 14px;
 }
 
@@ -274,23 +288,22 @@
 }
 
 .table-card {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: var(--white);
+  border-radius: var(--border-radius-md);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-top: 4px solid var(--primary);
   overflow: hidden;
 }
 
 .table-card mat-card-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  background: transparent;
+  color: var(--text-primary);
   margin: 0;
   padding: 20px 24px;
 }
 
 .table-card mat-card-title {
-  color: white;
+  color: var(--text-primary);
   font-size: 18px;
   font-weight: 600;
 }

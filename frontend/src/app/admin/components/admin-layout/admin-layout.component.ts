@@ -103,12 +103,12 @@ import { Subscription } from 'rxjs';
   styles: [`
     .admin-container {
       height: 100vh;
-      background-color: #f5f5f5;
+      background-color: var(--background);
     }
 
     .admin-sidenav {
       width: 280px;
-      background: linear-gradient(180deg, #111827 0%, #1f2937 100%);
+      background: var(--secondary);
       color: #e5e7eb;
     }
 
@@ -128,7 +128,7 @@ import { Subscription } from 'rxjs';
       letter-spacing: .5px;
     }
 
-    .brand mat-icon { color: #60a5fa; }
+    .brand mat-icon { color: var(--primary); }
     .brand span { color: #fff; }
     
     .brand-logo {
@@ -157,9 +157,9 @@ import { Subscription } from 'rxjs';
     .nav-item:hover { background: rgba(255,255,255,0.06); color: #fff; }
     .nav-item:hover mat-icon { color: #fff; }
 
-    .active { background: #3498db; color: #ffffff; }
-    .active span { color: #ffffff; }
-    .active mat-icon { color: #ffffff; }
+    .active { background: var(--primary); color: var(--secondary); }
+    .active span { color: var(--secondary); }
+    .active mat-icon { color: var(--secondary); }
 
     .sidenav-footer {
       position: absolute;
@@ -201,8 +201,8 @@ import { Subscription } from 'rxjs';
     }
 
     /* Garantir maior especificidade para o estado ativo do menu */
-    .nav .nav-item.active { background: #3498db; color: #ffffff; }
-    .nav .nav-item.active mat-icon, .nav .nav-item.active span { color: #ffffff; }
+    .nav .nav-item.active { background: var(--primary); color: var(--secondary); }
+    .nav .nav-item.active mat-icon, .nav .nav-item.active span { color: var(--secondary); }
   `]
 })
 export class AdminLayoutComponent implements OnInit, OnDestroy {

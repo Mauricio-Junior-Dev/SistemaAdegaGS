@@ -32,12 +32,15 @@
 }
 
 .summary-card {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+  background: var(--white);
+  color: var(--text-primary);
+  border-top: 4px solid var(--primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .summary-card:last-child {
-  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  background: var(--white);
+  border-top-color: var(--primary);
 }
 
 .summary-stats {
@@ -51,7 +54,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 8px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 .stat-item:last-child {
@@ -60,12 +63,13 @@
 
 .stat-label {
   font-size: 14px;
-  opacity: 0.9;
+  color: var(--text-secondary);
 }
 
 .stat-value {
   font-size: 18px;
   font-weight: 600;
+  color: var(--text-primary);
 }
 
 .stat-value.primary {

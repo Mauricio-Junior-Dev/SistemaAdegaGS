@@ -103,7 +103,7 @@
 
         <div class="order-actions">
           <button mat-raised-button 
-                  color="success" 
+                  color="primary" 
                   *ngIf="order.status === 'delivering'"
                   (click)="confirmarEntrega(order)">
             <mat-icon>check_circle</mat-icon>
@@ -114,7 +114,7 @@
             Ver Detalhes
           </button>
           <button mat-button 
-                  color="accent"
+                  color="primary"
                   (click)="openWhatsAppHelp(order)">
             <mat-icon>help</mat-icon>
             Ajuda

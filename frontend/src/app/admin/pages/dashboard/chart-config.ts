@@ -1,8 +1,8 @@
 import { ChartConfiguration, ChartType } from 'chart.js';
 
 export const CHART_COLORS = {
-  primary: '#667eea',
-  secondary: '#764ba2',
+  primary: '#ffcc00',
+  secondary: '#1a1a1a',
   success: '#4caf50',
   warning: '#ff9800',
   danger: '#f44336',

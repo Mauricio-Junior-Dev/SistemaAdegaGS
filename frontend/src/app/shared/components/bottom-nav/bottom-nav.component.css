@@ -86,6 +86,7 @@
 .nav-item-cart:hover {
   transform: scale(1.05);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+  background-color: var(--primary-dark);
 }
 
 .nav-item-cart:active {

@@ -148,3 +148,448 @@ app-root {
   max-width: 100vw;
   overflow-x: clip;
 }
+
+/* Angular Material Theme Overrides - Amarelo/Preto */
+.mat-primary {
+  background-color: var(--primary) !important;
+  color: var(--secondary) !important;
+}
+
+.mat-toolbar.mat-primary {
+  background-color: var(--primary) !important;
+  color: var(--secondary) !important;
+}
+
+button.mat-primary,
+.mat-raised-button.mat-primary,
+.mat-flat-button.mat-primary {
+  background-color: var(--primary) !important;
+  color: var(--secondary) !important;
+}
+
+button.mat-primary:hover,
+.mat-raised-button.mat-primary:hover,
+.mat-flat-button.mat-primary:hover {
+  background-color: var(--primary-dark) !important;
+}
+
+button.mat-accent,
+.mat-raised-button.mat-accent,
+.mat-flat-button.mat-accent {
+  background-color: var(--secondary) !important;
+  color: var(--white) !important;
+}
+
+.mat-icon-button.mat-primary {
+  color: var(--primary) !important;
+}
+
+.mat-chip.mat-primary,
+.mat-chip[color="primary"] {
+  background-color: var(--primary) !important;
+  color: var(--secondary) !important;
+}
+
+/* Garantir que Material buttons não fiquem roxos */
+.mat-button.mat-primary,
+.mat-icon-button.mat-primary,
+.mat-stroked-button.mat-primary,
+.mat-raised-button.mat-primary,
+.mat-flat-button.mat-primary,
+.mat-fab.mat-primary,
+.mat-mini-fab.mat-primary {
+  background-color: var(--primary) !important;
+  color: var(--secondary) !important;
+}
+
+/* ==========================================
+   CAMPOS DE INPUT, SELECT E PESQUISA
+   ========================================== */
+
+/* Material Form Fields - Estado Normal */
+.mat-mdc-form-field,
+.mat-form-field {
+  background-color: transparent !important;
+}
+
+.mat-mdc-text-field-wrapper,
+.mdc-text-field {
+  background-color: var(--white) !important;
+  border-radius: 4px;
+}
+
+.mdc-text-field__input,
+.mat-mdc-input-element,
+.mat-mdc-select-trigger {
+  background-color: var(--white) !important;
+  color: #212529 !important;
+}
+
+/* Input base do Material */
+input.mat-mdc-input-element,
+input.mdc-text-field__input,
+textarea.mat-mdc-input-element,
+textarea.mdc-text-field__input {
+  background-color: var(--white) !important;
+  color: #212529 !important;
+  border: 1px solid #ced4da !important;
+  padding: 12px 16px !important;
+  border-radius: 4px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+/* Select base do Material */
+.mat-mdc-select,
+.mat-select {
+  background-color: var(--white) !important;
+  color: #212529 !important;
+}
+
+/* Estado de Foco - Input */
+input.mat-mdc-input-element:focus,
+input.mdc-text-field__input:focus,
+textarea.mat-mdc-input-element:focus,
+textarea.mdc-text-field__input:focus,
+.mdc-text-field--focused .mdc-text-field__input {
+  background-color: var(--white) !important;
+  color: #212529 !important;
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px rgba(255, 204, 0, 0.1) !important;
+  outline: none !important;
+}
+
+/* Material Form Field Focus */
+.mat-mdc-form-field.mat-focused .mat-mdc-text-field-wrapper,
+.mat-form-field.mat-focused .mat-form-field-wrapper {
+  background-color: transparent !important;
+}
+
+.mat-mdc-form-field.mat-focused .mdc-text-field__input,
+.mat-form-field.mat-focused .mat-input-element {
+  border-color: var(--primary) !important;
+}
+
+/* Label e hint do Material */
+.mat-mdc-form-field-label,
+.mat-form-field-label,
+.mdc-floating-label {
+  color: rgba(0, 0, 0, 0.6) !important;
+}
+
+.mat-mdc-form-field.mat-focused .mat-mdc-form-field-label,
+.mat-form-field.mat-focused .mat-form-field-label,
+.mdc-text-field--focused .mdc-floating-label {
+  color: var(--primary) !important;
+}
+
+/* Underline do Material (legacy) */
+.mat-form-field-underline,
+.mat-form-field-ripple {
+  background-color: rgba(0, 0, 0, 0.12) !important;
+}
+
+.mat-form-field.mat-focused .mat-form-field-ripple,
+.mat-form-field.mat-focused .mat-form-field-underline {
+  background-color: var(--primary) !important;
+}
+
+/* Select - Estado Normal */
+.mat-mdc-select-trigger,
+.mat-select-trigger {
+  background-color: var(--white) !important;
+  color: #212529 !important;
+  border: 1px solid #ced4da !important;
+  padding: 12px 16px !important;
+  border-radius: 4px;
+  min-height: 40px;
+}
+
+/* Select - Estado de Foco */
+.mat-mdc-select.mat-focused .mat-mdc-select-trigger,
+.mat-select.mat-focused .mat-select-trigger {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px rgba(255, 204, 0, 0.1) !important;
+}
+
+/* Search Field / Campo de Pesquisa */
+input[type="search"],
+input.mat-input-element[type="search"],
+.search-field input,
+.search-field .mat-input-element {
+  background-color: var(--white) !important;
+  color: #212529 !important;
+  border: 1px solid #ced4da !important;
+  border-radius: 4px;
+  padding: 10px 16px !important;
+}
+
+input[type="search"]:focus,
+input.mat-input-element[type="search"]:focus,
+.search-field input:focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px rgba(255, 204, 0, 0.1) !important;
+  outline: none !important;
+}
+
+/* Remove background amarelo dos inputs desabilitados */
+input:disabled,
+input.mat-mdc-input-element:disabled,
+textarea:disabled {
+  background-color: #f8f9fa !important;
+  color: #6c757d !important;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* Material Design Components (MDC) - Garantir fundo branco */
+.mdc-text-field--filled:not(.mdc-text-field--disabled),
+.mdc-text-field--outlined:not(.mdc-text-field--disabled) {
+  background-color: transparent !important;
+}
+
+.mdc-text-field__input,
+.mdc-select__selected-text {
+  background-color: transparent !important;
+}
+
+.mdc-text-field--filled .mdc-text-field__input {
+  background-color: var(--white) !important;
+}
+
+/* Garantir que Material Input Container não tenha background amarelo */
+.mat-mdc-form-field .mdc-text-field--filled,
+.mat-mdc-form-field .mdc-text-field--outlined {
+  background-color: transparent !important;
+}
+
+.mat-mdc-form-field .mdc-text-field__input {
+  background-color: var(--white) !important;
+  color: #212529 !important;
+}
+
+/* Material Native Select */
+.mat-mdc-select-value,
+.mat-select-value {
+  color: #212529 !important;
+  background-color: transparent !important;
+}
+
+/* Garantir que o container do form field não tenha background */
+.mat-mdc-form-field,
+.mat-form-field {
+  background-color: transparent !important;
+}
+
+/* Material Outlined Form Field */
+.mdc-text-field--outlined .mdc-notched-outline .mdc-notched-outline__leading,
+.mdc-text-field--outlined .mdc-notched-outline .mdc-notched-outline__notch,
+.mdc-text-field--outlined .mdc-notched-outline .mdc-notched-outline__trailing {
+  border-color: rgba(0, 0, 0, 0.12) !important;
+}
+
+.mdc-text-field--outlined.mdc-text-field--focused .mdc-notched-outline .mdc-notched-outline__leading,
+.mdc-text-field--outlined.mdc-text-field--focused .mdc-notched-outline .mdc-notched-outline__notch,
+.mdc-text-field--outlined.mdc-text-field--focused .mdc-notched-outline .mdc-notched-outline__trailing {
+  border-color: var(--primary) !important;
+  border-width: 2px !important;
+}
+
+/* Material Autocomplete */
+.mat-mdc-autocomplete-panel,
+.mat-autocomplete-panel {
+  background-color: var(--white) !important;
+}
+
+.mat-mdc-option,
+.mat-option {
+  background-color: var(--white) !important;
+  color: #212529 !important;
+}
+
+.mat-mdc-option:hover,
+.mat-option:hover {
+  background-color: #f8f9fa !important;
+}
+
+.mat-mdc-option.mat-mdc-option-active,
+.mat-option.mat-active {
+  background-color: rgba(255, 204, 0, 0.1) !important;
+  color: #212529 !important;
+}
+
+/* Material Datepicker */
+.mat-datepicker-toggle {
+  color: var(--text-secondary) !important;
+}
+
+/* Garantir que placeholder seja legível */
+::placeholder,
+::-webkit-input-placeholder,
+::-moz-placeholder,
+:-ms-input-placeholder {
+  color: rgba(0, 0, 0, 0.5) !important;
+  opacity: 1 !important;
+}
+
+/* Inputs nativos HTML (não Material) */
+input:not(.mat-mdc-input-element):not(.mdc-text-field__input),
+select:not(.mat-mdc-select-trigger):not(.mat-select-trigger),
+textarea:not(.mat-mdc-input-element):not(.mdc-text-field__input) {
+  background-color: var(--white) !important;
+  color: #212529 !important;
+  border: 1px solid #ced4da !important;
+  padding: 10px 16px !important;
+  border-radius: 4px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+input:not(.mat-mdc-input-element):not(.mdc-text-field__input):focus,
+select:not(.mat-mdc-select-trigger):not(.mat-select-trigger):focus,
+textarea:not(.mat-mdc-input-element):not(.mdc-text-field__input):focus {
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px rgba(255, 204, 0, 0.1) !important;
+  outline: none !important;
+  background-color: var(--white) !important;
+}
+
+/* ==========================================
+   SPINNER - REMOVER FUNDO AMARELO
+   ========================================== */
+
+/* Material Progress Spinner - Remover background completamente */
+mat-spinner,
+mat-progress-spinner,
+.mdc-circular-progress,
+.mdc-circular-progress__indeterminate-container,
+.mdc-circular-progress__spinner-layer,
+.mdc-circular-progress__circle,
+.mat-mdc-progress-spinner,
+.mat-mdc-progress-spinner circle {
+  background-color: transparent !important;
+  background: transparent !important;
+}
+
+/* Wrapper do spinner - garantir que não tenha background */
+.loading-container mat-spinner,
+.loading-container mat-progress-spinner,
+.loading-container .mdc-circular-progress,
+.loading-container .mat-mdc-progress-spinner {
+  background-color: transparent !important;
+  background: transparent !important;
+}
+
+/* SVG do spinner - garantir que não tenha background */
+mat-spinner svg,
+mat-progress-spinner svg,
+.mdc-circular-progress svg,
+.mat-mdc-progress-spinner svg {
+  background-color: transparent !important;
+  background: transparent !important;
+}
+
+/* Container do spinner - remover qualquer background */
+mat-spinner .mat-mdc-progress-spinner,
+mat-progress-spinner .mat-mdc-progress-spinner,
+.mat-mdc-progress-spinner .mat-mdc-progress-spinner__circle {
+  background-color: transparent !important;
+  background: transparent !important;
+}
+
+/* Garantir que nenhum wrapper tenha background */
+.mat-mdc-progress-spinner::before,
+.mat-mdc-progress-spinner::after,
+.mdc-circular-progress::before,
+.mdc-circular-progress::after {
+  background-color: transparent !important;
+  background: transparent !important;
+}
+
+/* ==========================================
+   ALINHAMENTO VERTICAL DOS INPUTS
+   ========================================== */
+
+/* Material Form Field Infix - Centralizar verticalmente */
+.mat-mdc-form-field-infix {
+  display: block !important;
+  padding-top: 16px !important;
+  padding-bottom: 16px !important;
+  min-height: 56px !important;
+  box-sizing: border-box !important;
+  line-height: normal !important;
+}
+
+/* Input dentro do infix - alinhamento vertical correto */
+.mat-mdc-form-field-infix input,
+.mat-mdc-form-field-infix textarea,
+.mat-mdc-form-field-infix .mdc-text-field__input {
+  display: block !important;
+  line-height: 1.5 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  box-sizing: border-box !important;
+  margin: 0 !important;
+  height: auto !important;
+}
+
+/* Remover padding-top excessivo do infix */
+.mdc-text-field--filled .mat-mdc-form-field-infix,
+.mdc-text-field--outlined .mat-mdc-form-field-infix {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+/* Ajustar para inputs densos */
+.mat-mdc-form-field--dense .mat-mdc-form-field-infix,
+.mdc-text-field--dense .mat-mdc-form-field-infix {
+  min-height: 48px !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+/* Select dentro do infix - centralizar verticalmente */
+.mat-mdc-form-field-infix .mat-mdc-select,
+.mat-mdc-form-field-infix .mat-select,
+.mat-mdc-form-field-infix .mat-mdc-select-trigger {
+  display: flex !important;
+  align-items: center !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  line-height: normal !important;
+  height: auto !important;
+}
+
+/* Textarea - ajuste especial sem padding-top/bottom excessivo */
+textarea.mat-mdc-input-element,
+textarea.mdc-text-field__input {
+  padding-top: 12px !important;
+  padding-bottom: 12px !important;
+  line-height: 1.5 !important;
+  resize: vertical !important;
+  min-height: 80px !important;
+}
+
+/* MDC Text Field Input - remover padding vertical excessivo */
+.mdc-text-field__input {
+  box-sizing: border-box !important;
+  padding-top: 16px !important;
+  padding-bottom: 16px !important;
+  line-height: 1.5 !important;
+  height: auto !important;
+}
+
+/* Garantir que o input dentro do wrapper esteja centralizado */
+.mdc-text-field--filled .mdc-text-field__input,
+.mdc-text-field--outlined .mdc-text-field__input {
+  padding-top: 16px !important;
+  padding-bottom: 16px !important;
+  line-height: 1.5 !important;
+  height: auto !important;
+  display: block !important;
+}
+
+/* Remover padding-top do wrapper quando o input está dentro */
+.mdc-text-field--filled .mat-mdc-form-field-infix .mdc-text-field__input,
+.mdc-text-field--outlined .mat-mdc-form-field-infix .mdc-text-field__input {
+  padding-top: 16px !important;
+  padding-bottom: 16px !important;
+}
