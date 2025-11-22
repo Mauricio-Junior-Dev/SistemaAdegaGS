@@ -3,8 +3,8 @@
 // Incluir componentes do Material
 @include mat.core();
 
-// Definir paleta de cores personalizada - Amarelo/Preto
-$custom-primary: mat.define-palette((
+// Definir mapa de paleta personalizada - Amarelo/Preto
+$custom-primary-palette: (
   50: #fff8e1,
   100: #ffecb3,
   200: #ffe082,
@@ -35,9 +35,10 @@ $custom-primary: mat.define-palette((
     A400: rgba(black, 0.87),
     A700: rgba(black, 0.87),
   )
-));
+);
 
-$custom-accent: mat.define-palette((
+// Definir mapa de paleta de accent - Preto
+$custom-accent-palette: (
   50: #e8e8e8,
   100: #c5c5c5,
   200: #9e9e9e,
@@ -68,20 +69,20 @@ $custom-accent: mat.define-palette((
     A400: rgba(white, 0.87),
     A700: rgba(white, 0.87),
   )
-));
+);
 
-// Definir paleta de erro (vermelho padrão)
-$custom-warn: mat.define-palette(mat.$red-palette);
+// Definir paletas usando mat.m2-define-palette()
+$custom-primary: mat.m2-define-palette($custom-primary-palette);
+$custom-accent: mat.m2-define-palette($custom-accent-palette);
+$custom-warn: mat.m2-define-palette(mat.$m2-red-palette);
 
 // Criar tema
-$custom-theme: mat.define-light-theme((
+$custom-theme: mat.m2-define-light-theme((
   color: (
     primary: $custom-primary,
     accent: $custom-accent,
     warn: $custom-warn,
   ),
-  typography: mat.define-typography-config(),
-  density: 0,
 ));
 
 // Aplicar tema globalmente
