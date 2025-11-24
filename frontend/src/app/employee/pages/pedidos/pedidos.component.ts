@@ -290,6 +290,43 @@ export class PedidosComponent implements OnInit, OnDestroy {
     });
   }
 
+  openWhatsApp(order: Order): void {
+    // Verificar se existe telefone do cliente
+    const phone = order.customer_phone || order.user?.phone;
+    
+    if (!phone) {
+      this.snackBar.open('Telefone do cliente não encontrado. Não foi possível abrir o WhatsApp.', 'Fechar', { duration: 4000 });
+      return;
+    }
+
+    // Formatar telefone: remover caracteres não numéricos
+    const formattedPhone = phone.replace(/\D/g, '');
+    
+    // Verificar se o telefone tem pelo menos 10 dígitos (formato mínimo válido)
+    if (formattedPhone.length < 10) {
+      this.snackBar.open('Telefone do cliente inválido. Não foi possível abrir o WhatsApp.', 'Fechar', { duration: 4000 });
+      return;
+    }
+
+    // Obter nome do cliente
+    const customerName = order.customer_name || order.user?.name || 'Cliente';
+    
+    // Obter número do pedido
+    const orderNumber = order.order_number || order.id;
+
+    // Montar mensagem
+    const message = `Olá ${customerName}! Seu pedido #${orderNumber} da Adega GS acabou de sair para entrega! 🛵💨`;
+    
+    // Codificar a mensagem para URL
+    const encodedMessage = encodeURIComponent(message);
+    
+    // Montar URL do WhatsApp Web
+    const whatsappUrl = `https://wa.me/${formattedPhone}?text=${encodedMessage}`;
+    
+    // Abrir WhatsApp em nova aba
+    window.open(whatsappUrl, '_blank');
+  }
+
   quickUpdateStatus(order: Order, newStatus: OrderStatus): void {
     // Atualizar o status localmente imediatamente para feedback visual
     const oldStatus = order.status;
@@ -333,6 +370,11 @@ export class PedidosComponent implements OnInit, OnDestroy {
         };
         const message = messages[newStatus] || 'Status atualizado com sucesso';
         this.snackBar.open(message, 'Fechar', { duration: 3000 });
+
+        // Se o status foi alterado para 'delivering', abrir WhatsApp
+        if (newStatus === 'delivering') {
+          this.openWhatsApp(updatedOrder);
+        }
       },
       error: (error: Error) => {
         // Reverter o status local em caso de erro
