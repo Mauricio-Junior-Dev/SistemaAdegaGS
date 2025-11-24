@@ -10,6 +10,8 @@ use App\Models\Combo;
 use App\Models\Address;
 use App\Models\User;
 use App\Models\DeliveryZone;
+use App\Models\CashSession;
+use App\Models\CashTransaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
@@ -99,6 +101,18 @@ class OrderController extends Controller
 
     public function store(Request $request)
     {
+        // Debug: Log do payload recebido
+        Log::info('Payload recebido no Store:', $request->all());
+
+        // Determinar tipo de pedido baseado no STATUS, não no tipo de usuário
+        $requestedStatus = $request->input('status', 'pending');
+        $isCompleted = $requestedStatus === 'completed'; // Venda Balcão
+        $isPending = $requestedStatus === 'pending'; // Entrega/Delivery
+        
+        // Verificar se é pedido do Caixa (funcionário/admin) - apenas para transação de caixa
+        $user = $request->user();
+        $isEmployeeOrAdmin = $user && in_array($user->type, ['employee', 'admin']);
+
         // Validação simplificada para debug
         $request->validate([
             'items' => 'required|array|min:1',
@@ -139,16 +153,20 @@ class OrderController extends Controller
             $user = $request->user();
 
             // Criar pedido
+            // Respeitar status enviado pelo frontend (para caixa: completed ou pending)
             $orderData = [
                 'user_id' => Auth::id(),
                 'order_number' => date('Ymd') . str_pad(Order::count() + 1, 4, '0', STR_PAD_LEFT),
-                'status' => 'pending',
+                'status' => in_array($requestedStatus, ['pending', 'completed']) ? $requestedStatus : 'pending',
                 'total' => 0 // Será calculado depois
             ];
 
-            // Criar ou usar endereço
+            // Lógica baseada no STATUS:
+            // - status == 'completed' (Balcão): Frete = 0, Endereço opcional
+            // - status == 'pending' (Delivery): Endereço obrigatório, validar zona, calcular frete
             $deliveryAddressId = null;
             $deliveryZipcode = null;
+            $requiresDelivery = $isPending; // Se for pending, requer entrega
             
             if ($request->has('delivery') && is_array($request->delivery)) {
                 $delivery = $request->delivery;
@@ -156,73 +174,69 @@ class OrderController extends Controller
                 // Se é um endereço salvo (tem ID)
                 if (isset($delivery['address_id']) && $delivery['address_id']) {
                     $savedAddress = Address::find($delivery['address_id']);
-                    if (!$savedAddress || $savedAddress->user_id !== Auth::id()) {
-                        DB::rollBack();
-                        return response()->json([
-                            'error' => 'Endereço não encontrado ou não pertence ao usuário'
-                        ], 404);
-                    }
-                    $deliveryAddressId = $savedAddress->id;
-                    $deliveryZipcode = $savedAddress->zipcode;
-                } else {
-                    // Validar CEP antes de criar o endereço
-                    $zipcode = $delivery['zipcode'] ?? '';
-                    if ($zipcode) {
-                        // Limpar formatação do CEP
-                        $cleanZipcode = preg_replace('/[^0-9]/', '', $zipcode);
-                        
-                        // Verificar se existe zona de entrega ativa para este CEP
-                        $deliveryZone = DeliveryZone::ativo()
-                            ->where('cep_inicio', '<=', $cleanZipcode)
-                            ->where('cep_fim', '>=', $cleanZipcode)
-                            ->first();
-                        
-                        if (!$deliveryZone) {
+                    if (!$savedAddress) {
+                        if ($requiresDelivery) {
                             DB::rollBack();
                             return response()->json([
-                                'error' => 'Infelizmente não entregamos neste endereço.'
-                            ], 422);
+                                'error' => 'Endereço não encontrado'
+                            ], 404);
                         }
+                        // Se não requer entrega, apenas ignora o endereço inválido
+                    } else {
+                        // Se for cliente, verificar se o endereço pertence a ele
+                        // Se for funcionário/admin, pode usar endereço de qualquer cliente
+                        if (!$isEmployeeOrAdmin && $savedAddress->user_id !== Auth::id()) {
+                            DB::rollBack();
+                            return response()->json([
+                                'error' => 'Endereço não encontrado ou não pertence ao usuário'
+                            ], 404);
+                        }
+                        $deliveryAddressId = $savedAddress->id;
+                        $deliveryZipcode = $savedAddress->zipcode;
                     }
-                    
+                } else {
                     // Criar novo endereço
-                    $address = Address::create([
-                        'user_id' => Auth::id(),
-                        'name' => $delivery['name'] ?? 'Endereço de Entrega',
-                        'street' => $delivery['address'] ?? '',
-                        'number' => $delivery['number'] ?? '',
-                        'complement' => $delivery['complement'] ?? null,
-                        'neighborhood' => $delivery['neighborhood'] ?? '',
-                        'city' => $delivery['city'] ?? '',
-                        'state' => $delivery['state'] ?? '',
-                        'zipcode' => $delivery['zipcode'] ?? '',
-                        'notes' => $delivery['instructions'] ?? null,
-                        'is_default' => false,
-                        'is_active' => true
-                    ]);
-                    $deliveryAddressId = $address->id;
-                    $deliveryZipcode = $address->zipcode;
-                }
-                
-                // Validar CEP do endereço salvo também
-                if ($deliveryAddressId && $deliveryZipcode) {
-                    $cleanZipcode = preg_replace('/[^0-9]/', '', $deliveryZipcode);
-                    
-                    $deliveryZone = DeliveryZone::ativo()
-                        ->where('cep_inicio', '<=', $cleanZipcode)
-                        ->where('cep_fim', '>=', $cleanZipcode)
-                        ->first();
-                    
-                    if (!$deliveryZone) {
-                        DB::rollBack();
-                        return response()->json([
-                            'error' => 'Infelizmente não entregamos neste endereço.'
-                        ], 422);
+                    // Validação de zona de entrega será feita no cálculo do frete (se for pending)
+                    // Para completed (balcão), não precisa validar zona
+                    if ($requiresDelivery || !empty($delivery['address']) || !empty($delivery['zipcode'])) {
+                        // Para funcionário, criar endereço associado ao cliente (se houver user_id no delivery)
+                        $addressUserId = $isEmployeeOrAdmin && isset($delivery['user_id']) 
+                            ? $delivery['user_id'] 
+                            : Auth::id();
+                        
+                        $address = Address::create([
+                            'user_id' => $addressUserId,
+                            'name' => $delivery['name'] ?? 'Endereço de Entrega',
+                            'street' => $delivery['address'] ?? '',
+                            'number' => $delivery['number'] ?? '',
+                            'complement' => $delivery['complement'] ?? null,
+                            'neighborhood' => $delivery['neighborhood'] ?? '',
+                            'city' => $delivery['city'] ?? '',
+                            'state' => $delivery['state'] ?? '',
+                            'zipcode' => $delivery['zipcode'] ?? '',
+                            'notes' => $delivery['instructions'] ?? null,
+                            'is_default' => false,
+                            'is_active' => true
+                        ]);
+                        $deliveryAddressId = $address->id;
+                        $deliveryZipcode = $address->zipcode;
                     }
                 }
                 
-                $orderData['delivery_address_id'] = $deliveryAddressId;
-                $orderData['delivery_notes'] = $delivery['instructions'] ?? null;
+                // Adicionar endereço ao pedido apenas se existir
+                if ($deliveryAddressId) {
+                    $orderData['delivery_address_id'] = $deliveryAddressId;
+                    $orderData['delivery_notes'] = $delivery['instructions'] ?? null;
+                }
+            }
+            
+            // Validação final: Se for pending (entrega), DEVE ter endereço
+            // (A validação de zona de entrega será feita no cálculo do frete)
+            if ($isPending && !$deliveryAddressId) {
+                DB::rollBack();
+                return response()->json([
+                    'error' => 'Endereço de entrega é obrigatório para pedidos de entrega.'
+                ], 422);
             }
 
             $order = Order::create($orderData);
@@ -268,7 +282,12 @@ class OrderController extends Controller
                         }
                     }
 
-                    $subtotal = $product->price * $item['quantity'];
+                    // Usar o preço do item se fornecido (Caixa pode enviar preço customizado), senão usar do produto
+                    $itemPrice = isset($item['price']) && $item['price'] > 0 
+                        ? (float) $item['price'] 
+                        : ($saleType === 'dose' && $product->dose_price ? (float) $product->dose_price : (float) $product->price);
+                    
+                    $subtotal = $itemPrice * $item['quantity'];
                     OrderItem::create([
                         'order_id' => $order->id,
                         'product_id' => $product->id,
@@ -276,7 +295,7 @@ class OrderController extends Controller
                         'is_combo' => false,
                         'quantity' => $item['quantity'],
                         'sale_type' => $saleType,
-                        'price' => $product->price,
+                        'price' => $itemPrice,
                         'subtotal' => $subtotal
                     ]);
 
@@ -284,7 +303,7 @@ class OrderController extends Controller
                     $product->atualizarEstoquePorVenda($item['quantity'], $saleType);
                     
                     // Registrar movimentação de estoque
-                    $unitPrice = $saleType === 'dose' ? $product->dose_price : $product->price;
+                    $unitPrice = $saleType === 'dose' ? $product->dose_price : $itemPrice;
                     $product->stockMovements()->create([
                         'user_id' => Auth::id(),
                         'type' => 'saida',
@@ -368,9 +387,52 @@ class OrderController extends Controller
                 }
             }
 
-            // Pega o frete que o frontend (Angular) calculou e enviou no payload.
-            // O $total aqui é o subtotal dos itens.
-            $frete = $request->input('delivery_fee', 0);
+            // Calcular frete baseado no status e endereço
+            $frete = 0;
+            
+            if ($isCompleted) {
+                // Venda Balcão: Frete sempre zero
+                $frete = 0;
+            } elseif ($isPending && $deliveryAddressId) {
+                // Entrega: Calcular frete usando o endereço
+                $address = Address::find($deliveryAddressId);
+                if ($address && $address->zipcode) {
+                    $cleanZipcode = preg_replace('/[^0-9]/', '', $address->zipcode);
+                    
+                    $deliveryZone = DeliveryZone::ativo()
+                        ->where('cep_inicio', '<=', $cleanZipcode)
+                        ->where('cep_fim', '>=', $cleanZipcode)
+                        ->first();
+                    
+                    if ($deliveryZone) {
+                        $frete = (float) $deliveryZone->valor_frete;
+                    } else {
+                        // Se não encontrou zona de entrega, mas é obrigatório, retornar erro
+                        DB::rollBack();
+                        return response()->json([
+                            'error' => 'Infelizmente não entregamos neste endereço.'
+                        ], 422);
+                    }
+                } else {
+                    // Se não tem CEP no endereço e é obrigatório, retornar erro
+                    DB::rollBack();
+                    return response()->json([
+                        'error' => 'Endereço de entrega inválido ou sem CEP.'
+                    ], 422);
+                }
+            } elseif ($isPending) {
+                // Se é pending mas não tem endereço, retornar erro
+                DB::rollBack();
+                return response()->json([
+                    'error' => 'Endereço de entrega é obrigatório para pedidos de entrega.'
+                ], 422);
+            }
+            
+            // Se o frontend enviou delivery_fee, usar o maior valor (segurança)
+            $frontendFrete = (float) $request->input('delivery_fee', 0);
+            if ($frontendFrete > $frete) {
+                $frete = $frontendFrete;
+            }
 
             // Atualizar total do pedido (subtotal + frete) e salvar o frete
             $order->update([
@@ -378,10 +440,12 @@ class OrderController extends Controller
                 'delivery_fee' => $frete
             ]);
 
+            // Respeitar payment_status enviado pelo frontend (para caixa: completed ou pending)
+            $requestedPaymentStatus = $request->input('payment_status', 'pending');
             $paymentData = [
                 'amount' => $total + $frete,
                 'payment_method' => $request->payment_method,
-                'status' => 'pending'
+                'status' => in_array($requestedPaymentStatus, ['pending', 'completed']) ? $requestedPaymentStatus : 'pending'
             ];
 
             // Incluir received_amount e change_amount se fornecidos
@@ -394,6 +458,11 @@ class OrderController extends Controller
             }
 
             $order->payment()->create($paymentData);
+
+            // Se for venda balcão (completed) do Caixa, criar transação de caixa imediatamente
+            if ($isEmployeeOrAdmin && $isCompleted) {
+                $this->createCashTransactionForOrder($order);
+            }
 
             DB::commit();
 
@@ -945,112 +1014,151 @@ class OrderController extends Controller
             'status' => 'required|in:pending,processing,preparing,delivering,completed,cancelled'
         ]);
 
+        $oldStatus = $order->status;
         $order->status = $request->status;
         $order->save();
 
         // Se o pedido for cancelado, estornar o estoque
         if ($request->status === 'cancelled') {
-            foreach ($order->items as $item) {
-                if ($item->is_combo) {
-                    // Estornar produtos do combo
-                    $combo = $item->combo;
-                    foreach ($combo->products as $comboProduct) {
-                        $product = $comboProduct;
-                        $quantity = $comboProduct->pivot->quantity * $item->quantity;
-                        $saleType = $comboProduct->pivot->sale_type;
+            try {
+                // Carregar itens com relacionamentos necessários
+                $order->load(['items.product', 'items.combo.products']);
+                
+                foreach ($order->items as $item) {
+                    if ($item->is_combo) {
+                        // Estornar produtos do combo
+                        $combo = $item->combo;
+                        foreach ($combo->products as $comboProduct) {
+                            $product = $comboProduct;
+                            $quantity = $comboProduct->pivot->quantity * $item->quantity;
+                            $saleType = $comboProduct->pivot->sale_type;
+                            
+                            if ($saleType === 'garrafa') {
+                                // Estorno direto de garrafas
+                                $product->increment('current_stock', $quantity);
+                            } else {
+                                // Para doses, reverter a lógica
+                                // Calcular quantas garrafas foram deduzidas
+                                $garrafasDeduzidas = floor($quantity / $product->doses_por_garrafa);
+                                if ($garrafasDeduzidas > 0) {
+                                    $product->increment('current_stock', $garrafasDeduzidas);
+                                }
+                                
+                                // Zerar o contador de doses vendidas
+                                $product->update(['doses_vendidas' => 0]);
+                            }
+                            
+                            // Registrar movimentação de estoque
+                            $unitPrice = $saleType === 'dose' ? $product->dose_price : $product->price;
+                            $product->stockMovements()->create([
+                                'user_id' => Auth::id(),
+                                'type' => 'entrada',
+                                'quantity' => $saleType === 'garrafa' ? $quantity : ($garrafasDeduzidas ?? 0),
+                                'description' => "Estorno Combo ({$saleType}) - Pedido #" . $order->order_number . ' cancelado',
+                                'unit_cost' => $unitPrice
+                            ]);
+                        }
+                    } else {
+                        // Estornar produto individual
+                        $saleType = $item->sale_type ?? 'garrafa';
                         
                         if ($saleType === 'garrafa') {
                             // Estorno direto de garrafas
-                            $product->increment('current_stock', $quantity);
+                            $item->product->increment('current_stock', $item->quantity);
                         } else {
                             // Para doses, reverter a lógica
                             // Calcular quantas garrafas foram deduzidas
-                            $garrafasDeduzidas = floor($quantity / $product->doses_por_garrafa);
+                            $garrafasDeduzidas = floor($item->quantity / $item->product->doses_por_garrafa);
                             if ($garrafasDeduzidas > 0) {
-                                $product->increment('current_stock', $garrafasDeduzidas);
+                                $item->product->increment('current_stock', $garrafasDeduzidas);
                             }
                             
                             // Zerar o contador de doses vendidas
-                            $product->update(['doses_vendidas' => 0]);
+                            $item->product->update(['doses_vendidas' => 0]);
                         }
                         
                         // Registrar movimentação de estoque
-                        $unitPrice = $saleType === 'dose' ? $product->dose_price : $product->price;
-                        $product->stockMovements()->create([
+                        $unitPrice = $saleType === 'dose' ? $item->product->dose_price : $item->product->price;
+                        $item->product->stockMovements()->create([
                             'user_id' => Auth::id(),
                             'type' => 'entrada',
-                            'quantity' => $saleType === 'garrafa' ? $quantity : ($garrafasDeduzidas ?? 0),
-                            'description' => "Estorno Combo ({$saleType}) - Pedido #" . $order->order_number . ' cancelado',
+                            'quantity' => $saleType === 'garrafa' ? $item->quantity : ($garrafasDeduzidas ?? 0),
+                            'description' => "Estorno ({$saleType}) - Pedido #" . $order->order_number . ' cancelado',
                             'unit_cost' => $unitPrice
                         ]);
                     }
-                } else {
-                    // Estornar produto individual
-                    $saleType = $item->sale_type ?? 'garrafa';
-                    
-                    if ($saleType === 'garrafa') {
-                        // Estorno direto de garrafas
-                        $item->product->increment('current_stock', $item->quantity);
-                    } else {
-                        // Para doses, reverter a lógica
-                        // Calcular quantas garrafas foram deduzidas
-                        $garrafasDeduzidas = floor($item->quantity / $item->product->doses_por_garrafa);
-                        if ($garrafasDeduzidas > 0) {
-                            $item->product->increment('current_stock', $garrafasDeduzidas);
-                        }
-                        
-                        // Zerar o contador de doses vendidas
-                        $item->product->update(['doses_vendidas' => 0]);
-                    }
-                    
-                    // Registrar movimentação de estoque
-                    $unitPrice = $saleType === 'dose' ? $item->product->dose_price : $item->product->price;
-                    $item->product->stockMovements()->create([
-                        'user_id' => Auth::id(),
-                        'type' => 'entrada',
-                        'quantity' => $saleType === 'garrafa' ? $item->quantity : ($garrafasDeduzidas ?? 0),
-                        'description' => "Estorno ({$saleType}) - Pedido #" . $order->order_number . ' cancelado',
-                        'unit_cost' => $unitPrice
-                    ]);
                 }
-            }
 
-            // Atualizar status do pagamento
-            if ($order->payment) {
-                $order->payment->update(['status' => 'failed']);
+                // Atualizar status do pagamento (payment é hasMany, pegar o primeiro)
+                $payment = $order->payment()->first();
+                if ($payment) {
+                    $payment->update(['status' => 'failed']);
+                }
+            } catch (\Exception $e) {
+                // Log do erro mas não interrompe o cancelamento
+                Log::error('Erro ao estornar estoque ao cancelar pedido #' . $order->order_number . ': ' . $e->getMessage());
+                // Continuar o fluxo mesmo se houver erro no estorno
             }
         }
 
-        // --- CORREÇÃO DO BUG 500 ---
-        // Recarrega o objeto $order do banco de dados (refresh)
-        // e carrega (load) as relações exatas que o frontend espera,
-        // incluindo a consulta 'payment' corrigida.
-        $order->refresh()->load([
-            'user',
-            'items.product',
-            'items.combo',
-            'delivery_address',
-            'payment' => function ($query) {
-                // Garantir que received_amount e change_amount sejam selecionados explicitamente
-                $query->select(
-                    'id',
-                    'order_id',
-                    'payment_method',
-                    'amount',
-                    'status',
-                    'received_amount',
-                    'change_amount',
-                    'transaction_id',
-                    'qr_code',
-                    'expires_at',
-                    'created_at',
-                    'updated_at'
-                );
+        // Quando o pedido é marcado como completed, criar transação de caixa se necessário
+        if ($request->status === 'completed' && $oldStatus !== 'completed') {
+            try {
+                $this->createCashTransactionForOrder($order);
+            } catch (\Exception $e) {
+                // Log do erro mas não interrompe a atualização de status
+                Log::error('Erro ao criar transação de caixa para pedido #' . $order->order_number . ': ' . $e->getMessage());
             }
-        ]);
+        }
 
-        // Agora retorna o objeto "limpo" e completo
-        return response()->json($order);
+        try {
+            // --- CORREÇÃO DO BUG 500 ---
+            // Recarrega o objeto $order do banco de dados (refresh)
+            // e carrega (load) as relações exatas que o frontend espera,
+            // incluindo a consulta 'payment' corrigida.
+            $order->refresh()->load([
+                'user',
+                'items.product',
+                'items.combo.products', // Carregar produtos do combo também
+                'delivery_address',
+                'payment' => function ($query) {
+                    // Garantir que received_amount e change_amount sejam selecionados explicitamente
+                    $query->select(
+                        'id',
+                        'order_id',
+                        'payment_method',
+                        'amount',
+                        'status',
+                        'received_amount',
+                        'change_amount',
+                        'transaction_id',
+                        'qr_code',
+                        'expires_at',
+                        'created_at',
+                        'updated_at'
+                    );
+                }
+            ]);
+
+            // Agora retorna o objeto "limpo" e completo
+            return response()->json($order);
+        } catch (\Exception $e) {
+            // Se houver erro ao carregar relacionamentos, retornar o pedido básico
+            Log::error('Erro ao carregar relacionamentos do pedido #' . $order->order_number . ': ' . $e->getMessage());
+            
+            // Retornar pedido básico sem relacionamentos complexos
+            $order->refresh();
+            return response()->json([
+                'id' => $order->id,
+                'order_number' => $order->order_number,
+                'status' => $order->status,
+                'total' => $order->total,
+                'delivery_fee' => $order->delivery_fee,
+                'created_at' => $order->created_at,
+                'updated_at' => $order->updated_at,
+                'message' => 'Status atualizado com sucesso. Alguns dados podem não estar disponíveis.'
+            ]);
+        }
     }
 
     /**
@@ -1095,12 +1203,89 @@ class OrderController extends Controller
         }
 
         // Atualiza o status
+        $oldStatus = $order->status;
         $order->status = 'completed';
         $order->save();
+
+        // Criar transação de caixa quando o pedido é marcado como completed
+        if ($oldStatus !== 'completed') {
+            $this->createCashTransactionForOrder($order);
+        }
 
         // Carregar as relações necessárias para retornar o pedido completo
         $order->load(['items.product', 'items.combo', 'delivery_address', 'payment']);
 
         return response()->json($order);
+    }
+
+    /**
+     * Cria uma transação de caixa quando um pedido de entrega é marcado como completed
+     */
+    private function createCashTransactionForOrder(Order $order): void
+    {
+        try {
+            // Verificar se há caixa aberto
+            $cashSession = CashSession::where('is_open', true)->latest('opened_at')->first();
+            if (!$cashSession) {
+                Log::warning("Tentativa de criar transação de caixa para pedido #{$order->order_number}, mas não há caixa aberto");
+                return;
+            }
+
+            // Verificar se já existe uma transação para este pedido (evitar duplicatas)
+            $existingTransaction = CashTransaction::where('cash_session_id', $cashSession->id)
+                ->where('description', 'like', "%Pedido #{$order->order_number}%")
+                ->first();
+            
+            if ($existingTransaction) {
+                Log::info("Transação de caixa já existe para o pedido #{$order->order_number}");
+                return;
+            }
+
+            // Recarregar o pedido com o relacionamento payment
+            $order->refresh();
+            $order->load('payment');
+
+            // Obter o pagamento do pedido (relacionamento hasMany retorna Collection)
+            $payment = $order->payment()->first();
+            
+            if (!$payment) {
+                Log::warning("Pedido #{$order->order_number} não possui pagamento associado");
+                return;
+            }
+
+            // Determinar o tipo de transação baseado no método de pagamento
+            $paymentMethod = $payment->payment_method ?? '';
+            $amount = (float) $order->total;
+            
+            // Criar descrição da transação
+            $description = "Venda - Pedido #{$order->order_number}";
+            if ($paymentMethod === 'dinheiro') {
+                $description .= " (Dinheiro)";
+            } elseif (in_array($paymentMethod, ['cartão de débito', 'cartão de crédito'])) {
+                $description .= " ({$paymentMethod})";
+            } elseif ($paymentMethod === 'pix') {
+                $description .= " (PIX)";
+            }
+
+            // Criar transação de entrada no caixa
+            CashTransaction::create([
+                'cash_session_id' => $cashSession->id,
+                'type' => 'entrada',
+                'amount' => $amount,
+                'description' => $description,
+                'created_by' => Auth::id(),
+            ]);
+
+            // Atualizar status do pagamento para completed se ainda não estiver
+            if ($payment->status !== 'completed') {
+                $payment->status = 'completed';
+                $payment->save();
+            }
+
+            Log::info("Transação de caixa criada para pedido #{$order->order_number} - Valor: R$ {$amount}");
+        } catch (\Exception $e) {
+            Log::error("Erro ao criar transação de caixa para pedido #{$order->order_number}: " . $e->getMessage());
+            // Não lançar exceção para não quebrar o fluxo de atualização de status
+        }
     }
 }

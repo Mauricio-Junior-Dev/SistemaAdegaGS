@@ -3,33 +3,6 @@
   <ng-container>
     <div class="header-section">
       <h1>📦 Controle de Pedidos</h1>
-      <div class="header-stats" *ngIf="!loading">
-        <div class="stat-card">
-          <mat-icon>receipt_long</mat-icon>
-          <span class="stat-number">{{stats.total}}</span>
-          <span class="stat-label">Total</span>
-        </div>
-        <div class="stat-card pending">
-          <mat-icon>schedule</mat-icon>
-          <span class="stat-number">{{pedidosNovos.length}}</span>
-          <span class="stat-label">Novos Pedidos</span>
-        </div>
-        <div class="stat-card preparing">
-          <mat-icon>restaurant</mat-icon>
-          <span class="stat-number">{{pedidosEmPreparo.length}}</span>
-          <span class="stat-label">Em Preparo</span>
-        </div>
-        <div class="stat-card delivering">
-          <mat-icon>local_shipping</mat-icon>
-          <span class="stat-number">{{pedidosEmEntrega.length}}</span>
-          <span class="stat-label">Em Entrega</span>
-        </div>
-        <div class="stat-card completed">
-          <mat-icon>check_circle</mat-icon>
-          <span class="stat-number">{{getCompletedCount()}}</span>
-          <span class="stat-label">Concluídos</span>
-        </div>
-      </div>
     </div>
 
   <!-- Loading State -->
@@ -70,7 +43,7 @@
           </div>
 
           <!-- Abas Kanban -->
-          <mat-tab-group class="kanban-tabs">
+          <mat-tab-group class="kanban-tabs" (selectedTabChange)="onTabChange($event)">
             <!-- Aba: Novos Pedidos -->
             <mat-tab label="Novos Pedidos">
               <ng-template mat-tab-label>
@@ -495,8 +468,8 @@
             <mat-tab label="Concluídos">
               <ng-template mat-tab-label>
                 Concluídos
-                <mat-badge *ngIf="pedidosConcluidos.length > 0" 
-                          [matBadge]="pedidosConcluidos.length"
+                <mat-badge *ngIf="totalConcluidos > 0" 
+                          [matBadge]="totalConcluidos"
                           matBadgeColor="primary"
                           matBadgePosition="above after"
                           matBadgeSize="small"
@@ -609,6 +582,17 @@
                   <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
                   <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
                 </table>
+                <!-- Paginação para Concluídos -->
+                <mat-paginator 
+                  *ngIf="!concluidosLoading && totalConcluidos > 0"
+                  [length]="totalConcluidos"
+                  [pageSize]="pageSizeConcluidos"
+                  [pageIndex]="pageIndexConcluidos"
+                  [pageSizeOptions]="[5, 10, 25, 50]"
+                  (page)="onConcluidosPageChange($event)"
+                  aria-label="Selecione a página de pedidos concluídos"
+                  showFirstLastButtons>
+                </mat-paginator>
                 <ng-template #noConcluidos>
                   <div class="empty-state">
                     <mat-icon>check_circle</mat-icon>

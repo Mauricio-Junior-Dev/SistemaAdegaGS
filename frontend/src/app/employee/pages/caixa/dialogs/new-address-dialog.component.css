@@ -1,0 +1,45 @@
+.address-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 16px 0;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.form-row {
+  display: flex;
+  gap: 16px;
+}
+
+.half-width {
+  flex: 1;
+}
+
+mat-dialog-actions {
+  margin-top: 16px;
+  padding: 16px 0;
+}
+
+mat-dialog-content {
+  min-width: 400px;
+  max-width: 600px;
+}
+
+@media (max-width: 600px) {
+  .form-row {
+    flex-direction: column;
+  }
+  
+  .half-width {
+    width: 100%;
+  }
+  
+  mat-dialog-content {
+    min-width: auto;
+    max-width: 100%;
+  }
+}
+

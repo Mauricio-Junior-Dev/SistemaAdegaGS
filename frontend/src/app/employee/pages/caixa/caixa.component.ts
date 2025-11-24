@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
@@ -15,7 +15,9 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatSelectModule } from '@angular/material/select';
-import { Subject, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { Subject, Observable, of } from 'rxjs';
+import { debounceTime, distinctUntilChanged, takeUntil, map, catchError } from 'rxjs/operators';
 
 import { CashService } from '../../services/cash.service';
 import { StockService } from '../../../core/services/stock.service';
@@ -27,6 +29,10 @@ import { OpenCashDialogComponent } from './dialogs/open-cash-dialog.component';
 import { SangriaDialogComponent, SangriaResult } from './dialogs/sangria-dialog.component';
 import { PrintConfirmationDialogComponent } from './dialogs/print-confirmation-dialog.component';
 import { CloseCashDialogComponent } from './dialogs/close-cash-dialog.component';
+import { DeliveryZoneService } from '../../../services/delivery-zone.service';
+import { AddressService, Address, CreateAddressRequest } from '../../../core/services/address.service';
+import { HttpClient } from '@angular/common/http';
+import { environment } from '../../../../environments/environment';
 
 interface CartItem {
   product?: Product;
@@ -58,7 +64,8 @@ interface CartItem {
     MatProgressSpinnerModule,
     MatTooltipModule,
     MatDividerModule,
-    MatSelectModule
+    MatSelectModule,
+    MatCheckboxModule
   ]
 })
 export class CaixaComponent implements OnInit, OnDestroy {
@@ -96,6 +103,16 @@ export class CaixaComponent implements OnInit, OnDestroy {
   showCashValue = false;
   // Settings
   settings: SystemSettings | null = null;
+  
+  // Pagamento na Entrega
+  isPayOnDelivery = false;
+  
+  // Endereços e Frete
+  customerAddresses: CustomerAddress[] = [];
+  selectedAddressId: number | null = null;
+  deliveryFee = 0;
+  loadingDeliveryFee = false;
+  estimatedDeliveryTime = '';
 
   private destroy$ = new Subject<void>();
   private searchSubject = new Subject<string>();
@@ -107,7 +124,11 @@ export class CaixaComponent implements OnInit, OnDestroy {
     private orderService: OrderService,
     private dialog: MatDialog,
     private snackBar: MatSnackBar,
-    private settingsService: SettingsService
+    private settingsService: SettingsService,
+    private deliveryZoneService: DeliveryZoneService,
+    private addressService: AddressService,
+    private http: HttpClient,
+    private cdr: ChangeDetectorRef
   ) {
     // Configurar busca com debounce
     this.searchSubject.pipe(
@@ -276,6 +297,190 @@ export class CaixaComponent implements OnInit, OnDestroy {
     this.customerSearchTerm = '';
     this.customerSearchResults = [];
     this.showCustomerSearch = false;
+    
+    // Carregar endereços do cliente
+    this.loadCustomerAddresses().subscribe();
+  }
+  
+  loadCustomerAddresses(selectAddressId?: number): Observable<CustomerAddress[]> {
+    if (!this.selectedCustomer) {
+      this.customerAddresses = [];
+      this.cdr.detectChanges();
+      return of([]);
+    }
+    
+    // SEMPRE buscar endereços da API (ignorar selectedCustomer.addresses que pode estar desatualizado)
+    return this.http.get<Address[]>(`${environment.apiUrl}/addresses?user_id=${this.selectedCustomer.id}`)
+      .pipe(
+        takeUntil(this.destroy$),
+        map((addresses) => {
+          // Criar nova referência do array para forçar detecção de mudança
+          this.customerAddresses = addresses.map(addr => ({
+            id: addr.id,
+            name: addr.name,
+            street: addr.street,
+            number: addr.number,
+            complement: addr.complement,
+            neighborhood: addr.neighborhood,
+            full_address: this.addressService.formatAddress(addr),
+            short_address: this.addressService.formatShortAddress(addr),
+            is_default: addr.is_default
+          }));
+          
+          // Selecionar endereço padrão se houver, senão usar o primeiro, ou o ID fornecido
+          let addressToSelect: CustomerAddress | undefined;
+          if (selectAddressId) {
+            addressToSelect = this.customerAddresses.find(addr => addr.id === selectAddressId);
+          }
+          if (!addressToSelect) {
+            addressToSelect = this.customerAddresses.find(addr => addr.is_default) || this.customerAddresses[0];
+          }
+          
+          if (addressToSelect) {
+            this.selectedAddressId = addressToSelect.id;
+            // Se já está marcado como entrega, calcular frete imediatamente
+            if (this.isPayOnDelivery) {
+              // Usar setTimeout para garantir que o selectedAddressId foi definido
+              setTimeout(() => {
+                this.calculateDeliveryFee(addressToSelect!.id);
+              }, 100);
+            }
+          }
+          
+          // Forçar detecção de mudança para atualizar a view
+          this.cdr.detectChanges();
+          
+          return this.customerAddresses;
+        }),
+        catchError((error) => {
+          console.error('Erro ao carregar endereços:', error);
+          this.customerAddresses = [];
+          this.cdr.detectChanges();
+          return of([]);
+        })
+      );
+  }
+  
+  onAddressChange(addressId: number | null): void {
+    this.selectedAddressId = addressId;
+    if (addressId && this.isPayOnDelivery) {
+      this.calculateDeliveryFee(addressId);
+    } else {
+      this.deliveryFee = 0;
+      this.estimatedDeliveryTime = '';
+      this.updateTotal();
+    }
+  }
+  
+  calculateDeliveryFee(addressId: number): void {
+    if (!this.isPayOnDelivery || !addressId) {
+      this.deliveryFee = 0;
+      return;
+    }
+    
+    // Buscar endereço completo para pegar o CEP
+    this.http.get<Address>(`${environment.apiUrl}/addresses/${addressId}`)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (fullAddress) => {
+          if (fullAddress.zipcode) {
+            this.fetchDeliveryFee(fullAddress.zipcode);
+          }
+        },
+        error: (error) => {
+          console.error('Erro ao buscar endereço:', error);
+          this.snackBar.open('Erro ao buscar dados do endereço', 'Fechar', { duration: 3000 });
+        }
+      });
+  }
+  
+  fetchDeliveryFee(zipcode: string): void {
+    this.loadingDeliveryFee = true;
+    this.deliveryZoneService.calculateFrete(zipcode)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          this.deliveryFee = parseFloat(String(response?.valor_frete ?? '0')) || 0;
+          this.estimatedDeliveryTime = response?.tempo_estimado || '';
+          this.loadingDeliveryFee = false;
+          this.updateTotal();
+        },
+        error: (error) => {
+          console.error('Erro ao calcular frete:', error);
+          this.deliveryFee = 0;
+          this.estimatedDeliveryTime = '';
+          this.loadingDeliveryFee = false;
+          this.updateTotal();
+          if (error.status === 404) {
+            this.snackBar.open('Infelizmente, ainda não atendemos este CEP.', 'Fechar', { duration: 5000 });
+          } else {
+            this.snackBar.open('Erro ao calcular frete. Tente novamente.', 'Fechar', { duration: 3000 });
+          }
+        }
+      });
+  }
+  
+  onPayOnDeliveryChange(): void {
+    if (!this.isPayOnDelivery) {
+      // Se desmarcou, limpar endereço e frete
+      this.selectedAddressId = null;
+      this.deliveryFee = 0;
+      this.estimatedDeliveryTime = '';
+      this.updateTotal();
+    } else {
+      // Se marcou, verificar se tem cliente selecionado
+      if (!this.selectedCustomer) {
+        this.snackBar.open('Selecione um cliente antes de marcar "Pagamento na Entrega"', 'Fechar', { duration: 3000 });
+        // Desmarcar o checkbox
+        setTimeout(() => {
+          this.isPayOnDelivery = false;
+        }, 100);
+        return;
+      }
+      // Carregar endereços se ainda não carregou
+      if (this.customerAddresses.length === 0) {
+        this.loadCustomerAddresses().subscribe();
+      } else if (this.selectedAddressId) {
+        // Se já tem endereço selecionado, calcular frete imediatamente
+        this.calculateDeliveryFee(this.selectedAddressId);
+      }
+    }
+  }
+  
+  openNewAddressDialog(): void {
+    if (!this.selectedCustomer) {
+      this.snackBar.open('Selecione um cliente antes de adicionar endereço', 'Fechar', { duration: 3000 });
+      return;
+    }
+    
+    // Importar dinamicamente o componente do modal
+    import('./dialogs/new-address-dialog.component').then(module => {
+      const dialogRef = this.dialog.open(module.NewAddressDialogComponent, {
+        width: '500px',
+        maxWidth: '95vw',
+        data: { customerId: this.selectedCustomer!.id }
+      });
+      
+      dialogRef.afterClosed().subscribe((result: Address | null) => {
+        if (result) {
+          // Recarregar endereços e selecionar o novo automaticamente
+          this.loadCustomerAddresses(result.id).subscribe({
+            next: (addresses) => {
+              // Endereços carregados e novo endereço já selecionado
+              // Calcular frete se necessário
+              if (this.isPayOnDelivery && this.selectedAddressId) {
+                this.calculateDeliveryFee(this.selectedAddressId);
+              }
+              this.snackBar.open('Endereço cadastrado e selecionado com sucesso!', 'Fechar', { duration: 3000 });
+            },
+            error: (error) => {
+              console.error('Erro ao recarregar endereços:', error);
+              this.snackBar.open('Endereço cadastrado, mas houve erro ao recarregar a lista', 'Fechar', { duration: 3000 });
+            }
+          });
+        }
+      });
+    });
   }
 
   clearCustomer(): void {
@@ -287,6 +492,10 @@ export class CaixaComponent implements OnInit, OnDestroy {
     this.customerSearchTerm = '';
     this.customerSearchResults = [];
     this.showCustomerSearch = false;
+    this.customerAddresses = [];
+    this.selectedAddressId = null;
+    this.deliveryFee = 0;
+    this.estimatedDeliveryTime = '';
   }
 
   toggleCustomerSearch(): void {
@@ -423,7 +632,7 @@ export class CaixaComponent implements OnInit, OnDestroy {
   }
 
   updateTotal(): void {
-    this.total = this.cartItems.reduce((sum, item) => sum + item.subtotal, 0);
+    this.total = this.cartItems.reduce((sum, item) => sum + item.subtotal, 0) + this.deliveryFee;
   }
 
   clearCart(): void {
@@ -434,6 +643,11 @@ export class CaixaComponent implements OnInit, OnDestroy {
     this.customerEmail = '';
     this.customerDocument = '';
     this.selectedCustomer = null;
+    this.customerAddresses = [];
+    this.selectedAddressId = null;
+    this.deliveryFee = 0;
+    this.estimatedDeliveryTime = '';
+    this.isPayOnDelivery = false;
     this.customerSearchTerm = '';
     this.customerSearchResults = [];
     this.showCustomerSearch = false;
@@ -479,10 +693,45 @@ export class CaixaComponent implements OnInit, OnDestroy {
       return;
     }
 
+    // Se for pagamento na entrega, verificar se cliente tem endereço
+    if (this.isPayOnDelivery) {
+      if (this.selectedCustomer) {
+        // Verificar se cliente tem endereços cadastrados
+        if (!this.selectedCustomer.addresses || this.selectedCustomer.addresses.length === 0) {
+          this.snackBar.open('Cliente selecionado não possui endereço cadastrado. Por favor, cadastre um endereço antes de gerar o pedido de entrega.', 'Fechar', { duration: 5000 });
+          return;
+        }
+      } else {
+        // Se não há cliente selecionado, verificar se tem dados mínimos para criar endereço
+        if (!this.customerName || !this.customerPhone) {
+          this.snackBar.open('Para pedidos de entrega, é necessário selecionar um cliente cadastrado ou informar nome e telefone do cliente.', 'Fechar', { duration: 5000 });
+          return;
+        }
+      }
+    }
+
+    // Preparar dados de entrega se for pagamento na entrega
+    let deliveryData: any = undefined;
+    if (this.isPayOnDelivery) {
+      if (!this.selectedCustomer) {
+        this.snackBar.open('Para pedidos de entrega, é necessário selecionar um cliente cadastrado.', 'Fechar', { duration: 5000 });
+        return;
+      }
+      
+      if (!this.selectedAddressId) {
+        this.snackBar.open('Selecione um endereço de entrega para continuar.', 'Fechar', { duration: 5000 });
+        return;
+      }
+      
+      deliveryData = {
+        address_id: this.selectedAddressId
+      };
+    }
+
     // Se for pagamento em dinheiro, verificar se tem troco
     const isCashPayment = paymentMethod.toLowerCase() === 'dinheiro';
     
-    if (isCashPayment) {
+    if (isCashPayment && !this.isPayOnDelivery) {
       if (this.receivedAmount < this.total) {
         this.snackBar.open('Valor recebido insuficiente', 'Fechar', { duration: 3000 });
         return;
@@ -498,34 +747,44 @@ export class CaixaComponent implements OnInit, OnDestroy {
         sale_type: item.sale_type,
         price: item.product?.price || item.combo?.price || 0
       })),
-      total: this.total,
+      total: this.total - this.deliveryFee, // Subtotal sem frete (o backend recalcula)
+      delivery_fee: this.deliveryFee,
       payment_method: paymentMethod,
       customer_name: this.customerName || undefined,
       customer_phone: this.customerPhone || undefined,
       customer_email: this.customerEmail || undefined,
       customer_document: this.customerDocument || undefined,
-      received_amount: isCashPayment ? this.receivedAmount : undefined,
-      change_amount: isCashPayment ? this.changeAmount : undefined
+      received_amount: isCashPayment && !this.isPayOnDelivery ? this.receivedAmount : undefined,
+      change_amount: isCashPayment && !this.isPayOnDelivery ? this.changeAmount : undefined,
+      status: this.isPayOnDelivery ? 'pending' : 'completed',
+      payment_status: this.isPayOnDelivery ? 'pending' : 'completed',
+      delivery: deliveryData
     };
 
     this.orderService.createOrder(order)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (response: CreateOrderResponse) => {
-          // Atualizar status do pedido para "completed" automaticamente
-          this.orderService.completeOrder(response.id)
-            .pipe(takeUntil(this.destroy$))
-            .subscribe({
-              next: () => {
-                console.log('Status do pedido atualizado para concluído');
-                this.showPrintConfirmation(response, paymentMethod);
-              },
-              error: (statusError) => {
-                console.error('Erro ao atualizar status do pedido:', statusError);
-                // Mesmo com erro no status, mostrar confirmação de impressão
-                this.showPrintConfirmation(response, paymentMethod);
-              }
-            });
+          // Se não for pagamento na entrega, atualizar status para "completed"
+          if (!this.isPayOnDelivery) {
+            this.orderService.completeOrder(response.id)
+              .pipe(takeUntil(this.destroy$))
+              .subscribe({
+                next: () => {
+                  console.log('Status do pedido atualizado para concluído');
+                  this.showPrintConfirmation(response, paymentMethod);
+                },
+                error: (statusError) => {
+                  console.error('Erro ao atualizar status do pedido:', statusError);
+                  // Mesmo com erro no status, mostrar confirmação de impressão
+                  this.showPrintConfirmation(response, paymentMethod);
+                }
+              });
+          } else {
+            // Se for entrega, apenas mostrar confirmação
+            this.snackBar.open('Pedido de entrega gerado com sucesso!', 'Fechar', { duration: 3000 });
+            this.showPrintConfirmation(response, paymentMethod);
+          }
         },
         error: (error: Error) => {
           console.error('Erro ao finalizar venda:', error);

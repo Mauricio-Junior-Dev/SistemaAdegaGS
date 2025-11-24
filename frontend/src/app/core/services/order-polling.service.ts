@@ -128,47 +128,48 @@ export class OrderPollingService implements OnDestroy {
 
     // ETAPA 1: "PRIMING" (Busca a fila ATUAL para IGNORAR)
     // Busca todos os status ativos do Kanban em paralelo
+    // Otimizado: per_page reduzido de 200 para 50 (suficiente para identificar pedidos existentes)
     const pendingRequest = this.orderService.fetchOrders({
       page: 1,
-      per_page: 200,
+      per_page: 50,
       status: 'pending'
     }).pipe(
       catchError((error) => {
         console.error('Erro ao buscar pedidos pending no priming:', error);
-        return of({ data: [], total: 0, current_page: 1, per_page: 200, last_page: 1 } as OrderResponse);
+        return of({ data: [], total: 0, current_page: 1, per_page: 50, last_page: 1 } as OrderResponse);
       })
     );
 
     const processingRequest = this.orderService.fetchOrders({
       page: 1,
-      per_page: 200,
+      per_page: 50,
       status: 'processing'
     }).pipe(
       catchError((error) => {
         console.error('Erro ao buscar pedidos processing no priming:', error);
-        return of({ data: [], total: 0, current_page: 1, per_page: 200, last_page: 1 } as OrderResponse);
+        return of({ data: [], total: 0, current_page: 1, per_page: 50, last_page: 1 } as OrderResponse);
       })
     );
 
     const preparingRequest = this.orderService.fetchOrders({
       page: 1,
-      per_page: 200,
+      per_page: 50,
       status: 'preparing'
     }).pipe(
       catchError((error) => {
         console.error('Erro ao buscar pedidos preparing no priming:', error);
-        return of({ data: [], total: 0, current_page: 1, per_page: 200, last_page: 1 } as OrderResponse);
+        return of({ data: [], total: 0, current_page: 1, per_page: 50, last_page: 1 } as OrderResponse);
       })
     );
 
     const deliveringRequest = this.orderService.fetchOrders({
       page: 1,
-      per_page: 200,
+      per_page: 50,
       status: 'delivering'
     }).pipe(
       catchError((error) => {
         console.error('Erro ao buscar pedidos delivering no priming:', error);
-        return of({ data: [], total: 0, current_page: 1, per_page: 200, last_page: 1 } as OrderResponse);
+        return of({ data: [], total: 0, current_page: 1, per_page: 50, last_page: 1 } as OrderResponse);
       })
     );
 
@@ -261,47 +262,48 @@ export class OrderPollingService implements OnDestroy {
     }
 
     // Buscar pedidos com status ativos do Kanban ('pending', 'processing', 'preparing', 'delivering') em paralelo
+    // Otimizado: per_page reduzido de 50 para 20 (mais leve para polling a cada 10s, suficiente para novos pedidos)
     const pendingRequest = this.orderService.fetchOrders({
       page: 1,
-      per_page: 50,
+      per_page: 20,
       status: 'pending'
     }).pipe(
       catchError((error) => {
         console.error('Erro ao buscar pedidos pending:', error);
-        return of({ data: [], total: 0, current_page: 1, per_page: 50, last_page: 1 } as OrderResponse);
+        return of({ data: [], total: 0, current_page: 1, per_page: 20, last_page: 1 } as OrderResponse);
       })
     );
 
     const processingRequest = this.orderService.fetchOrders({
       page: 1,
-      per_page: 50,
+      per_page: 20,
       status: 'processing'
     }).pipe(
       catchError((error) => {
         console.error('Erro ao buscar pedidos processing:', error);
-        return of({ data: [], total: 0, current_page: 1, per_page: 50, last_page: 1 } as OrderResponse);
+        return of({ data: [], total: 0, current_page: 1, per_page: 20, last_page: 1 } as OrderResponse);
       })
     );
 
     const preparingRequest = this.orderService.fetchOrders({
       page: 1,
-      per_page: 50,
+      per_page: 20,
       status: 'preparing'
     }).pipe(
       catchError((error) => {
         console.error('Erro ao buscar pedidos preparing:', error);
-        return of({ data: [], total: 0, current_page: 1, per_page: 50, last_page: 1 } as OrderResponse);
+        return of({ data: [], total: 0, current_page: 1, per_page: 20, last_page: 1 } as OrderResponse);
       })
     );
 
     const deliveringRequest = this.orderService.fetchOrders({
       page: 1,
-      per_page: 50,
+      per_page: 20,
       status: 'delivering'
     }).pipe(
       catchError((error) => {
         console.error('Erro ao buscar pedidos delivering:', error);
-        return of({ data: [], total: 0, current_page: 1, per_page: 50, last_page: 1 } as OrderResponse);
+        return of({ data: [], total: 0, current_page: 1, per_page: 20, last_page: 1 } as OrderResponse);
       })
     );
 

@@ -266,6 +266,197 @@ h1 {
   border-radius: 4px;
 }
 
+.delivery-payment-section {
+  margin: 20px 0;
+  padding: 16px;
+  background: #fff3cd;
+  border-radius: 4px;
+  border: 1px solid #ffc107;
+}
+
+.delivery-checkbox {
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.delivery-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 0 0;
+  font-size: 0.875rem;
+  color: #856404;
+}
+
+.delivery-hint mat-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+}
+
+/* Seção de Seleção de Endereço */
+.address-selection-section {
+  margin: 20px 0;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 4px;
+  border: 1px solid #dee2e6;
+}
+
+.address-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.address-header h4 {
+  margin: 0;
+  font-size: 1rem;
+  color: #333;
+}
+
+.address-warning {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: #fff3cd;
+  border-radius: 4px;
+  color: #856404;
+  font-size: 0.875rem;
+}
+
+.address-warning mat-icon {
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+}
+
+.address-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.address-full {
+  flex: 1;
+  color: #333;
+  font-size: 0.875rem;
+}
+
+.address-name {
+  font-weight: 500;
+  color: #333;
+}
+
+.address-details {
+  flex: 1;
+  color: #666;
+  font-size: 0.875rem;
+}
+
+.default-badge {
+  color: #ffc107;
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+}
+
+/* Estilos para garantir legibilidade do mat-select de endereços */
+::ng-deep .mat-mdc-select-panel .mat-mdc-option {
+  color: #333 !important;
+}
+
+::ng-deep .mat-mdc-select-panel .mat-mdc-option.mdc-list-item--selected .mdc-list-item__primary-text,
+::ng-deep .mat-mdc-select-panel .mat-mdc-option.mdc-list-item--selected .address-full,
+::ng-deep .mat-mdc-select-panel .mat-mdc-option.mdc-list-item--selected .address-option {
+  color: #000 !important;
+  font-weight: 500 !important;
+}
+
+::ng-deep .mat-mdc-select-panel .mat-mdc-option.mdc-list-item--selected {
+  background-color: #fff9c4 !important; /* Amarelo claro para melhor contraste */
+}
+
+::ng-deep .mat-mdc-select-panel .mat-mdc-option.mdc-list-item:hover:not(.mdc-list-item--disabled) {
+  background-color: #f5f5f5 !important;
+}
+
+::ng-deep .mat-mdc-select-panel .mat-mdc-option.mdc-list-item:hover:not(.mdc-list-item--disabled) .address-full,
+::ng-deep .mat-mdc-select-panel .mat-mdc-option.mdc-list-item:hover:not(.mdc-list-item--disabled) .address-option {
+  color: #000 !important;
+}
+
+/* Garante que o checkmark (ícone de seleção) também apareça */
+::ng-deep .mat-mdc-select-panel .mat-pseudo-checkbox-checked.mat-pseudo-checkbox-minimal::after {
+  color: #000 !important;
+}
+
+::ng-deep .mat-mdc-select-panel .mat-mdc-option.mdc-list-item--selected .mat-pseudo-checkbox-checked {
+  color: #000 !important;
+}
+
+.delivery-fee-display {
+  margin-top: 12px;
+  padding: 12px;
+  background: #e8f5e9;
+  border-radius: 4px;
+  border-left: 4px solid #4caf50;
+}
+
+.fee-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.fee-info mat-icon {
+  color: #4caf50;
+  font-size: 24px;
+  width: 24px;
+  height: 24px;
+}
+
+.fee-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fee-label {
+  font-size: 0.875rem;
+  color: #666;
+}
+
+.fee-value {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #2e7d32;
+}
+
+.delivery-time {
+  font-size: 0.75rem;
+  color: #666;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.loading-fee {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  color: #666;
+  font-size: 0.875rem;
+}
+
+.loading-fee mat-spinner {
+  display: inline-block;
+}
+
 .total-label {
   font-size: 16px;
   color: rgba(0, 0, 0, 0.6);
@@ -545,6 +736,31 @@ h1 {
   font-size: 1.2rem;
   width: 1.2rem;
   height: 1.2rem;
+}
+
+.create-customer-option {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed #dee2e6;
+}
+
+.customer-result.create-new {
+  background-color: #e3f2fd;
+  border: 1px solid #2196f3;
+}
+
+.customer-result.create-new:hover {
+  background-color: #bbdefb;
+}
+
+.customer-result.create-new .customer-info {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.customer-result.create-new .customer-info mat-icon {
+  color: #2196f3;
 }
 
 .selected-customer {

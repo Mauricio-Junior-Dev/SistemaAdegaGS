@@ -1,0 +1,83 @@
+<h2 mat-dialog-title>Novo Endereço</h2>
+<mat-dialog-content>
+  <form [formGroup]="addressForm" class="address-form">
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Nome do Endereço</mat-label>
+      <input matInput formControlName="name" placeholder="Ex: Casa, Trabalho">
+      <mat-icon matSuffix>home</mat-icon>
+      <mat-error *ngIf="addressForm.get('name')?.hasError('required')">Nome é obrigatório</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>CEP</mat-label>
+      <input matInput 
+             formControlName="zipcode" 
+             placeholder="00000-000"
+             (input)="formatZipcode($event)"
+             (blur)="searchCep()"
+             maxlength="9">
+      <mat-icon matSuffix *ngIf="!cepLoading">search</mat-icon>
+      <mat-spinner matSuffix *ngIf="cepLoading" diameter="20"></mat-spinner>
+      <mat-error *ngIf="addressForm.get('zipcode')?.hasError('required')">CEP é obrigatório</mat-error>
+      <mat-error *ngIf="addressForm.get('zipcode')?.hasError('pattern')">CEP inválido</mat-error>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Rua</mat-label>
+      <input matInput formControlName="street" placeholder="Nome da rua">
+      <mat-icon matSuffix>location_on</mat-icon>
+      <mat-error *ngIf="addressForm.get('street')?.hasError('required')">Rua é obrigatória</mat-error>
+    </mat-form-field>
+
+    <div class="form-row">
+      <mat-form-field appearance="outline" class="half-width">
+        <mat-label>Número</mat-label>
+        <input matInput formControlName="number" placeholder="123">
+        <mat-error *ngIf="addressForm.get('number')?.hasError('required')">Número é obrigatório</mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="half-width">
+        <mat-label>Complemento</mat-label>
+        <input matInput formControlName="complement" placeholder="Apto, Bloco, etc.">
+      </mat-form-field>
+    </div>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Bairro</mat-label>
+      <input matInput formControlName="neighborhood" placeholder="Nome do bairro">
+      <mat-error *ngIf="addressForm.get('neighborhood')?.hasError('required')">Bairro é obrigatório</mat-error>
+    </mat-form-field>
+
+    <div class="form-row">
+      <mat-form-field appearance="outline" class="half-width">
+        <mat-label>Cidade</mat-label>
+        <input matInput formControlName="city" placeholder="Nome da cidade">
+        <mat-error *ngIf="addressForm.get('city')?.hasError('required')">Cidade é obrigatória</mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline" class="half-width">
+        <mat-label>Estado</mat-label>
+        <input matInput formControlName="state" placeholder="SP" maxlength="2" style="text-transform: uppercase;">
+        <mat-error *ngIf="addressForm.get('state')?.hasError('required')">Estado é obrigatório</mat-error>
+        <mat-error *ngIf="addressForm.get('state')?.hasError('maxlength')">Use apenas 2 letras</mat-error>
+      </mat-form-field>
+    </div>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Observações (opcional)</mat-label>
+      <textarea matInput formControlName="notes" placeholder="Instruções especiais para entrega" rows="2"></textarea>
+    </mat-form-field>
+  </form>
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button (click)="onCancel()" [disabled]="loading">Cancelar</button>
+  <button mat-raised-button 
+          color="primary" 
+          (click)="onSubmit()" 
+          [disabled]="addressForm.invalid || loading">
+    <mat-spinner *ngIf="loading" diameter="20" style="display: inline-block; margin-right: 8px;"></mat-spinner>
+    <span *ngIf="!loading">Salvar</span>
+    <span *ngIf="loading">Salvando...</span>
+  </button>
+</mat-dialog-actions>
+

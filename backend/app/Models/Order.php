@@ -21,6 +21,7 @@ class Order extends Model
 
     protected $casts = [
         'total' => 'decimal:2',
+        'delivery_fee' => 'decimal:2',
     ];
 
     public function user(): BelongsTo

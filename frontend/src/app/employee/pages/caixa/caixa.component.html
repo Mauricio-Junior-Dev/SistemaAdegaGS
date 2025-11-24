@@ -252,6 +252,17 @@
                     <mat-icon>add</mat-icon>
                   </div>
                 </div>
+                
+                <!-- Opção para criar novo cliente -->
+                <div class="create-customer-option" *ngIf="customerSearchResults.length === 0 && customerSearchTerm.length >= 2">
+                  <div class="customer-result create-new" (click)="openQuickCustomerDialog()">
+                    <div class="customer-info">
+                      <mat-icon>person_add</mat-icon>
+                      <span class="name">Cadastrar novo cliente: "{{customerSearchTerm}}"</span>
+                    </div>
+                    <mat-icon>add</mat-icon>
+                  </div>
+                </div>
               </div>
 
               <!-- Cliente Selecionado -->
@@ -288,8 +299,81 @@
               <div class="total-value">{{formatCurrency(total)}}</div>
             </div>
 
-            <!-- Seção de Troco (apenas para pagamento em dinheiro) -->
-            <div *ngIf="showChangeSection" class="change-section">
+            <!-- Toggle Pagamento na Entrega -->
+            <div class="delivery-payment-section">
+              <mat-checkbox [(ngModel)]="isPayOnDelivery" 
+                            [disabled]="!cartItems.length"
+                            (change)="onPayOnDeliveryChange()"
+                            class="delivery-checkbox">
+                Pagamento na Entrega / Pendente
+              </mat-checkbox>
+              <p class="delivery-hint" *ngIf="isPayOnDelivery">
+                <mat-icon>info</mat-icon>
+                O pedido será gerado como pendente e aparecerá na lista de "Novos Pedidos" para despacho.
+              </p>
+            </div>
+
+            <!-- Seleção de Endereço (apenas se Entrega estiver marcado) -->
+            <div *ngIf="isPayOnDelivery" class="address-selection-section">
+              <div class="address-header">
+                <h4>Endereço de Entrega</h4>
+                <button mat-icon-button 
+                        color="primary"
+                        (click)="openNewAddressDialog()"
+                        [disabled]="!selectedCustomer"
+                        matTooltip="Adicionar novo endereço">
+                  <mat-icon>add</mat-icon>
+                </button>
+              </div>
+              
+              <div *ngIf="!selectedCustomer" class="address-warning">
+                <mat-icon color="warn">warning</mat-icon>
+                <span>Selecione um cliente para escolher o endereço de entrega</span>
+              </div>
+              
+              <div *ngIf="selectedCustomer && customerAddresses.length === 0" class="address-warning">
+                <mat-icon color="warn">warning</mat-icon>
+                <span>Cliente não possui endereços cadastrados. Adicione um endereço para continuar.</span>
+              </div>
+              
+              <mat-form-field appearance="outline" class="full-width" *ngIf="selectedCustomer && customerAddresses.length > 0">
+                <mat-label>Selecione o endereço</mat-label>
+                <mat-select [(ngModel)]="selectedAddressId" 
+                            (selectionChange)="onAddressChange($event.value)"
+                            [required]="isPayOnDelivery">
+                  <mat-option *ngFor="let address of customerAddresses" [value]="address.id">
+                    <div class="address-option">
+                      <span class="address-full">
+                        {{ address.street }}, {{ address.number }} - {{ address.neighborhood }}
+                        <span *ngIf="address.complement"> ({{ address.complement }})</span>
+                        <span *ngIf="address.name && !address.complement"> ({{ address.name }})</span>
+                      </span>
+                      <mat-icon *ngIf="address.is_default" class="default-badge">star</mat-icon>
+                    </div>
+                  </mat-option>
+                </mat-select>
+              </mat-form-field>
+              
+              <!-- Exibição do Frete -->
+              <div *ngIf="selectedAddressId && deliveryFee > 0" class="delivery-fee-display">
+                <div class="fee-info">
+                  <mat-icon>local_shipping</mat-icon>
+                  <div class="fee-details">
+                    <span class="fee-label">Frete:</span>
+                    <span class="fee-value">{{formatCurrency(deliveryFee)}}</span>
+                    <span *ngIf="estimatedDeliveryTime" class="delivery-time">{{estimatedDeliveryTime}}</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div *ngIf="loadingDeliveryFee" class="loading-fee">
+                <mat-spinner diameter="20"></mat-spinner>
+                <span>Calculando frete...</span>
+              </div>
+            </div>
+
+            <!-- Seção de Troco (apenas para pagamento em dinheiro e não entrega) -->
+            <div *ngIf="showChangeSection && !isPayOnDelivery" class="change-section">
               <mat-form-field appearance="outline" class="full-width">
                 <mat-label>Valor Recebido</mat-label>
                 <input matInput 
@@ -319,7 +403,7 @@
                         [disabled]="receivedAmount < total"
                         (click)="finalizeSale('dinheiro')">
                   <mat-icon>check</mat-icon>
-                  Finalizar Venda
+                  {{isPayOnDelivery ? 'Gerar Pedido de Entrega' : 'Finalizar Venda'}}
                 </button>
                 <button mat-stroked-button 
                         color="warn"
@@ -335,7 +419,7 @@
               <button mat-raised-button 
                       color="primary"
                       class="payment-button"
-                      [disabled]="!cartItems.length"
+                      [disabled]="!cartItems.length || isPayOnDelivery"
                       (click)="handleCashPayment()">
                 <mat-icon>payments</mat-icon>
                 Dinheiro
@@ -343,7 +427,7 @@
               <button mat-raised-button 
                       color="primary"
                       class="payment-button"
-                      [disabled]="!cartItems.length"
+                      [disabled]="!cartItems.length || isPayOnDelivery"
                       (click)="finalizeSale('cartão de débito')">
                 <mat-icon>credit_card</mat-icon>
                 Débito
@@ -351,7 +435,7 @@
               <button mat-raised-button 
                       color="primary"
                       class="payment-button"
-                      [disabled]="!cartItems.length"
+                      [disabled]="!cartItems.length || isPayOnDelivery"
                       (click)="finalizeSale('cartão de crédito')">
                 <mat-icon>credit_card</mat-icon>
                 Crédito
@@ -359,10 +443,19 @@
               <button mat-raised-button 
                       color="primary"
                       class="payment-button"
-                      [disabled]="!cartItems.length"
+                      [disabled]="!cartItems.length || isPayOnDelivery"
                       (click)="finalizeSale('pix')">
                 <mat-icon>qr_code</mat-icon>
                 PIX
+              </button>
+              <button mat-raised-button 
+                      color="accent"
+                      class="payment-button"
+                      [disabled]="!cartItems.length"
+                      *ngIf="isPayOnDelivery"
+                      (click)="finalizeSale('dinheiro')">
+                <mat-icon>local_shipping</mat-icon>
+                Gerar Pedido de Entrega
               </button>
             </div>
 

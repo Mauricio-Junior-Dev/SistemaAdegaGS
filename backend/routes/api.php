@@ -128,10 +128,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/orders/{order}/confirm-delivery', [OrderController::class, 'confirmDelivery']);
         Route::post('/orders/{order}/create-payment', [PaymentController::class, 'createPixPayment']);
         
-        // Endereços
-        Route::get('/addresses', [AddressController::class, 'index']);
-        Route::post('/addresses', [AddressController::class, 'store']);
-        Route::get('/addresses/{address}', [AddressController::class, 'show']);
+        // Endereços (apenas atualizar e deletar próprios endereços)
         Route::put('/addresses/{address}', [AddressController::class, 'update']);
         Route::delete('/addresses/{address}', [AddressController::class, 'destroy']);
         Route::patch('/addresses/{address}/default', [AddressController::class, 'setDefault']);
@@ -139,6 +136,13 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Rota compartilhada: clientes podem ver seus próprios pedidos, funcionários podem ver todos
     Route::get('/orders/{order}', [OrderController::class, 'show']);
+    
+    // Rotas compartilhadas de endereços: 
+    // - Clientes podem listar/criar/ver seus próprios endereços
+    // - Funcionários/Admins podem listar/criar/ver endereços de qualquer cliente (usando user_id)
+    Route::get('/addresses', [AddressController::class, 'index']); // Lista endereços (com suporte a user_id para funcionários)
+    Route::post('/addresses', [AddressController::class, 'store']); // Cria endereço (com suporte a user_id para funcionários)
+    Route::get('/addresses/{address}', [AddressController::class, 'show']); // Visualiza endereço específico
 
     // Rotas de funcionário e admin
     Route::middleware('employee')->group(function () {
@@ -151,8 +155,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/cash/report', [CashController::class, 'report']);
         // Pedidos
         Route::get('/orders', [OrderController::class, 'index']);
+        Route::post('/orders', [OrderController::class, 'store']);
         Route::patch('/orders/{order}/status', [OrderController::class, 'updateStatus']);
-        Route::post('/orders/create', [OrderController::class, 'store']);
+        Route::post('/orders/create', [OrderController::class, 'store']); // Mantida para compatibilidade
         Route::post('/orders/manual', [OrderController::class, 'createManualOrder']);
         Route::post('/orders/{order}/print', [OrderController::class, 'printOrder']);
         Route::get('/customers/search', [OrderController::class, 'searchCustomers']);

@@ -104,6 +104,8 @@ import { Subscription } from 'rxjs';
     .admin-container {
       height: 100vh;
       background-color: var(--background);
+      margin: 0;
+      padding: 0;
     }
 
     .admin-sidenav {
@@ -171,8 +173,18 @@ import { Subscription } from 'rxjs';
 
     .logout-btn { width: 100%; justify-content: center; }
 
+    mat-sidenav-content {
+      display: flex;
+      flex-direction: column;
+      margin: 0;
+      padding: 0;
+    }
+
     mat-toolbar {
       box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      width: 100%;
+      margin: 0;
+      padding: 0 16px;
     }
 
     .toolbar-spacer {
@@ -188,6 +200,7 @@ import { Subscription } from 'rxjs';
       padding: 20px;
       height: calc(100vh - 64px);
       overflow-y: auto;
+      margin: 0;
     }
 
     /* Removido estilo antigo de ativo que gerava fundo branco */

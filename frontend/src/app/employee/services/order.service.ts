@@ -89,6 +89,7 @@ export interface Order {
   customer_phone?: string;
   delivery_address?: Address;
   delivery_notes?: string;
+  delivery_fee?: number;
   created_at: string;
   updated_at: string;
 }
@@ -109,6 +110,9 @@ export interface CreateOrderRequest {
   customer_document?: string;
   received_amount?: number;
   change_amount?: number;
+  status?: 'pending' | 'completed';
+  payment_status?: 'pending' | 'completed';
+  delivery_fee?: number;
   delivery?: {
     address?: string;
     number?: string;
@@ -237,7 +241,7 @@ export class OrderService {
   }
 
   createOrder(order: CreateOrderRequest): Observable<CreateOrderResponse> {
-    return this.http.post<CreateOrderResponse>(`${this.apiUrl}/create`, order).pipe(
+    return this.http.post<CreateOrderResponse>(`${this.apiUrl}`, order).pipe(
       tap(() => {
         // Recarregar a lista de pedidos após criar um novo
         this.fetchOrders().subscribe();
@@ -406,6 +410,10 @@ export interface Customer {
 export interface CustomerAddress {
   id: number;
   name?: string;
+  street?: string;
+  number?: string;
+  complement?: string;
+  neighborhood?: string;
   full_address: string;
   short_address: string;
   is_default: boolean;

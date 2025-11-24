@@ -14,7 +14,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatPaginatorModule, MatPaginator, PageEvent } from '@angular/material/paginator';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatTabsModule } from '@angular/material/tabs';
+import { MatTabsModule, MatTabChangeEvent } from '@angular/material/tabs';
 import { FormsModule } from '@angular/forms';
 import { Subject, takeUntil, debounceTime, distinctUntilChanged, Observable, combineLatest, map, Subscription } from 'rxjs';
 import { finalize } from 'rxjs/operators';
@@ -75,16 +75,10 @@ export class PedidosComponent implements OnInit, OnDestroy {
   searchTerm = '';
   searching = false;
   
-  // Estatísticas gerais
-  stats = {
-    total: 0,
-    pending: 0,
-    processing: 0,
-    preparing: 0,
-    delivering: 0,
-    completed: 0,
-    cancelled: 0
-  };
+  // Paginação de Concluídos
+  totalConcluidos = 0;
+  pageSizeConcluidos = 10;
+  pageIndexConcluidos = 0;
   
   
   @ViewChild(MatPaginator) paginator!: MatPaginator;
@@ -130,8 +124,7 @@ export class PedidosComponent implements OnInit, OnDestroy {
     // O loading será desativado quando o Observable emitir os dados
     // O OrderPollingService já busca os dados a cada 10 segundos e atualiza o BehaviorSubject
     
-    this.loadStats();
-    this.loadConcluidos();
+    // Lazy Loading: loadConcluidos() será chamado apenas quando o usuário clicar na aba "Concluídos"
   }
 
   ngOnDestroy(): void {
@@ -145,20 +138,37 @@ export class PedidosComponent implements OnInit, OnDestroy {
   // Método removido: A impressão automática agora é feita pelo OrderPollingService
   // que roda globalmente quando o funcionário está logado
 
-  loadConcluidos(): void {
+  loadConcluidos(page: number = 1, size: number = 10): void {
     this.concluidosLoading = true;
-    // Busca os últimos 50 pedidos concluídos
-    this.orderService.fetchOrders({ status: 'completed', per_page: 50, page: 1 })
+    this.orderService.fetchOrders({ status: 'completed', per_page: size, page: page })
       .pipe(finalize(() => this.concluidosLoading = false))
       .subscribe({
-        next: (response) => {
+        next: (response: OrderResponse) => {
           this.pedidosConcluidos = response.data;
+          this.totalConcluidos = response.total;
         },
         error: (err) => {
           console.error('Erro ao carregar pedidos concluídos', err);
           this.snackBar.open('Não foi possível carregar os pedidos concluídos.', 'Fechar', { duration: 3000 });
         }
       });
+  }
+
+  onConcluidosPageChange(event: PageEvent): void {
+    this.pageIndexConcluidos = event.pageIndex;
+    this.pageSizeConcluidos = event.pageSize;
+    // pageIndex é 0-based, mas a API espera 1-based
+    this.loadConcluidos(event.pageIndex + 1, event.pageSize);
+  }
+
+  onTabChange(event: MatTabChangeEvent): void {
+    // Aba "Concluídos" é o índice 3 (0: Novos, 1: Em Preparo, 2: Em Entrega, 3: Concluídos)
+    const CONCLUIDOS_TAB_INDEX = 3;
+    
+    if (event.index === CONCLUIDOS_TAB_INDEX && this.pedidosConcluidos.length === 0) {
+      // Lazy Loading: carregar apenas se a lista estiver vazia
+      this.loadConcluidos(this.pageIndexConcluidos + 1, this.pageSizeConcluidos);
+    }
   }
 
   filtrarPedidosPorStatus(): void {
@@ -207,33 +217,6 @@ export class PedidosComponent implements OnInit, OnDestroy {
     });
   }
 
-  loadStats(): void {
-    // Carregar estatísticas para cada status
-    const statuses: (OrderStatus | 'all')[] = ['all', 'pending', 'processing', 'preparing', 'delivering', 'completed', 'cancelled'];
-    let completedRequests = 0;
-    
-    statuses.forEach(status => {
-      this.orderService.fetchOrders({ 
-        page: 1, 
-        per_page: 1, 
-        status: status === 'all' ? undefined : status 
-      }).subscribe({
-        next: (response: OrderResponse) => {
-          if (status === 'all') {
-            this.stats.total = response.total;
-          } else {
-            this.stats[status] = response.total;
-          }
-          
-          completedRequests++;
-        },
-        error: (error: Error) => {
-          console.error(`Erro ao carregar estatísticas para ${status}:`, error);
-          completedRequests++;
-        }
-      });
-    });
-  }
 
   onStatusFilterChange(status: OrderStatus | 'all'): void {
     this.selectedStatus = status;
@@ -254,9 +237,6 @@ export class PedidosComponent implements OnInit, OnDestroy {
       // Para outros status, usar busca HTTP tradicional
       this.loadOrders();
     }
-    
-    // Recarregar estatísticas quando mudar o filtro
-    this.loadStats();
   }
 
   onSearchChange(value: string): void {
@@ -354,10 +334,10 @@ export class PedidosComponent implements OnInit, OnDestroy {
         if (newStatus === 'completed') {
           // .unshift() coloca o pedido no topo da lista
           this.pedidosConcluidos.unshift(updatedOrder);
+          // Atualizar o total de concluídos
+          this.totalConcluidos += 1;
         }
 
-        this.loadStats();
-        
         // Re-filtrar as listas para que o pedido "pule" de uma coluna para outra
         // Esta chamada vai remover o pedido das abas ativas
         this.filtrarPedidosPorStatus();
@@ -418,7 +398,6 @@ export class PedidosComponent implements OnInit, OnDestroy {
               // Para outros status, usar busca HTTP tradicional
               this.loadOrders();
             }
-            this.loadStats();
             this.snackBar.open('Status atualizado com sucesso', 'Fechar', { duration: 3000 });
           },
           error: (error: Error) => {
@@ -507,25 +486,6 @@ export class PedidosComponent implements OnInit, OnDestroy {
   }
 
   // Métodos computados para contagem de pedidos por status
-  getPendingCount(): number {
-    return this.stats.pending;
-  }
-
-  getProcessingCount(): number {
-    return this.stats.processing;
-  }
-
-  getDeliveringCount(): number {
-    return this.stats.delivering;
-  }
-
-  getCompletedCount(): number {
-    return this.stats.completed;
-  }
-
-  getCancelledCount(): number {
-    return this.stats.cancelled;
-  }
 
   formatCurrency(value: number): string {
     if (value === null || value === undefined) {

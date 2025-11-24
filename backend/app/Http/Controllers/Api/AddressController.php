@@ -9,9 +9,20 @@ use Illuminate\Support\Facades\DB;
 
 class AddressController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $addresses = Address::where('user_id', auth()->id())
+        $user = auth()->user();
+        
+        // Determinar qual user_id usar para filtrar
+        if (in_array($user->type, ['admin', 'employee']) && $request->has('user_id')) {
+            // Admin/Employee podem filtrar por user_id específico
+            $userId = $request->user_id;
+        } else {
+            // Clientes sempre veem apenas seus próprios endereços (ignora user_id se enviado)
+            $userId = $user->id;
+        }
+        
+        $addresses = Address::where('user_id', $userId)
             ->where('is_active', true)
             ->orderBy('is_default', 'desc')
             ->orderBy('created_at', 'desc')
@@ -22,7 +33,10 @@ class AddressController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate([
+        $user = auth()->user();
+        
+        // Validação condicional: se for funcionário/admin, user_id é opcional; se for cliente, não aceita user_id
+        $validationRules = [
             'name' => 'nullable|string|max:255',
             'street' => 'required|string|max:255',
             'number' => 'required|string|max:20',
@@ -32,20 +46,39 @@ class AddressController extends Controller
             'state' => 'required|string|max:2',
             'zipcode' => 'required|string|max:10',
             'notes' => 'nullable|string',
-            'is_default' => 'boolean'
-        ]);
+            'is_default' => 'boolean',
+        ];
+        
+        // Se for funcionário/admin, permitir user_id; se for cliente, não aceitar
+        if (in_array($user->type, ['employee', 'admin'])) {
+            $validationRules['user_id'] = 'nullable|integer|exists:users,id';
+        }
+        
+        $request->validate($validationRules);
 
         try {
             DB::beginTransaction();
 
+            // Determinar user_id: se for funcionário/admin e enviou user_id, usar; senão usar auth()->id()
+            $userId = $user->id;
+            
+            if ($request->has('user_id') && in_array($user->type, ['employee', 'admin'])) {
+                // Funcionário/admin pode criar endereço para outro usuário
+                $userId = $request->user_id;
+            } elseif ($request->has('user_id') && !in_array($user->type, ['employee', 'admin'])) {
+                // Cliente tentando criar endereço para outro usuário - negar
+                DB::rollBack();
+                return response()->json(['message' => 'Você não tem permissão para criar endereços para outros usuários'], 403);
+            }
+
             // Se este endereço for marcado como padrão, remover o padrão dos outros
             if ($request->is_default) {
-                Address::where('user_id', auth()->id())
+                Address::where('user_id', $userId)
                     ->update(['is_default' => false]);
             }
 
             $address = Address::create([
-                'user_id' => auth()->id(),
+                'user_id' => $userId,
                 'name' => $request->name,
                 'street' => $request->street,
                 'number' => $request->number,
@@ -70,8 +103,12 @@ class AddressController extends Controller
 
     public function show(Address $address)
     {
-        // Verificar se o endereço pertence ao usuário
-        if ($address->user_id !== auth()->id()) {
+        $user = auth()->user();
+        
+        // Permitir acesso se:
+        // 1. O endereço pertence ao usuário logado, OU
+        // 2. O usuário é admin ou employee (funcionário pode ver endereços de clientes)
+        if ($address->user_id !== $user->id && !in_array($user->type, ['admin', 'employee'])) {
             return response()->json(['message' => 'Endereço não encontrado'], 404);
         }
 

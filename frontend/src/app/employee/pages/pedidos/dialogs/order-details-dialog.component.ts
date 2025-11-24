@@ -82,6 +82,14 @@ import { Order, OrderStatus } from '../../../services/order.service';
         <h3>Pagamento</h3>
         <p><strong>Método:</strong> {{getPaymentMethod(data.order)}}</p>
         <p><strong>Status:</strong> {{getPaymentStatus(data.order)}}</p>
+        <div class="summary-row">
+          <span>Subtotal:</span>
+          <span>{{data.formatCurrency((data.order.total || 0) - (data.order.delivery_fee || 0))}}</span>
+        </div>
+        <div class="summary-row" *ngIf="data.order.delivery_fee && data.order.delivery_fee > 0">
+          <span>Frete:</span>
+          <span>{{data.formatCurrency(data.order.delivery_fee)}}</span>
+        </div>
         <p class="total"><strong>Total:</strong> {{data.formatCurrency(data.order.total)}}</p>
       </div>
 
@@ -147,10 +155,25 @@ import { Order, OrderStatus } from '../../../services/order.service';
       text-align: right;
       color: #666;
     }
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid #f1f3f4;
+      color: #666;
+    }
+    
+    .summary-row:last-of-type {
+      border-bottom: none;
+      margin-bottom: 10px;
+    }
+    
     .total {
       font-size: 1.2em;
       color: #333;
       margin-top: 10px;
+      padding-top: 10px;
+      border-top: 2px solid #dee2e6;
     }
     mat-dialog-actions {
       margin-top: 20px;
