@@ -25,6 +25,7 @@ import { OrderService } from '../../../core/services/order.service';
 import { CepService } from '../../../core/services/cep.service';
 import { AddressService, Address } from '../../../core/services/address.service';
 import { DeliveryZoneService } from '../../../services/delivery-zone.service';
+import { StoreStatusService } from '../../../core/services/store-status.service';
 import { CartItem } from '../../../core/models/cart.model';
 import { User } from '../../../core/models/auth.model';
 import { Product } from '../../../core/models/product.model';
@@ -67,6 +68,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   cartItems$!: Observable<CartItem[]>;
   cartTotal$!: Observable<number>;
   user$!: Observable<User | null>;
+  isStoreOpen$!: Observable<boolean>;
   loading = false;
   error: string | null = null;
   public checkoutState: 'form' | 'awaiting_payment' = 'form';
@@ -106,6 +108,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     private cepService: CepService,
     private addressService: AddressService,
     private deliveryZoneService: DeliveryZoneService,
+    private storeStatusService: StoreStatusService,
     private snackBar: MatSnackBar,
     private router: Router,
     private cdr: ChangeDetectorRef,
@@ -130,6 +133,9 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       received_amount: [''],
       change: ['']
     });
+
+    // Inicializar observável do status da loja após injeção do serviço
+    this.isStoreOpen$ = this.storeStatusService.status$;
   }
 
   private updateCartTotals(): void {
@@ -479,6 +485,13 @@ export class CheckoutComponent implements OnInit, OnDestroy {
 
   public async onSubmit(): Promise<void> {
     console.log('--- DEBUG CHECKOUT: Início do onSubmit ---');
+
+    // Verificar se a loja está aberta
+    const isStoreOpen = this.storeStatusService.getCurrentStatus();
+    if (!isStoreOpen) {
+      this.toastr.error('Desculpe, a adega está fechada no momento. Não é possível realizar pedidos.', 'Loja Fechada');
+      return;
+    }
 
     const currentUser =
       typeof this.authService.getCurrentUser === 'function'

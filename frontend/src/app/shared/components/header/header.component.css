@@ -381,4 +381,38 @@
   color: #D32F2F !important;
 }
 
+/* Banner de Loja Fechada */
+.store-closed-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background-color: #dc2626;
+  color: white;
+  padding: 12px 16px;
+  text-align: center;
+  z-index: 1001;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.banner-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.banner-icon {
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+}
+
+/* Ajustar header quando há banner */
+.store-closed-banner ~ .header {
+  top: 48px;
+}
+
 /* Espaçador removido - usando position: sticky agora */

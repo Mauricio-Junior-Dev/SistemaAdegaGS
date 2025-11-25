@@ -10,7 +10,9 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { AuthService } from '../../../core/services/auth.service';
 import { OrderPollingService } from '../../../core/services/order-polling.service';
 import { SettingsService, SystemSettings } from '../../services/settings.service';
+import { StoreStatusService } from '../../../core/services/store-status.service';
 import { Subscription } from 'rxjs';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 
 @Component({
   selector: 'app-admin-layout',
@@ -23,7 +25,8 @@ import { Subscription } from 'rxjs';
     MatListModule,
     MatIconModule,
     MatButtonModule,
-    MatTooltipModule
+    MatTooltipModule,
+    MatSlideToggleModule
   ],
   template: `
     <mat-sidenav-container class="admin-container">
@@ -91,7 +94,22 @@ import { Subscription } from 'rxjs';
         <mat-toolbar color="primary">
           <span>{{pageTitle}}</span>
           <span class="toolbar-spacer"></span>
-          <span class="user-info">{{userName}}</span>
+          <div class="toolbar-actions">
+            <!-- Toggle Status da Loja -->
+            <div class="store-status-toggle">
+              <mat-icon [class.store-open]="isStoreOpen" [class.store-closed]="!isStoreOpen">
+                {{isStoreOpen ? 'store' : 'store_mall_directory'}}
+              </mat-icon>
+              <span class="status-label">{{isStoreOpen ? 'Loja Aberta' : 'Loja Fechada'}}</span>
+              <mat-slide-toggle
+                [checked]="isStoreOpen"
+                (change)="toggleStoreStatus($event.checked)"
+                [disabled]="updatingStoreStatus"
+                color="primary">
+              </mat-slide-toggle>
+            </div>
+            <span class="user-info">{{userName}}</span>
+          </div>
         </mat-toolbar>
 
         <div class="admin-content">
@@ -191,6 +209,40 @@ import { Subscription } from 'rxjs';
       flex: 1 1 auto;
     }
 
+    .toolbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .store-status-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+    }
+
+    .store-status-toggle mat-icon {
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+    }
+
+    .store-status-toggle .store-open {
+      color: #4caf50;
+    }
+
+    .store-status-toggle .store-closed {
+      color: #f44336;
+    }
+
+    .status-label {
+      font-size: 0.9em;
+      font-weight: 500;
+    }
+
     .user-info {
       font-size: 0.9em;
       margin-right: 16px;
@@ -222,12 +274,16 @@ export class AdminLayoutComponent implements OnInit, OnDestroy {
   userName = '';
   pageTitle = 'Dashboard';
   settings: SystemSettings | null = null;
+  isStoreOpen = true;
+  updatingStoreStatus = false;
   private settingsSubscription?: Subscription;
+  private storeStatusSubscription?: Subscription;
 
   constructor(
     private authService: AuthService,
     private orderPollingService: OrderPollingService,
-    private settingsService: SettingsService
+    private settingsService: SettingsService,
+    private storeStatusService: StoreStatusService
   ) {
     const user = this.authService.getUser();
     this.userName = user?.name || 'Admin';
@@ -248,12 +304,36 @@ export class AdminLayoutComponent implements OnInit, OnDestroy {
     this.settingsSubscription = this.settingsService.watchSettings().subscribe(settings => {
       this.settings = settings;
     });
+
+    // Observar status da loja
+    this.storeStatusSubscription = this.storeStatusService.status$.subscribe(isOpen => {
+      this.isStoreOpen = isOpen;
+    });
   }
 
   ngOnDestroy(): void {
     if (this.settingsSubscription) {
       this.settingsSubscription.unsubscribe();
     }
+    if (this.storeStatusSubscription) {
+      this.storeStatusSubscription.unsubscribe();
+    }
+  }
+
+  toggleStoreStatus(isOpen: boolean): void {
+    this.updatingStoreStatus = true;
+    this.storeStatusService.updateStoreStatus(isOpen).subscribe({
+      next: () => {
+        this.isStoreOpen = isOpen;
+        this.updatingStoreStatus = false;
+      },
+      error: (error) => {
+        console.error('Erro ao atualizar status da loja:', error);
+        this.updatingStoreStatus = false;
+        // Reverter o toggle em caso de erro
+        this.isStoreOpen = !isOpen;
+      }
+    });
   }
 
   getLogoUrl(logoUrl: string | undefined): string {

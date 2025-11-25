@@ -135,13 +135,16 @@ import { SecuritySettingsComponent } from './tabs/security-settings.component';
   `,
   styles: [`
     .settings-container {
-      padding: 20px;
+      padding: 24px;
+      background: var(--background);
+      min-height: 100vh;
     }
 
     h1 {
-      margin: 0 0 20px;
-      font-size: 24px;
-      color: #333;
+      margin: 0 0 24px;
+      font-size: 28px;
+      font-weight: 600;
+      color: #2c3e50;
     }
 
     .loading-container,
@@ -166,12 +169,99 @@ import { SecuritySettingsComponent } from './tabs/security-settings.component';
       height: 48px;
     }
 
+    /* Card Principal - Estilo Clean */
     mat-card {
       margin-bottom: 20px;
+      background: #ffffff !important;
+      border-radius: 12px !important;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05) !important;
+      border-top: 4px solid var(--primary) !important;
+      overflow: hidden;
+    }
+
+    mat-card-content {
+      background: #ffffff !important;
+      padding: 24px !important;
+    }
+
+    /* Tabs - Fundo transparente/branco */
+    ::ng-deep .mat-mdc-tab-group {
+      background: transparent !important;
+    }
+
+    ::ng-deep .mat-mdc-tab-header {
+      background: transparent !important;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    ::ng-deep .mat-mdc-tab-label {
+      background: transparent !important;
+      color: #666 !important;
+    }
+
+    ::ng-deep .mat-mdc-tab-label-active {
+      color: var(--primary) !important;
     }
 
     ::ng-deep .mat-mdc-tab-body-wrapper {
-      padding: 20px;
+      padding: 24px 0;
+      background: transparent !important;
+    }
+
+    ::ng-deep .mat-mdc-tab-body-content {
+      background: transparent !important;
+    }
+
+    /* Inputs - Garantir legibilidade */
+    ::ng-deep .mat-mdc-form-field {
+      background: transparent !important;
+    }
+
+    ::ng-deep .mat-mdc-text-field-wrapper {
+      background: #ffffff !important;
+    }
+
+    ::ng-deep .mat-mdc-form-field-input-control {
+      color: #333 !important;
+    }
+
+    /* Garantir que os campos de texto estejam legíveis */
+    ::ng-deep .mdc-text-field--filled:not(.mdc-text-field--disabled) {
+      background-color: #ffffff !important;
+    }
+
+    ::ng-deep .mdc-text-field--filled:not(.mdc-text-field--disabled) .mdc-line-ripple::before {
+      border-bottom-color: rgba(0, 0, 0, 0.42) !important;
+    }
+
+    ::ng-deep .mdc-text-field--filled:not(.mdc-text-field--disabled):hover .mdc-line-ripple::before {
+      border-bottom-color: rgba(0, 0, 0, 0.87) !important;
+    }
+
+    ::ng-deep .mdc-text-field--focused:not(.mdc-text-field--disabled) .mdc-line-ripple::after {
+      border-bottom-color: var(--primary) !important;
+    }
+
+    /* Cards dentro das abas também devem ter fundo branco */
+    ::ng-deep .settings-section mat-card {
+      background: #ffffff !important;
+      border-radius: 12px !important;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+      border-top: 4px solid var(--primary) !important;
+    }
+
+    ::ng-deep .settings-section mat-card-content {
+      background: #ffffff !important;
+    }
+
+    /* Garantir que labels e textos estejam legíveis */
+    ::ng-deep .settings-section h2 {
+      color: #2c3e50 !important;
+    }
+
+    ::ng-deep .settings-section p,
+    ::ng-deep .settings-section label {
+      color: #333 !important;
     }
   `]
 })

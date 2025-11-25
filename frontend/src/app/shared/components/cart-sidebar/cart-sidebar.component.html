@@ -92,7 +92,9 @@
       </div>
       
       <!-- Botão Finalizar Pedido -->
-      <button class="checkout-button" (click)="checkout()">
+      <button class="checkout-button" 
+              (click)="checkout()" 
+              [disabled]="!(isStoreOpen$ | async)">
         Finalizar Pedido
       </button>
     </div>

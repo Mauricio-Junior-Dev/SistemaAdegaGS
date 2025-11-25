@@ -9,6 +9,7 @@ import { CartService } from '../../../core/services/cart.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { OrderPollingService } from '../../../core/services/order-polling.service';
 import { PublicSettingsService, PublicSettings } from '../../../core/services/public-settings.service';
+import { StoreStatusService } from '../../../core/services/store-status.service';
 import { CartItem } from '../../../core/models/cart.model';
 import { User } from '../../../core/models/auth.model';
 import { map } from 'rxjs/operators';
@@ -37,6 +38,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
   private authService = inject(AuthService);
   private orderPollingService = inject(OrderPollingService);
   private publicSettingsService = inject(PublicSettingsService);
+  private storeStatusService = inject(StoreStatusService);
   private router = inject(Router);
 
   cartTotal$ = this.cartService.cartItems$.pipe(
@@ -46,6 +48,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
     map((items: CartItem[]) => items.reduce((count: number, item: CartItem) => count + item.quantity, 0))
   );
   user$ = this.authService.user$;
+  isStoreOpen$ = this.storeStatusService.status$;
 
   constructor() {}
 

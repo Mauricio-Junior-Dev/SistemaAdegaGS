@@ -101,6 +101,30 @@ class OrderController extends Controller
 
     public function store(Request $request)
     {
+        // Verificar se a loja está aberta ANTES de qualquer validação
+        $storeSetting = \App\Models\Setting::where('key', 'is_store_open')->first();
+        $isStoreOpen = true; // Por padrão, loja aberta
+        if ($storeSetting) {
+            $value = $storeSetting->value;
+            // O Setting model tem cast 'array', então o valor vem como array
+            if (is_array($value) && isset($value['is_open'])) {
+                $isStoreOpen = (bool) $value['is_open'];
+            } elseif (is_array($value) && !empty($value)) {
+                // Fallback: se for array mas sem a chave, usar o primeiro valor
+                $isStoreOpen = (bool) reset($value);
+            } else {
+                $isStoreOpen = (bool) $value;
+            }
+        }
+        
+        // Se a loja estiver fechada, bloquear pedidos
+        if (!$isStoreOpen) {
+            return response()->json([
+                'message' => 'Desculpe, a adega está fechada no momento. Não é possível realizar pedidos.',
+                'error' => 'store_closed'
+            ], 422);
+        }
+
         // Debug: Log do payload recebido
         Log::info('Payload recebido no Store:', $request->all());
 
@@ -1156,17 +1180,12 @@ class OrderController extends Controller
         }
 
         try {
-            // --- CORREÇÃO DO BUG 500 ---
-            // Recarrega o objeto $order do banco de dados (refresh)
-            // e carrega (load) as relações exatas que o frontend espera,
-            // incluindo a consulta 'payment' corrigida.
             $order->refresh()->load([
                 'user',
                 'items.product',
                 'items.combo.products', // Carregar produtos do combo também
                 'delivery_address',
                 'payment' => function ($query) {
-                    // Garantir que received_amount e change_amount sejam selecionados explicitamente
                     $query->select(
                         'id',
                         'order_id',
@@ -1184,13 +1203,10 @@ class OrderController extends Controller
                 }
             ]);
 
-            // Agora retorna o objeto "limpo" e completo
             return response()->json($order);
         } catch (\Exception $e) {
-            // Se houver erro ao carregar relacionamentos, retornar o pedido básico
             Log::error('Erro ao carregar relacionamentos do pedido #' . $order->order_number . ': ' . $e->getMessage());
             
-            // Retornar pedido básico sem relacionamentos complexos
             $order->refresh();
             return response()->json([
                 'id' => $order->id,

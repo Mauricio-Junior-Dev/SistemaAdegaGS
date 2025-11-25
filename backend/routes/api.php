@@ -30,6 +30,9 @@ Route::get('/categories/{category}', [CategoryController::class, 'show']);
 // Configurações públicas (sem autenticação)
 Route::get('/public/settings', [App\Http\Controllers\Api\Admin\SettingController::class, 'publicSettings']);
 
+// Status da loja (público)
+Route::get('/store-status', [App\Http\Controllers\Api\StoreConfigController::class, 'getStoreStatus']);
+
 // Banners públicos (sem autenticação)
 Route::get('/banners/active', [App\Http\Controllers\BannerController::class, 'active']);
 
@@ -147,6 +150,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Rotas de funcionário e admin
     Route::middleware('employee')->group(function () {
+        // Status da loja (admin/funcionário)
+        Route::post('/admin/store-status', [App\Http\Controllers\Api\StoreConfigController::class, 'updateStoreStatus']);
+        
         // Caixa
         Route::get('/cash/status', [CashController::class, 'status']);
         Route::post('/cash/open', [CashController::class, 'open']);

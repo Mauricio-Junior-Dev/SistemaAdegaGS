@@ -357,7 +357,7 @@
                 color="primary" 
                 class="finalize-button"
                 (click)="onSubmit()" 
-                [disabled]="!isDeliveryFormValid() || paymentForm.invalid || loading || isProcessingPayment || !isDeliveryAreaValid">
+                [disabled]="!isDeliveryFormValid() || paymentForm.invalid || loading || isProcessingPayment || !isDeliveryAreaValid || !(isStoreOpen$ | async)">
           <mat-spinner *ngIf="loading || isProcessingPayment" diameter="20" style="display: inline-block; margin-right: 8px;"></mat-spinner>
           <mat-icon *ngIf="!(loading || isProcessingPayment)">shopping_cart</mat-icon>
           <span *ngIf="!(loading || isProcessingPayment)">Fazer Pedido</span>

@@ -1,3 +1,11 @@
+<!-- Banner de Loja Fechada -->
+<div *ngIf="!(isStoreOpen$ | async)" class="store-closed-banner">
+  <div class="banner-content">
+    <mat-icon class="banner-icon">info</mat-icon>
+    <span>🔴 Estamos fechados no momento</span>
+  </div>
+</div>
+
 <header class="header">
   <nav class="container header-content">
     <!-- Logo -->

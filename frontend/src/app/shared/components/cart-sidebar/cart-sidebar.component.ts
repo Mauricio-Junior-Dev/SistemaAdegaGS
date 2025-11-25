@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { CartService } from '../../../core/services/cart.service';
 import { AuthService } from '../../../core/services/auth.service';
+import { StoreStatusService } from '../../../core/services/store-status.service';
 import { CartItem } from '../../../core/models/cart.model';
 import { Product } from '../../../core/models/product.model';
 import { Observable } from 'rxjs';
@@ -19,6 +20,7 @@ import { environment } from '../../../../environments/environment';
 export class CartSidebarComponent implements OnInit {
   private cartService = inject(CartService);
   private authService = inject(AuthService);
+  private storeStatusService = inject(StoreStatusService);
   private router = inject(Router);
   
   cartItems$ = this.cartService.cartItems$.pipe(
@@ -29,6 +31,7 @@ export class CartSidebarComponent implements OnInit {
   );
   isOpen$ = this.cartService.isCartOpen$;
   itemAdded$ = this.cartService.itemAdded$;
+  isStoreOpen$ = this.storeStatusService.status$;
 
   constructor() {}
 
@@ -65,6 +68,11 @@ export class CartSidebarComponent implements OnInit {
   }
 
   checkout(): void {
+    // Verificar se a loja está aberta
+    if (!this.storeStatusService.getCurrentStatus()) {
+      return; // Não fazer nada se a loja estiver fechada
+    }
+
     // Verificar se o usuário está autenticado
     if (!this.authService.isLoggedIn()) {
       // Se não estiver autenticado, redirecionar para login

@@ -713,5 +713,8 @@ class DatabaseSeeder extends Seeder
             ]);
         }
 
+        // Configurar status inicial da loja (aberta)
+        $this->call(StoreConfigSeeder::class);
+
     }
 }
