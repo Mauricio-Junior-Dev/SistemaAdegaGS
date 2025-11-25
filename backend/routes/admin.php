@@ -28,7 +28,14 @@ Route::middleware(['admin'])->group(function () {
     Route::get('/categories/{category}/stats', [CategoryController::class, 'stats']);
 
     // Produtos
+    // IMPORTANTE: Rotas específicas devem vir ANTES das rotas com parâmetros {product}
     Route::get('/products', [ProductController::class, 'index']);
+    Route::get('/products/generate-sku', [ProductController::class, 'generateSku']);
+    Route::get('/products/validate-sku', [ProductController::class, 'validateSku']);
+    Route::get('/products/validate-barcode', [ProductController::class, 'validateBarcode']);
+    Route::post('/products/import', [ProductController::class, 'import']);
+    Route::get('/products/export', [ProductController::class, 'export']);
+    // Rotas com parâmetros {product} devem vir DEPOIS das rotas específicas
     Route::get('/products/{product}', [ProductController::class, 'show']);
     Route::post('/products', [ProductController::class, 'store']);
     Route::put('/products/{product}', [ProductController::class, 'update']);
@@ -37,11 +44,6 @@ Route::middleware(['admin'])->group(function () {
     Route::patch('/products/{product}/toggle-status', [ProductController::class, 'toggleStatus']);
     Route::post('/products/{product}/image', [ProductController::class, 'uploadImage']);
     Route::delete('/products/{product}/image', [ProductController::class, 'deleteImage']);
-    Route::get('/products/generate-sku', [ProductController::class, 'generateSku']);
-    Route::get('/products/validate-sku', [ProductController::class, 'validateSku']);
-    Route::get('/products/validate-barcode', [ProductController::class, 'validateBarcode']);
-    Route::post('/products/import', [ProductController::class, 'import']);
-    Route::get('/products/export', [ProductController::class, 'export']);
 
     // Combos
     Route::get('/combos', [ComboController::class, 'index']);

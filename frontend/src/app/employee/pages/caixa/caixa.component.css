@@ -95,6 +95,40 @@ h1 {
 }
 
 /* Search Card */
+.search-header {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.search-header .full-width {
+  flex: 1;
+  min-width: 200px;
+}
+
+.copao-button {
+  white-space: nowrap;
+  min-width: 200px;
+  height: 56px;
+  font-size: 0.95rem;
+}
+
+.copao-button mat-icon {
+  margin-right: 0.5rem;
+}
+
+@media (max-width: 768px) {
+  .search-header {
+    flex-direction: column;
+  }
+
+  .copao-button {
+    width: 100%;
+    min-width: unset;
+  }
+}
+
 .search-card {
   flex: 0 0 auto;
 }

@@ -183,6 +183,60 @@
       </mat-card-content>
     </mat-card>
 
+    <!-- Imagens -->
+    <mat-card class="form-section">
+      <mat-card-header>
+        <mat-card-title>Imagens do Combo</mat-card-title>
+        <mat-card-subtitle>Adicione imagens para o combo (máximo 5 imagens)</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-content>
+        <div class="images-section">
+          <!-- Preview das imagens existentes (modo edição) -->
+          <div *ngIf="isEdit && existingImages.length > 0" class="existing-images">
+            <div *ngFor="let imageUrl of existingImages; let i = index" class="image-preview">
+              <img [src]="imageUrl" alt="Imagem do combo">
+              <button type="button" mat-icon-button color="warn" 
+                      (click)="removeExistingImage(i)"
+                      matTooltip="Remover imagem">
+                <mat-icon>delete</mat-icon>
+              </button>
+            </div>
+          </div>
+
+          <!-- Preview das novas imagens selecionadas -->
+          <div *ngIf="selectedImages.length > 0" class="selected-images">
+            <div *ngFor="let image of selectedImages; let i = index" class="image-preview">
+              <img [src]="getImagePreview(i)" alt="Preview">
+              <button type="button" mat-icon-button color="warn" 
+                      (click)="removeImage(i)"
+                      matTooltip="Remover imagem">
+                <mat-icon>delete</mat-icon>
+              </button>
+            </div>
+          </div>
+
+          <!-- Input de upload -->
+          <div class="upload-section">
+            <input 
+              type="file" 
+              #fileInput 
+              multiple 
+              accept="image/*"
+              (change)="onImageSelected($event)"
+              style="display: none">
+            <button type="button" mat-stroked-button (click)="fileInput.click()" 
+                    [disabled]="selectedImages.length >= 5">
+              <mat-icon>add_photo_alternate</mat-icon>
+              Adicionar Imagens
+            </button>
+            <span class="image-count" *ngIf="selectedImages.length > 0">
+              {{ selectedImages.length }} / 5 imagens selecionadas
+            </span>
+          </div>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
     <!-- Configurações -->
     <mat-card class="form-section">
       <mat-card-header>

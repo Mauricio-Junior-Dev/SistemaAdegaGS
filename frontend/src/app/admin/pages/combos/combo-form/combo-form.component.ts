@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormArray, FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -42,7 +42,7 @@ import { AuthService } from '../../../../core/services/auth.service';
   templateUrl: './combo-form.component.html',
   styleUrls: ['./combo-form.component.css']
 })
-export class ComboFormComponent implements OnInit {
+export class ComboFormComponent implements OnInit, OnDestroy {
   comboForm!: FormGroup;
   products: Product[] = [];
   filteredProducts: Product[] = [];
@@ -52,6 +52,9 @@ export class ComboFormComponent implements OnInit {
   calculatedPrice = 0;
   originalPrice = 0;
   discountAmount = 0;
+  selectedImages: File[] = [];
+  existingImages: string[] = [];
+  imagePreviewUrls: string[] = []; // URLs de preview para evitar NG0100
 
   private comboService = inject(ComboService);
   private router = inject(Router);
@@ -200,6 +203,13 @@ export class ComboFormComponent implements OnInit {
       popular: combo.popular || false
     });
 
+    // Carregar imagens existentes
+    if (combo.images && Array.isArray(combo.images)) {
+      this.existingImages = combo.images;
+    } else {
+      this.existingImages = [];
+    }
+
     // Limpar produtos existentes
     while (this.productsArray.length !== 0) {
       this.productsArray.removeAt(0);
@@ -300,43 +310,30 @@ export class ComboFormComponent implements OnInit {
     if (this.comboForm.valid) {
       this.loading = true;
       
-      const formData: ComboFormDataForBackend = {
+      const comboData: ComboFormData = {
         ...this.comboForm.value,
+        price: Number(this.comboForm.value.price),
+        original_price: this.comboForm.value.original_price ? Number(this.comboForm.value.original_price) : undefined,
+        discount_percentage: this.comboForm.value.discount_percentage ? Number(this.comboForm.value.discount_percentage) : undefined,
         products: this.productsArray.value.map((product: any) => ({
-          product_id: String(product.product_id),
-          quantity: String(product.quantity),
+          product_id: Number(product.product_id),
+          quantity: Number(product.quantity),
           sale_type: product.sale_type
-        }))
+        })),
+        images: this.selectedImages.length > 0 ? this.selectedImages : undefined
       };
 
       // Remover campos que não devem ser enviados
-      delete (formData as any).productSearchTerm;
-
-      // Converter valores numéricos para string conforme esperado pelo backend
-      formData.price = String(formData.price);
-      formData.original_price = String(formData.original_price || 0);
-      formData.discount_percentage = String(formData.discount_percentage || 0);
+      delete (comboData as any).productSearchTerm;
 
       // Debug: log dos dados que serão enviados
-      console.log('Dados do formulário (convertidos):', formData);
-      console.log('Produtos (convertidos):', formData.products);
-      console.log('Formulário válido:', this.comboForm.valid);
-      console.log('Erros do formulário:', this.getFormErrors());
-      console.log('Valor completo do formulário:', this.comboForm.value);
+      console.log('Dados do formulário (convertidos):', comboData);
+      console.log('Produtos (convertidos):', comboData.products);
+      console.log('Imagens selecionadas:', this.selectedImages.length);
 
       const operation = this.isEdit 
-        ? this.comboService.updateCombo(this.comboId!, formData)
-        : this.comboService.createCombo({
-            ...formData,
-            price: Number(formData.price),
-            original_price: formData.original_price ? Number(formData.original_price) : undefined,
-            discount_percentage: formData.discount_percentage ? Number(formData.discount_percentage) : undefined,
-            products: formData.products.map(product => ({
-              product_id: Number(product.product_id),
-              quantity: Number(product.quantity),
-              sale_type: product.sale_type
-            }))
-          });
+        ? this.comboService.updateCombo(this.comboId!, comboData)
+        : this.comboService.createCombo(comboData);
 
       operation.subscribe({
         next: (combo: Combo) => {
@@ -438,5 +435,50 @@ export class ComboFormComponent implements OnInit {
 
   onCancel(): void {
     this.router.navigate(['/admin/combos']);
+  }
+
+  // Métodos para gerenciar imagens
+  onImageSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      const files = Array.from(input.files);
+      const remainingSlots = 5 - this.selectedImages.length;
+      const filesToAdd = files.slice(0, remainingSlots);
+      
+      // Gerar URLs de preview uma única vez e armazenar
+      filesToAdd.forEach(file => {
+        this.selectedImages.push(file);
+        this.imagePreviewUrls.push(URL.createObjectURL(file));
+      });
+      
+      // Limpar o input para permitir selecionar o mesmo arquivo novamente
+      input.value = '';
+    }
+  }
+
+  removeImage(index: number): void {
+    // Revogar a URL do objeto para liberar memória
+    if (this.imagePreviewUrls[index]) {
+      URL.revokeObjectURL(this.imagePreviewUrls[index]);
+    }
+    this.selectedImages.splice(index, 1);
+    this.imagePreviewUrls.splice(index, 1);
+  }
+
+  removeExistingImage(index: number): void {
+    this.existingImages.splice(index, 1);
+  }
+
+  getImagePreview(index: number): string {
+    // Retornar a URL já armazenada, não criar uma nova
+    return this.imagePreviewUrls[index] || '';
+  }
+
+  ngOnDestroy(): void {
+    // Limpar todas as URLs de preview ao destruir o componente
+    this.imagePreviewUrls.forEach(url => {
+      URL.revokeObjectURL(url);
+    });
+    this.imagePreviewUrls = [];
   }
 }

@@ -63,9 +63,24 @@ export class CartComponent {
 
   getImageUrl(item: CartItem): string {
     if (item.isCombo && item.combo) {
-      // Para combos, usar a primeira imagem ou imagem padrão
+      // Para combos, processar a URL da imagem corretamente
       if (item.combo.images && item.combo.images.length > 0) {
-        return item.combo.images[0];
+        const imageUrl = item.combo.images[0];
+        
+        // Se já é uma URL completa, retornar como está
+        if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+          return imageUrl;
+        }
+        
+        // Se começa com /storage/ ou storage/, adicionar base URL da API
+        if (imageUrl.startsWith('/storage/') || imageUrl.startsWith('storage/')) {
+          const base = environment.apiUrl.replace(/\/api$/, '');
+          const path = imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
+          return `${base}${path}`;
+        }
+        
+        // Caso contrário, retornar como está
+        return imageUrl;
       }
       return 'assets/images/default-combo.jpg';
     } else if (item.product) {

@@ -41,15 +41,26 @@
         <!-- Busca de Produtos -->
         <mat-card class="search-card">
           <mat-card-content>
-            <mat-form-field appearance="outline" class="full-width">
-              <mat-label>Buscar Produto</mat-label>
-              <input matInput
-                     [(ngModel)]="searchTerm"
-                     (input)="onSearch($event)"
-                     placeholder="Digite o nome, SKU ou código de barras"
-                     [matAutocomplete]="auto">
-              <mat-icon matSuffix>search</mat-icon>
-            </mat-form-field>
+            <div class="search-header">
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Buscar Produto</mat-label>
+                <input matInput
+                       [(ngModel)]="searchTerm"
+                       (input)="onSearch($event)"
+                       placeholder="Digite o nome, SKU ou código de barras"
+                       [matAutocomplete]="auto">
+                <mat-icon matSuffix>search</mat-icon>
+              </mat-form-field>
+              
+              <!-- Botão Montar Copão -->
+              <button mat-raised-button 
+                      color="accent" 
+                      class="copao-button"
+                      (click)="openCopaoModal()">
+                <mat-icon>local_drink</mat-icon>
+                🥃 Montar Copão / Dose
+              </button>
+            </div>
 
               <mat-autocomplete #auto="matAutocomplete" (optionSelected)="selectProduct($event.option.value)">
               <mat-option *ngFor="let product of searchResults" [value]="product">

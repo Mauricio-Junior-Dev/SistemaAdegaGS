@@ -20,10 +20,10 @@
         <div class="cart-items">
           <div *ngFor="let item of items" class="cart-item">
             <div class="item-image">
-              <img [src]="getImageUrl(item.product)" [alt]="item.product.name">
+              <img [src]="getImageUrl(item)" [alt]="getItemName(item)">
             </div>
             <div class="item-details">
-              <h3 class="item-name">{{ item.product.name }}</h3>
+              <h3 class="item-name">{{ getItemName(item) }}</h3>
               <p class="item-price">R$ {{ item.price | number:'1.2-2' }}</p>
               
               <div class="quantity-controls">

@@ -1,56 +1,45 @@
 <div class="combo-card">
-  <!-- Badge de Desconto -->
-  <div *ngIf="getDiscountPercentage(combo) > 0" class="discount-badge">
-    -{{ getDiscountPercentage(combo) }}%
+  <!-- Badge COMBO -->
+  <div class="combo-badge">COMBO</div>
+  
+  <!-- Tag de Desconto -->
+  <div class="discount-tag" *ngIf="getDiscountPercentage(combo) > 0">
+    {{ getDiscountPercentage(combo) }}% OFF
   </div>
 
-  <!-- Imagem do Combo -->
-  <div class="combo-image-container">
-    <img [src]="getComboImage(combo)" [alt]="combo.name" class="combo-image">
-  </div>
+  <!-- Conteúdo do Card (Imagem e Título) -->
+  <div class="card-content" [routerLink]="['/combos', combo.id]">
+    <!-- Imagem do Combo -->
+    <div class="card-image-container">
+      <img [src]="getComboImage(combo)"
+           [alt]="combo.name"
+           class="card-img">
+    </div>
 
-  <!-- Informações do Combo -->
-  <div class="combo-info">
-    <h3 class="combo-name">{{ combo.name }}</h3>
+    <!-- Título do Combo -->
+    <h3 class="combo-title" [title]="combo.name">{{ combo.name }}</h3>
     
-    <p *ngIf="combo.description" class="combo-description">
-      {{ combo.description }}
-    </p>
-
-    <!-- Produtos do Combo -->
-    <div class="combo-products" *ngIf="combo.products && combo.products.length > 0">
-      <span class="products-label">Inclui:</span>
-      <div class="products-list">
-        <span *ngFor="let product of combo.products; let last = last" class="product-item">
-          {{ product.name }}<span *ngIf="!last">, </span>
-        </span>
-      </div>
+    <!-- Itens do Combo (Resumido) -->
+    <div class="combo-items" *ngIf="combo.products && combo.products.length > 0">
+      <span class="items-text">{{ getComboItemsSummary() }}</span>
     </div>
+  </div>
 
-    <!-- Preços -->
-    <div class="combo-prices">
-      <div *ngIf="combo.original_price && combo.original_price > combo.price" class="original-price">
+  <!-- Footer com Preços e Botão -->
+  <div class="card-footer">
+    <div class="price-block">
+      <span class="old-price" *ngIf="combo.original_price && combo.original_price > combo.price">
         {{ formatPrice(combo.original_price) }}
-      </div>
-      <div class="current-price">
+      </span>
+      <span class="current-price">
         {{ formatPrice(combo.price) }}
-      </div>
+      </span>
     </div>
-
-    <!-- Botões de Ação -->
-    <div class="combo-actions">
-      <button 
-        class="btn-details" 
-        [routerLink]="['/combos', combo.id]"
-        type="button">
-        Ver Detalhes
-      </button>
-      <button 
-        class="btn-add-cart" 
-        (click)="onAddToCart()"
-        type="button">
-        Adicionar ao Carrinho
-      </button>
-    </div>
+    <button mat-icon-button 
+            class="btn-quick-add" 
+            (click)="onAddToCart()"
+            aria-label="Adicionar ao carrinho">
+      <mat-icon>add_shopping_cart</mat-icon>
+    </button>
   </div>
 </div>

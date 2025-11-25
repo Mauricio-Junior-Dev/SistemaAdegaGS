@@ -121,10 +121,11 @@ Route::middleware('auth:sanctum')->group(function () {
 
 
 
+    Route::post('/orders', [OrderController::class, 'store']);
+
     // Rotas de cliente
     Route::middleware('customer')->group(function () {
         Route::get('/my-orders', [OrderController::class, 'myOrders']);
-        Route::post('/orders', [OrderController::class, 'store']);
         Route::put('/orders/{order}/confirm-delivery', [OrderController::class, 'confirmDelivery']);
         Route::post('/orders/{order}/create-payment', [PaymentController::class, 'createPixPayment']);
         
@@ -155,7 +156,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/cash/report', [CashController::class, 'report']);
         // Pedidos
         Route::get('/orders', [OrderController::class, 'index']);
-        Route::post('/orders', [OrderController::class, 'store']);
+        // REMOVIDO: Route::post('/orders', ...) - Movida para fora do grupo, compartilhada entre clientes e funcionários
         Route::patch('/orders/{order}/status', [OrderController::class, 'updateStatus']);
         Route::post('/orders/create', [OrderController::class, 'store']); // Mantida para compatibilidade
         Route::post('/orders/manual', [OrderController::class, 'createManualOrder']);

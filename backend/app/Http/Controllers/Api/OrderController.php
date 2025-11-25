@@ -152,10 +152,44 @@ class OrderController extends Controller
 
             $user = $request->user();
 
+            // Determinar o user_id do pedido:
+            // - Se for funcionário/admin criando pedido para cliente, buscar/criar cliente
+            // - Se for cliente comum, usar o próprio ID
+            $orderUserId = Auth::id();
+            
+            if ($isEmployeeOrAdmin && ($request->customer_name || $request->customer_email || $request->customer_document)) {
+                // Funcionário criando pedido para cliente - buscar ou criar cliente
+                $customer = null;
+                if ($request->customer_email) {
+                    $customer = User::where('email', $request->customer_email)->first();
+                }
+                
+                if (!$customer && $request->customer_document) {
+                    $customer = User::where('document_number', $request->customer_document)->first();
+                }
+                
+                if (!$customer && ($request->customer_name || $request->customer_email)) {
+                    // Criar novo cliente
+                    $customer = User::create([
+                        'name' => $request->customer_name ?? 'Cliente',
+                        'email' => $request->customer_email ?? 'cliente@temp.com',
+                        'phone' => $request->customer_phone,
+                        'document_number' => $request->customer_document,
+                        'type' => 'customer',
+                        'is_active' => true,
+                        'password' => bcrypt('temp123') // Senha temporária
+                    ]);
+                }
+                
+                if ($customer) {
+                    $orderUserId = $customer->id;
+                }
+            }
+
             // Criar pedido
             // Respeitar status enviado pelo frontend (para caixa: completed ou pending)
             $orderData = [
-                'user_id' => Auth::id(),
+                'user_id' => $orderUserId,
                 'order_number' => date('Ymd') . str_pad(Order::count() + 1, 4, '0', STR_PAD_LEFT),
                 'status' => in_array($requestedStatus, ['pending', 'completed']) ? $requestedStatus : 'pending',
                 'total' => 0 // Será calculado depois
@@ -199,10 +233,13 @@ class OrderController extends Controller
                     // Validação de zona de entrega será feita no cálculo do frete (se for pending)
                     // Para completed (balcão), não precisa validar zona
                     if ($requiresDelivery || !empty($delivery['address']) || !empty($delivery['zipcode'])) {
-                        // Para funcionário, criar endereço associado ao cliente (se houver user_id no delivery)
-                        $addressUserId = $isEmployeeOrAdmin && isset($delivery['user_id']) 
-                            ? $delivery['user_id'] 
-                            : Auth::id();
+                        // Para funcionário, criar endereço associado ao cliente do pedido
+                        // Se já determinamos o orderUserId (cliente), usar ele; senão usar Auth::id()
+                        $addressUserId = isset($orderUserId) && $orderUserId !== Auth::id()
+                            ? $orderUserId
+                            : ($isEmployeeOrAdmin && isset($delivery['user_id']) 
+                                ? $delivery['user_id'] 
+                                : Auth::id());
                         
                         $address = Address::create([
                             'user_id' => $addressUserId,
@@ -434,11 +471,18 @@ class OrderController extends Controller
                 $frete = $frontendFrete;
             }
 
+            // Calcular total final (subtotal + frete)
+            $calculatedTotal = $total + $frete;
+            
             // Atualizar total do pedido (subtotal + frete) e salvar o frete
+            // IMPORTANTE: Garantir que o total seja salvo corretamente no banco
             $order->update([
-                'total' => $total + $frete,
+                'total' => $calculatedTotal,
                 'delivery_fee' => $frete
             ]);
+            
+            // Recarregar o pedido para garantir que o total foi salvo
+            $order->refresh();
 
             // Respeitar payment_status enviado pelo frontend (para caixa: completed ou pending)
             $requestedPaymentStatus = $request->input('payment_status', 'pending');

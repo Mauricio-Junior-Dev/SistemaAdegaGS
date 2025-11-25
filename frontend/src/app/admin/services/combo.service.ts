@@ -44,7 +44,14 @@ export class ComboService {
 
   // Criar combo
   createCombo(comboData: ComboFormData): Observable<Combo> {
-    // Converter os dados para garantir tipos corretos
+    // Se houver imagens, usar FormData
+    if (comboData.images && comboData.images.length > 0) {
+      const formData = this.createFormData(comboData);
+      console.log('Enviando FormData com imagens');
+      return this.http.post<Combo>(this.apiUrl, formData);
+    }
+    
+    // Caso contrário, enviar JSON normal
     const processedData = {
       ...comboData,
       price: Number(comboData.price),
@@ -57,14 +64,53 @@ export class ComboService {
       }))
     };
     
-    console.log('Dados que serão enviados:', processedData);
+    // Remover imagens do objeto JSON (não são enviadas como JSON)
+    delete (processedData as any).images;
+    
+    console.log('Dados que serão enviados (JSON):', processedData);
     return this.http.post<Combo>(this.apiUrl, processedData);
   }
 
   // Atualizar combo
-  updateCombo(id: number, comboData: ComboFormDataForBackend): Observable<Combo> {
-    console.log('Dados que serão enviados para atualização:', comboData);
-    return this.http.put<Combo>(`${this.apiUrl}/${id}`, comboData);
+  updateCombo(id: number, comboData: ComboFormData | ComboFormDataForBackend): Observable<Combo> {
+    // Se houver imagens, usar FormData com method spoofing (POST com _method=PUT)
+    // O Laravel não processa corretamente multipart/form-data em requisições PUT
+    if ((comboData as ComboFormData).images && (comboData as ComboFormData).images!.length > 0) {
+      const formData = this.createFormData(comboData as ComboFormData);
+      // Adicionar method spoofing para o Laravel reconhecer como PUT
+      formData.append('_method', 'PUT');
+      console.log('Enviando FormData com imagens para atualização (method spoofing)');
+      return this.http.post<Combo>(`${this.apiUrl}/${id}`, formData);
+    }
+    
+    // Caso contrário, enviar JSON normal
+    const processedData: any = { ...comboData };
+    
+    // Converter valores se necessário
+    if (processedData.price !== undefined) {
+      processedData.price = Number(processedData.price);
+    }
+    if (processedData.original_price !== undefined) {
+      processedData.original_price = processedData.original_price ? Number(processedData.original_price) : undefined;
+    }
+    if (processedData.discount_percentage !== undefined) {
+      processedData.discount_percentage = processedData.discount_percentage ? Number(processedData.discount_percentage) : undefined;
+    }
+    
+    // Converter produtos se necessário
+    if (processedData.products && Array.isArray(processedData.products)) {
+      processedData.products = processedData.products.map((product: any) => ({
+        product_id: Number(product.product_id),
+        quantity: Number(product.quantity),
+        sale_type: product.sale_type
+      }));
+    }
+    
+    // Remover imagens do objeto JSON
+    delete processedData.images;
+    
+    console.log('Dados que serão enviados para atualização (JSON):', processedData);
+    return this.http.put<Combo>(`${this.apiUrl}/${id}`, processedData);
   }
 
   // Excluir combo
@@ -153,10 +199,11 @@ export class ComboService {
     if (comboData.barcode) {
       formData.append('barcode', comboData.barcode);
     }
-    formData.append('is_active', comboData.is_active.toString());
-    formData.append('featured', comboData.featured.toString());
-    formData.append('offers', comboData.offers.toString());
-    formData.append('popular', comboData.popular.toString());
+    // Converter booleanos para '1' ou '0' para o Laravel aceitar via FormData
+    formData.append('is_active', comboData.is_active ? '1' : '0');
+    formData.append('featured', comboData.featured ? '1' : '0');
+    formData.append('offers', comboData.offers ? '1' : '0');
+    formData.append('popular', comboData.popular ? '1' : '0');
     
     // Adicionar produtos
     comboData.products.forEach((product: any, index: number) => {

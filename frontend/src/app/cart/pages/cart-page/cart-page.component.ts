@@ -54,15 +54,49 @@ export class CartPageComponent {
     // Implementar checkout
   }
 
-  getImageUrl(product: Product): string {
-    const imageUrl = product.image_url;
-    if (!imageUrl) return 'assets/images/no-image.png';
-    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) return `${imageUrl}?v=${encodeURIComponent(product.updated_at || '')}`;
-    if (imageUrl.startsWith('/storage/') || imageUrl.startsWith('storage/')) {
-      const base = environment.apiUrl.replace(/\/api$/, '');
-      const path = imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
-      return `${base}${path}?v=${encodeURIComponent(product.updated_at || '')}`;
+  getImageUrl(item: CartItem): string {
+    if (item.isCombo && item.combo) {
+      // Para combos, processar a URL da imagem corretamente
+      if (item.combo.images && item.combo.images.length > 0) {
+        const imageUrl = item.combo.images[0];
+        
+        // Se já é uma URL completa, retornar como está
+        if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+          return imageUrl;
+        }
+        
+        // Se começa com /storage/ ou storage/, adicionar base URL da API
+        if (imageUrl.startsWith('/storage/') || imageUrl.startsWith('storage/')) {
+          const base = environment.apiUrl.replace(/\/api$/, '');
+          const path = imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
+          return `${base}${path}`;
+        }
+        
+        // Caso contrário, retornar como está
+        return imageUrl;
+      }
+      return 'assets/images/default-combo.jpg';
+    } else if (item.product) {
+      // Para produtos
+      const imageUrl = item.product.image_url;
+      if (!imageUrl) return 'assets/images/no-image.png';
+      if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) return `${imageUrl}?v=${encodeURIComponent(item.product.updated_at || '')}`;
+      if (imageUrl.startsWith('/storage/') || imageUrl.startsWith('storage/')) {
+        const base = environment.apiUrl.replace(/\/api$/, '');
+        const path = imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
+        return `${base}${path}?v=${encodeURIComponent(item.product.updated_at || '')}`;
+      }
+      return `${imageUrl}?v=${encodeURIComponent(item.product.updated_at || '')}`;
     }
-    return `${imageUrl}?v=${encodeURIComponent(product.updated_at || '')}`;
+    return 'assets/images/no-image.png';
+  }
+
+  getItemName(item: CartItem): string {
+    if (item.isCombo && item.combo) {
+      return item.combo.name;
+    } else if (item.product) {
+      return item.product.name;
+    }
+    return 'Item';
   }
 }

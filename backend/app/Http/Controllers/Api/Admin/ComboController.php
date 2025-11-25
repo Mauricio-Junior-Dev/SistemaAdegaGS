@@ -101,10 +101,11 @@ class ComboController extends Controller
             $combo->discount_percentage = $request->discount_percentage;
             $combo->sku = $request->sku;
             $combo->barcode = $request->barcode;
-            $combo->is_active = $request->input('is_active', true);
-            $combo->featured = $request->input('featured', false);
-            $combo->offers = $request->input('offers', false);
-            $combo->popular = $request->input('popular', false);
+            // Converter '1'/'0' para boolean quando vem via FormData
+            $combo->is_active = filter_var($request->input('is_active', true), FILTER_VALIDATE_BOOLEAN);
+            $combo->featured = filter_var($request->input('featured', false), FILTER_VALIDATE_BOOLEAN);
+            $combo->offers = filter_var($request->input('offers', false), FILTER_VALIDATE_BOOLEAN);
+            $combo->popular = filter_var($request->input('popular', false), FILTER_VALIDATE_BOOLEAN);
 
             // Processar imagens
             if ($request->hasFile('images')) {
@@ -169,10 +170,11 @@ class ComboController extends Controller
             $combo->discount_percentage = $request->discount_percentage;
             $combo->sku = $request->sku;
             $combo->barcode = $request->barcode;
-            $combo->is_active = $request->input('is_active', true);
-            $combo->featured = $request->input('featured', false);
-            $combo->offers = $request->input('offers', false);
-            $combo->popular = $request->input('popular', false);
+            // Converter '1'/'0' para boolean quando vem via FormData
+            $combo->is_active = filter_var($request->input('is_active', true), FILTER_VALIDATE_BOOLEAN);
+            $combo->featured = filter_var($request->input('featured', false), FILTER_VALIDATE_BOOLEAN);
+            $combo->offers = filter_var($request->input('offers', false), FILTER_VALIDATE_BOOLEAN);
+            $combo->popular = filter_var($request->input('popular', false), FILTER_VALIDATE_BOOLEAN);
 
             // Processar imagens
             if ($request->hasFile('images')) {

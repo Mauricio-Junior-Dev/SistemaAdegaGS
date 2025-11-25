@@ -115,29 +115,44 @@ class ReportController extends Controller
 
     public function topProducts(): JsonResponse
     {
+        // Query corrigida: calcula receita como SUM(price * quantity) e quantidade como SUM(quantity)
         $topProducts = Product::with('category')
-            ->withSum('orderItems', 'quantity')
-            ->withSum('orderItems', 'price')
-            ->orderBy('order_items_sum_quantity', 'desc')
-            ->take(5)
+            ->with(['orderItems' => function($query) {
+                $query->whereHas('order', function($orderQuery) {
+                    $orderQuery->where('status', 'completed');
+                });
+            }])
             ->get()
             ->map(function($product) {
+                $quantitySold = $product->orderItems->sum('quantity');
+                $totalRevenue = $product->orderItems->sum(function($item) {
+                    return $item->quantity * $item->price;
+                });
+                
                 return [
                     'id' => $product->id,
                     'name' => $product->name,
-                    'quantity_sold' => $product->order_items_sum_quantity ?? 0,
-                    'total_revenue' => $product->order_items_sum_price ?? 0
+                    'quantity_sold' => $quantitySold,
+                    'total_revenue' => $totalRevenue
                 ];
-            });
+            })
+            ->sortByDesc('quantity_sold')
+            ->take(5)
+            ->values();
         
         return response()->json($topProducts);
     }
 
     public function topCustomers(): JsonResponse
     {
-        $topCustomers = User::withCount('orders')
-            ->withSum('orders', 'total')
-            ->where('type', 'customer')
+        // Query corrigida: filtra apenas pedidos concluídos para calcular total_gasto
+        $topCustomers = User::where('type', 'customer')
+            ->withCount(['orders' => function($query) {
+                $query->where('status', 'completed');
+            }])
+            ->withSum(['orders' => function($query) {
+                $query->where('status', 'completed');
+            }], 'total')
             ->orderBy('orders_sum_total', 'desc')
             ->take(5)
             ->get()
@@ -145,7 +160,7 @@ class ReportController extends Controller
                 return [
                     'id' => $customer->id,
                     'name' => $customer->name,
-                    'orders_count' => $customer->orders_count,
+                    'orders_count' => $customer->orders_count ?? 0,
                     'total_spent' => $customer->orders_sum_total ?? 0
                 ];
             });

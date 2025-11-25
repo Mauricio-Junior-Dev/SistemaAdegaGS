@@ -22,77 +22,116 @@
         <span>{{ combo.name }}</span>
       </nav>
 
-      <div class="combo-content">
-        <!-- Imagem -->
-        <div class="combo-image-section">
-          <div *ngIf="getDiscountPercentage(combo) > 0" class="discount-badge">
-            -{{ getDiscountPercentage(combo) }}%
+      <!-- Layout Desktop: Grid 2 Colunas (Imagem + Informações) -->
+      <div class="combo-main-layout">
+        <!-- Coluna Esquerda: Imagem -->
+        <div class="combo-image-column">
+          <div class="combo-hero-section">
+            <div *ngIf="getDiscountPercentage(combo) > 0" class="discount-badge">
+              -{{ getDiscountPercentage(combo) }}%
+            </div>
+            <div class="combo-image-wrapper">
+              <img [src]="getComboImage(combo)" [alt]="combo.name" class="combo-hero-image">
+            </div>
           </div>
-          <img [src]="getComboImage(combo)" [alt]="combo.name" class="combo-image">
         </div>
 
-        <!-- Informações -->
-        <div class="combo-info-section">
-          <h1 class="combo-title">{{ combo.name }}</h1>
-          
-          <p *ngIf="combo.description" class="combo-description">
-            {{ combo.description }}
-          </p>
-
-          <!-- Produtos do Combo -->
-          <div class="combo-products-section">
-            <h3>Produtos Inclusos:</h3>
-            <div class="products-list">
-              <div *ngFor="let product of combo.products" class="product-item">
-                <div class="product-info">
-                  <h4>{{ product.name || product.product?.name || 'Produto' }}</h4>
-                  <p class="product-quantity">
-                    Quantidade: {{ product.pivot?.quantity || product.quantity }} 
-                    {{ (product.pivot?.sale_type || product.sale_type) === 'dose' ? 'dose(s)' : 'unidade(s)' }}
-                  </p>
-                </div>
-                <div class="product-price">
-                  {{ formatPrice(product.price || product.product?.price || 0) }}
-                </div>
+        <!-- Coluna Direita: Informações -->
+        <div class="combo-info-column">
+          <div class="combo-header-section">
+            <h1 class="combo-title">{{ combo.name }}</h1>
+            
+            <div class="combo-price-section">
+              <div *ngIf="combo.original_price && combo.original_price > combo.price" class="original-price-large">
+                {{ formatPrice(combo.original_price) }}
               </div>
-            </div>
-          </div>
-
-          <!-- Preços -->
-          <div class="combo-prices-section">
-            <div *ngIf="combo.original_price && combo.original_price > combo.price" class="original-price">
-              De: {{ formatPrice(combo.original_price) }}
-            </div>
-            <div class="current-price">
-              Por: {{ formatPrice(combo.price) }}
-            </div>
-            <div *ngIf="combo.original_price && combo.original_price > combo.price" class="savings">
-              Você economiza: {{ formatPrice(combo.original_price - combo.price) }}
-            </div>
-          </div>
-
-          <!-- Controles de Quantidade e Adicionar ao Carrinho -->
-          <div class="combo-actions-section">
-            <div class="quantity-controls">
-              <label for="quantity">Quantidade:</label>
-              <div class="quantity-input">
-                <button (click)="decrementQuantity()" type="button" class="quantity-btn">-</button>
-                <input 
-                  type="number" 
-                  id="quantity"
-                  [(ngModel)]="quantity" 
-                  min="1" 
-                  class="quantity-field">
-                <button (click)="incrementQuantity()" type="button" class="quantity-btn">+</button>
+              <div class="current-price-large">
+                {{ formatPrice(combo.price) }}
+              </div>
+              <div *ngIf="combo.original_price && combo.original_price > combo.price" class="savings-badge">
+                <mat-icon>savings</mat-icon>
+                <span>Economize {{ formatPrice(combo.original_price - combo.price) }}</span>
               </div>
             </div>
 
-            <button (click)="onAddToCart()" class="add-to-cart-btn">
-              Adicionar ao Carrinho
-            </button>
+            <p *ngIf="combo.description" class="combo-description-large">
+              {{ combo.description }}
+            </p>
           </div>
         </div>
       </div>
+
+      <!-- Lista de Itens do Combo -->
+      <div class="combo-products-section">
+        <h2 class="section-title">
+          <mat-icon>inventory_2</mat-icon>
+          <span>Produtos Inclusos</span>
+        </h2>
+        <div class="products-grid">
+          <div *ngFor="let product of combo.products" class="product-card-item">
+            <div class="product-image-wrapper">
+              <img [src]="getProductImage(product)" 
+                   [alt]="getProductName(product)" 
+                   class="product-thumbnail"
+                   onerror="this.src='/assets/images/no-image.jpg'">
+            </div>
+            <div class="product-info-wrapper">
+              <h3 class="product-name">{{ getProductName(product) }}</h3>
+              <div class="product-quantity-badge">
+                <mat-icon>shopping_cart</mat-icon>
+                <span>{{ getProductQuantity(product) }} {{ getProductUnit(product) }}</span>
+              </div>
+            </div>
+            <div class="product-price-wrapper">
+              <span class="product-unit-price">{{ formatPrice(getProductPrice(product)) }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Controles de Quantidade (Desktop) -->
+      <div class="combo-actions-desktop">
+        <div class="quantity-controls">
+          <label for="quantity">Quantidade:</label>
+          <div class="quantity-input">
+            <button (click)="decrementQuantity()" type="button" class="quantity-btn" [disabled]="quantity <= 1">
+              <mat-icon>remove</mat-icon>
+            </button>
+            <input 
+              type="number" 
+              id="quantity"
+              [(ngModel)]="quantity" 
+              min="1" 
+              class="quantity-field"
+              readonly>
+            <button (click)="incrementQuantity()" type="button" class="quantity-btn">
+              <mat-icon>add</mat-icon>
+            </button>
+          </div>
+        </div>
+        <button (click)="onAddToCart()" class="add-to-cart-btn-large">
+          <mat-icon>add_shopping_cart</mat-icon>
+          <span>Adicionar ao Carrinho</span>
+        </button>
+      </div>
     </div>
+  </div>
+
+  <!-- Rodapé Fixo (Mobile) -->
+  <div class="combo-actions-mobile" *ngIf="!loading && !error && combo">
+    <div class="quantity-controls-mobile">
+      <button (click)="decrementQuantity()" type="button" class="quantity-btn-mobile" [disabled]="quantity <= 1">
+        <mat-icon>remove</mat-icon>
+      </button>
+      <span class="quantity-display">{{ quantity }}</span>
+      <button (click)="incrementQuantity()" type="button" class="quantity-btn-mobile">
+        <mat-icon>add</mat-icon>
+      </button>
+    </div>
+    <button (click)="onAddToCart()" class="add-to-cart-btn-mobile">
+      <mat-icon>add_shopping_cart</mat-icon>
+      <span>Adicionar</span>
+      <span class="price-mobile">{{ formatPrice(combo.price * quantity) }}</span>
+    </button>
   </div>
 </div>

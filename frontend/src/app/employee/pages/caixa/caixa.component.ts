@@ -29,6 +29,7 @@ import { OpenCashDialogComponent } from './dialogs/open-cash-dialog.component';
 import { SangriaDialogComponent, SangriaResult } from './dialogs/sangria-dialog.component';
 import { PrintConfirmationDialogComponent } from './dialogs/print-confirmation-dialog.component';
 import { CloseCashDialogComponent } from './dialogs/close-cash-dialog.component';
+import { CopaoModalComponent, CopaoResult } from './dialogs/copao-modal.component';
 import { DeliveryZoneService } from '../../../services/delivery-zone.service';
 import { AddressService, Address, CreateAddressRequest } from '../../../core/services/address.service';
 import { HttpClient } from '@angular/common/http';
@@ -1103,6 +1104,84 @@ export class CaixaComponent implements OnInit, OnDestroy {
     // Aqui você pode implementar um diálogo para mostrar o relatório de fechamento
     // Por enquanto, vamos apenas logar no console
     console.log('Relatório de fechamento:', report);
+  }
+
+  openCopaoModal(): void {
+    const dialogRef = this.dialog.open(CopaoModalComponent, {
+      width: '900px',
+      maxWidth: '95vw',
+      maxHeight: '90vh',
+      disableClose: false
+    });
+
+    dialogRef.afterClosed().subscribe((result: CopaoResult | null) => {
+      if (!result || !result.products || result.products.length === 0) {
+        return;
+      }
+
+      // Adicionar cada produto do resultado ao carrinho
+      result.products.forEach(item => {
+        // Verificar se já existe item com mesmo produto e tipo de venda
+        const existingItem = this.cartItems.find(cartItem => 
+          cartItem.product?.id === item.product.id && cartItem.sale_type === item.sale_type
+        );
+
+        if (existingItem) {
+          // Atualizar quantidade do item existente
+          const newQuantity = existingItem.quantity + item.quantity;
+          
+          // Verificar disponibilidade
+          if (item.sale_type === 'garrafa') {
+            if (newQuantity > item.product.current_stock) {
+              this.snackBar.open(`Quantidade excede o estoque disponível para ${item.product.name}`, 'Fechar', { duration: 3000 });
+              return;
+            }
+          } else {
+            // Para doses, verificar se há garrafas suficientes
+            const dosesNecessarias = newQuantity;
+            const garrafasNecessarias = Math.ceil(dosesNecessarias / (item.product.doses_por_garrafa || 1));
+            if (item.product.current_stock < garrafasNecessarias) {
+              this.snackBar.open(`Produto não possui garrafas suficientes para as doses solicitadas de ${item.product.name}`, 'Fechar', { duration: 3000 });
+              return;
+            }
+          }
+          
+          existingItem.quantity = newQuantity;
+          existingItem.subtotal = newQuantity * this.getProductPrice(item.product, item.sale_type);
+        } else {
+          // Adicionar novo item ao carrinho
+          // Verificar disponibilidade antes de adicionar
+          if (item.sale_type === 'garrafa') {
+            if (item.product.current_stock <= 0) {
+              this.snackBar.open(`${item.product.name} sem estoque disponível`, 'Fechar', { duration: 3000 });
+              return;
+            }
+            if (item.quantity > item.product.current_stock) {
+              this.snackBar.open(`Quantidade excede o estoque disponível para ${item.product.name}`, 'Fechar', { duration: 3000 });
+              return;
+            }
+          } else {
+            // Para doses, verificar se há garrafas suficientes
+            const dosesNecessarias = item.quantity;
+            const garrafasNecessarias = Math.ceil(dosesNecessarias / (item.product.doses_por_garrafa || 1));
+            if (item.product.current_stock < garrafasNecessarias) {
+              this.snackBar.open(`Produto não possui garrafas suficientes para as doses solicitadas de ${item.product.name}`, 'Fechar', { duration: 3000 });
+              return;
+            }
+          }
+
+          this.cartItems.push({
+            product: item.product,
+            quantity: item.quantity,
+            sale_type: item.sale_type,
+            subtotal: item.quantity * this.getProductPrice(item.product, item.sale_type)
+          });
+        }
+      });
+
+      this.updateTotal();
+      this.snackBar.open('Copão adicionado ao carrinho!', 'Fechar', { duration: 3000 });
+    });
   }
 
   private updateCashAmount(saleAmount: number, paymentMethod: PaymentMethod): void {

@@ -69,6 +69,7 @@ class ProductController extends Controller
             'description' => 'required|string',
             'price' => 'required|numeric|min:0',
             'original_price' => 'nullable|numeric|min:0',
+            'cost_price' => 'nullable|numeric|min:0',
             'current_stock' => 'required|integer|min:0',
             'min_stock' => 'required|integer|min:0',
             'doses_por_garrafa' => 'required|integer|min:1',
@@ -84,11 +85,24 @@ class ProductController extends Controller
             'popular' => 'boolean'
         ]);
 
+        // Gerar slug a partir do nome
+        $baseSlug = Str::slug($request->name);
+        $slug = $baseSlug;
+        $counter = 1;
+        
+        // Garantir unicidade do slug
+        while (Product::where('slug', $slug)->exists()) {
+            $slug = $baseSlug . '-' . $counter;
+            $counter++;
+        }
+
         $product = new Product();
         $product->name = $request->name;
+        $product->slug = $slug;
         $product->description = $request->description;
         $product->price = $request->price;
         $product->original_price = $request->original_price;
+        $product->cost_price = $request->input('cost_price', 0);
         $product->current_stock = $request->current_stock;
         $product->min_stock = $request->min_stock;
         $product->doses_por_garrafa = $request->doses_por_garrafa;
@@ -138,6 +152,7 @@ class ProductController extends Controller
             'description' => 'required|string',
             'price' => 'required|numeric|min:0',
             'original_price' => 'nullable|numeric|min:0',
+            'cost_price' => 'nullable|numeric|min:0',
             'current_stock' => 'required|integer|min:0',
             'min_stock' => 'required|integer|min:0',
             'doses_por_garrafa' => 'required|integer|min:1',
@@ -156,10 +171,25 @@ class ProductController extends Controller
         $oldStock = $product->current_stock;
         $newStock = $request->current_stock;
 
+        // Atualizar slug se o nome mudou
+        if ($product->name !== $request->name) {
+            $baseSlug = Str::slug($request->name);
+            $slug = $baseSlug;
+            $counter = 1;
+            
+            // Garantir unicidade do slug (excluindo o produto atual)
+            while (Product::where('slug', $slug)->where('id', '!=', $product->id)->exists()) {
+                $slug = $baseSlug . '-' . $counter;
+                $counter++;
+            }
+            $product->slug = $slug;
+        }
+
         $product->name = $request->name;
         $product->description = $request->description;
         $product->price = $request->price;
         $product->original_price = $request->original_price;
+        $product->cost_price = $request->input('cost_price', $product->cost_price ?? 0);
         $product->current_stock = $newStock;
         $product->min_stock = $request->min_stock;
         $product->doses_por_garrafa = $request->doses_por_garrafa;
