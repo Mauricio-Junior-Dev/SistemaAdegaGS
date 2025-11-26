@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 
 class BannerController extends Controller
 {
@@ -128,7 +129,13 @@ class BannerController extends Controller
     public function upload(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'image' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048'
+            'image' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:5120' // Aumentado para 5MB e adicionado webp
+        ], [
+            'image.required' => 'Por favor, selecione uma imagem.',
+            'image.image' => 'O arquivo deve ser uma imagem válida.',
+            'image.max' => 'A imagem não pode ser maior que 5MB.',
+            'image.mimes' => 'A imagem deve ser do tipo: jpg, jpeg, png, gif ou webp.',
+            'image.uploaded' => 'Falha no upload da imagem. O arquivo pode ser muito grande.'
         ]);
 
         if ($validator->fails()) {
@@ -139,10 +146,15 @@ class BannerController extends Controller
         }
 
         if ($request->hasFile('image')) {
-            $image = $request->file('image');
-            $filename = time() . '_' . $image->getClientOriginalName();
+            $file = $request->file('image');
+            $originalName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+            $extension = $file->getClientOriginalExtension();
             
-            $path = $image->storeAs('banners', $filename, 'public');
+            // Sanitiza: "Novos Planos.png" vira "novos-planos-1764184408.png"
+            $safeName = Str::slug($originalName) . '-' . time() . '.' . $extension;
+            
+            // Salva com o nome seguro
+            $path = $file->storeAs('banners', $safeName, 'public');
             
             $imageUrl = 'storage/' . $path;
 

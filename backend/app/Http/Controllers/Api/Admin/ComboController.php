@@ -86,7 +86,12 @@ class ComboController extends Controller
             'products.*.quantity' => 'required|integer|min:1',
             'products.*.sale_type' => 'required|in:dose,garrafa',
             'images' => 'nullable|array',
-            'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048'
+            'images.*' => 'image|mimes:jpeg,png,jpg,gif,webp|max:10240'
+        ], [
+            'images.*.image' => 'O arquivo deve ser uma imagem válida.',
+            'images.*.max' => 'A imagem não pode ser maior que 10MB.',
+            'images.*.mimes' => 'A imagem deve ser do tipo: jpg, jpeg, png, gif ou webp.',
+            'images.*.uploaded' => 'Falha no upload da imagem. O arquivo pode ser muito grande.'
         ]);
 
         try {
@@ -111,7 +116,14 @@ class ComboController extends Controller
             if ($request->hasFile('images')) {
                 $images = [];
                 foreach ($request->file('images') as $image) {
-                    $path = $image->store('combos', 'public');
+                    $originalName = pathinfo($image->getClientOriginalName(), PATHINFO_FILENAME);
+                    $extension = $image->getClientOriginalExtension();
+                    
+                    // Sanitiza: "Novos Planos.png" vira "novos-planos-1764184408.png"
+                    $safeName = Str::slug($originalName) . '-' . time() . '-' . uniqid() . '.' . $extension;
+                    
+                    // Salva com o nome seguro
+                    $path = $image->storeAs('combos', $safeName, 'public');
                     $images[] = Storage::url($path);
                 }
                 $combo->images = $images;
@@ -156,7 +168,12 @@ class ComboController extends Controller
             'products.*.quantity' => 'required|string',
             'products.*.sale_type' => 'required|string',
             'images' => 'nullable|array',
-            'images.*' => 'image|mimes:jpeg,png,jpg,gif|max:2048'
+            'images.*' => 'image|mimes:jpeg,png,jpg,gif,webp|max:10240'
+        ], [
+            'images.*.image' => 'O arquivo deve ser uma imagem válida.',
+            'images.*.max' => 'A imagem não pode ser maior que 10MB.',
+            'images.*.mimes' => 'A imagem deve ser do tipo: jpg, jpeg, png, gif ou webp.',
+            'images.*.uploaded' => 'Falha no upload da imagem. O arquivo pode ser muito grande.'
         ]);
 
         try {
@@ -188,7 +205,14 @@ class ComboController extends Controller
 
                 $images = [];
                 foreach ($request->file('images') as $image) {
-                    $path = $image->store('combos', 'public');
+                    $originalName = pathinfo($image->getClientOriginalName(), PATHINFO_FILENAME);
+                    $extension = $image->getClientOriginalExtension();
+                    
+                    // Sanitiza: "Novos Planos.png" vira "novos-planos-1764184408.png"
+                    $safeName = Str::slug($originalName) . '-' . time() . '-' . uniqid() . '.' . $extension;
+                    
+                    // Salva com o nome seguro
+                    $path = $image->storeAs('combos', $safeName, 'public');
                     $images[] = Storage::url($path);
                 }
                 $combo->images = $images;
@@ -254,10 +278,24 @@ class ComboController extends Controller
     public function uploadImage(Request $request, Combo $combo): JsonResponse
     {
         $request->validate([
-            'image' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048'
+            'image' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:10240'
+        ], [
+            'image.required' => 'Por favor, selecione uma imagem.',
+            'image.image' => 'O arquivo deve ser uma imagem válida.',
+            'image.max' => 'A imagem não pode ser maior que 10MB.',
+            'image.mimes' => 'A imagem deve ser do tipo: jpg, jpeg, png, gif ou webp.',
+            'image.uploaded' => 'Falha no upload da imagem. O arquivo pode ser muito grande.'
         ]);
 
-        $path = $request->file('image')->store('combos', 'public');
+        $file = $request->file('image');
+        $originalName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+        $extension = $file->getClientOriginalExtension();
+        
+        // Sanitiza: "Novos Planos.png" vira "novos-planos-1764184408.png"
+        $safeName = Str::slug($originalName) . '-' . time() . '.' . $extension;
+        
+        // Salva com o nome seguro
+        $path = $file->storeAs('combos', $safeName, 'public');
         $imageUrl = Storage::url($path);
 
         $images = $combo->images ?? [];

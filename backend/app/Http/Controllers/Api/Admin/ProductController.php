@@ -78,11 +78,16 @@ class ProductController extends Controller
             'sku' => 'required|string|unique:products,sku',
             'barcode' => 'nullable|string|unique:products,barcode',
             'category_id' => 'required|exists:categories,id',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:10240',
             'is_active' => 'boolean',
             'featured' => 'boolean',
             'offers' => 'boolean',
             'popular' => 'boolean'
+        ], [
+            'image.image' => 'O arquivo deve ser uma imagem válida.',
+            'image.max' => 'A imagem não pode ser maior que 10MB.',
+            'image.mimes' => 'A imagem deve ser do tipo: jpg, jpeg, png, gif ou webp.',
+            'image.uploaded' => 'Falha no upload da imagem. O arquivo pode ser muito grande.'
         ]);
 
         // Gerar slug a partir do nome
@@ -117,7 +122,15 @@ class ProductController extends Controller
         $product->popular = $request->boolean('popular', false);
 
         if ($request->hasFile('image')) {
-            $path = $request->file('image')->store('products', 'public');
+            $file = $request->file('image');
+            $originalName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+            $extension = $file->getClientOriginalExtension();
+            
+            // Sanitiza: "Novos Planos.png" vira "novos-planos-1764184408.png"
+            $safeName = Str::slug($originalName) . '-' . time() . '.' . $extension;
+            
+            // Salva com o nome seguro
+            $path = $file->storeAs('products', $safeName, 'public');
             $product->image_url = Storage::disk('public')->url($path);
         }
 
@@ -161,11 +174,16 @@ class ProductController extends Controller
             'sku' => 'required|string|unique:products,sku,' . $product->id,
             'barcode' => 'nullable|string|unique:products,barcode,' . $product->id,
             'category_id' => 'required|exists:categories,id',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:10240',
             'is_active' => 'boolean',
             'featured' => 'boolean',
             'offers' => 'boolean',
             'popular' => 'boolean'
+        ], [
+            'image.image' => 'O arquivo deve ser uma imagem válida.',
+            'image.max' => 'A imagem não pode ser maior que 10MB.',
+            'image.mimes' => 'A imagem deve ser do tipo: jpg, jpeg, png, gif ou webp.',
+            'image.uploaded' => 'Falha no upload da imagem. O arquivo pode ser muito grande.'
         ]);
 
         $oldStock = $product->current_stock;
@@ -209,7 +227,15 @@ class ProductController extends Controller
                 Storage::disk('public')->delete(str_replace('/storage/', '', $product->image_url));
             }
 
-            $path = $request->file('image')->store('products', 'public');
+            $file = $request->file('image');
+            $originalName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+            $extension = $file->getClientOriginalExtension();
+            
+            // Sanitiza: "Novos Planos.png" vira "novos-planos-1764184408.png"
+            $safeName = Str::slug($originalName) . '-' . time() . '.' . $extension;
+            
+            // Salva com o nome seguro
+            $path = $file->storeAs('products', $safeName, 'public');
             $product->image_url = Storage::disk('public')->url($path);
         }
 
@@ -263,7 +289,13 @@ class ProductController extends Controller
     public function uploadImage(Request $request, Product $product): JsonResponse
     {
         $request->validate([
-            'image' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048'
+            'image' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:10240'
+        ], [
+            'image.required' => 'Por favor, selecione uma imagem.',
+            'image.image' => 'O arquivo deve ser uma imagem válida.',
+            'image.max' => 'A imagem não pode ser maior que 10MB.',
+            'image.mimes' => 'A imagem deve ser do tipo: jpg, jpeg, png, gif ou webp.',
+            'image.uploaded' => 'Falha no upload da imagem. O arquivo pode ser muito grande.'
         ]);
 
         // Deletar imagem anterior se existir
@@ -271,7 +303,15 @@ class ProductController extends Controller
             Storage::disk('public')->delete(str_replace('/storage/', '', $product->image_url));
         }
 
-        $path = $request->file('image')->store('products', 'public');
+        $file = $request->file('image');
+        $originalName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+        $extension = $file->getClientOriginalExtension();
+        
+        // Sanitiza: "Novos Planos.png" vira "novos-planos-1764184408.png"
+        $safeName = Str::slug($originalName) . '-' . time() . '.' . $extension;
+        
+        // Salva com o nome seguro
+        $path = $file->storeAs('products', $safeName, 'public');
         $product->image_url = Storage::disk('public')->url($path);
         $product->save();
 
