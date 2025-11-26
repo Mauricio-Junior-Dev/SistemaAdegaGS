@@ -4,12 +4,12 @@ import { MatIconModule } from '@angular/material/icon';
 
 export interface Banner {
   id: number;
-  image_url: string;
+  desktop_image: string;
+  mobile_image?: string;
   link?: string;
   order: number;
   is_active: boolean;
 }
-
 @Component({
   selector: 'app-banner-carousel',
   standalone: true,
@@ -19,13 +19,25 @@ export interface Banner {
       <div class="carousel-container">
         <div class="carousel-track" [style.transform]="'translateX(-' + (currentSlide * 100) + '%)'">
           <div *ngFor="let banner of banners; let i = index" 
-               class="carousel-slide" 
+               class="carousel-slide carousel-item" 
                [class.active]="i === currentSlide">
             <div class="banner-content">
               <a *ngIf="banner.link" [href]="banner.link" class="banner-link-wrapper">
-                <img [src]="getImageUrl(banner.image_url)" [alt]="'Banner ' + (i + 1)">
+                <picture>
+                  <source media="(max-width: 768px)" 
+                          [srcset]="getImageUrl(banner.mobile_image || banner.desktop_image || banner.image_url)">
+                  <img class="banner-img"
+                       [src]="getImageUrl(banner.desktop_image || banner.image_url)" 
+                       [alt]="'Banner ' + (i + 1)">
+                </picture>
               </a>
-              <img *ngIf="!banner.link" [src]="getImageUrl(banner.image_url)" [alt]="'Banner ' + (i + 1)">
+              <picture *ngIf="!banner.link">
+                <source media="(max-width: 768px)" 
+                        [srcset]="getImageUrl(banner.mobile_image || banner.desktop_image || banner.image_url)">
+                <img class="banner-img"
+                     [src]="getImageUrl(banner.desktop_image || banner.image_url)" 
+                     [alt]="'Banner ' + (i + 1)">
+              </picture>
             </div>
           </div>
         </div>
@@ -84,7 +96,8 @@ export interface Banner {
       height: 100%;
     }
 
-    .banner-content img {
+    .banner-content img,
+    .banner-img {
       width: 100%;
       height: 100%;
       object-fit: cover;

@@ -42,7 +42,8 @@ class BannerController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'image_url' => 'required|string',
+            'desktop_image' => 'required|string',
+            'mobile_image' => 'nullable|string',
             'link' => 'nullable|string|max:500',
             'order' => 'required|integer|min:1',
             'is_active' => 'boolean'
@@ -55,7 +56,14 @@ class BannerController extends Controller
             ], 422);
         }
 
-        $banner = Banner::create($request->all());
+        $data = $request->only(['desktop_image', 'mobile_image', 'link', 'order', 'is_active']);
+
+        // Fallback: se não houver mobile_image, usa desktop_image
+        if (empty($data['mobile_image']) && !empty($data['desktop_image'])) {
+            $data['mobile_image'] = $data['desktop_image'];
+        }
+
+        $banner = Banner::create($data);
 
         return response()->json($banner, 201);
     }
@@ -66,7 +74,8 @@ class BannerController extends Controller
     public function update(Request $request, Banner $banner): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'image_url' => 'required|string',
+            'desktop_image' => 'sometimes|required|string',
+            'mobile_image' => 'nullable|string',
             'link' => 'nullable|string|max:500',
             'order' => 'required|integer|min:1',
             'is_active' => 'boolean'
@@ -79,7 +88,15 @@ class BannerController extends Controller
             ], 422);
         }
 
-        $banner->update($request->all());
+        $data = $request->only(['desktop_image', 'mobile_image', 'link', 'order', 'is_active']);
+
+        // Fallback: se não houver mobile_image no payload, mas desktop_image foi enviada,
+        // mantém coerência usando desktop_image
+        if (array_key_exists('desktop_image', $data) && empty($data['mobile_image'])) {
+            $data['mobile_image'] = $data['desktop_image'];
+        }
+
+        $banner->update($data);
 
         return response()->json($banner);
     }
@@ -89,11 +106,14 @@ class BannerController extends Controller
      */
     public function destroy(Banner $banner): JsonResponse
     {
-        // Se a imagem está armazenada localmente, remover o arquivo
-        if ($banner->image_url && str_starts_with($banner->image_url, 'storage/')) {
-            $imagePath = str_replace('storage/', '', $banner->image_url);
-            if (Storage::disk('public')->exists($imagePath)) {
-                Storage::disk('public')->delete($imagePath);
+        // Se as imagens estão armazenadas localmente, remover os arquivos
+        foreach (['desktop_image', 'mobile_image'] as $field) {
+            $image = $banner->{$field};
+            if ($image && str_starts_with($image, 'storage/')) {
+                $imagePath = str_replace('storage/', '', $image);
+                if (Storage::disk('public')->exists($imagePath)) {
+                    Storage::disk('public')->delete($imagePath);
+                }
             }
         }
 

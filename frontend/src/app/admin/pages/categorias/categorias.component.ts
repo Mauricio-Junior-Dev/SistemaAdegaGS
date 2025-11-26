@@ -58,7 +58,7 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
   styleUrls: ['./categorias.component.css']
 })
 export class CategoriasComponent implements OnInit, OnDestroy {
-  displayedColumns = ['image', 'name', 'parent', 'products_count', 'status', 'actions'];
+  displayedColumns = ['image', 'name', 'products_count', 'status', 'actions'];
   categories: Category[] = [];
   categoryTree: CategoryTree[] = [];
   totalItems = 0;

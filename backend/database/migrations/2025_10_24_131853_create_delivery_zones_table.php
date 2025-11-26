@@ -13,11 +13,15 @@ return new class extends Migration
     {
         Schema::create('delivery_zones', function (Blueprint $table) {
             $table->id();
-            $table->string('nome_bairro');
+            $table->string('nome_bairro')->nullable();
+            $table->string('cep_inicio', 9)->nullable();
+            $table->string('cep_fim', 9)->nullable();
             $table->decimal('valor_frete', 8, 2);
             $table->string('tempo_estimado')->nullable();
             $table->boolean('ativo')->default(true);
             $table->timestamps();
+
+            $table->index(['cep_inicio', 'cep_fim']);
         });
     }
 

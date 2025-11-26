@@ -15,6 +15,8 @@ return new class extends Migration
             $table->enum('status', ['pending', 'processing', 'preparing', 'delivering', 'completed', 'cancelled'])->default('pending');
             $table->decimal('total', 10, 2);
             $table->decimal('delivery_fee', 10, 2)->default(0.00);
+            $table->foreignId('delivery_address_id')->nullable()->constrained('addresses')->onDelete('set null');
+            $table->text('delivery_notes')->nullable();
             $table->timestamps();
         });
 
@@ -22,6 +24,8 @@ return new class extends Migration
             $table->id();
             $table->foreignId('order_id')->constrained()->onDelete('cascade');
             $table->foreignId('product_id')->nullable()->constrained()->onDelete('cascade');
+            $table->foreignId('combo_id')->nullable()->constrained()->onDelete('cascade');
+            $table->boolean('is_combo')->default(false);
             $table->integer('quantity');
             $table->enum('sale_type', ['dose', 'garrafa'])->default('garrafa');
             $table->decimal('price', 10, 2);

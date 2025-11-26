@@ -184,7 +184,7 @@ import { BannerDialogComponent } from '../../../../shared/components/banner-dial
         <div class="banners-grid" *ngIf="banners.length > 0">
           <mat-card *ngFor="let banner of banners; let i = index" class="banner-card">
             <div class="banner-image">
-              <img [src]="getBannerImageUrl(banner.image_url)" [alt]="banner.title || 'Banner'">
+              <img [src]="getBannerImageUrl(banner)" [alt]="banner.title || 'Banner'">
               <div class="banner-overlay">
                 <mat-chip [class]="banner.is_active ? 'status-active' : 'status-inactive'">
                   {{ banner.is_active ? 'Ativo' : 'Inativo' }}
@@ -615,7 +615,8 @@ export class GeneralSettingsComponent implements OnInit {
     });
   }
 
-  getBannerImageUrl(imageUrl: string): string {
+  getBannerImageUrl(banner: Banner): string {
+    const imageUrl = banner.desktop_image || banner.mobile_image || '';
     if (!imageUrl) return '';
     
     // Se a URL já é completa, retorna como está

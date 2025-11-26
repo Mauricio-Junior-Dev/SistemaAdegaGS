@@ -94,22 +94,16 @@
           </td>
         </ng-container>
 
-        <!-- Categoria Pai -->
-        <ng-container matColumnDef="parent">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>Categoria Pai</th>
-          <td mat-cell *matCellDef="let category">
-            {{category.parent?.name || '-'}}
-          </td>
-        </ng-container>
-
         <!-- Produtos -->
         <ng-container matColumnDef="products_count">
           <th mat-header-cell *matHeaderCellDef mat-sort-header>Produtos</th>
           <td mat-cell *matCellDef="let category">
-            <button mat-button
+            <span class="products-count">{{category.products_count}}</span>
+            <button mat-icon-button
                     color="primary"
+                    matTooltip="Ver produtos desta categoria"
                     (click)="showStats(category)">
-              {{category.products_count}}
+              <mat-icon>inventory_2</mat-icon>
             </button>
           </td>
         </ng-container>

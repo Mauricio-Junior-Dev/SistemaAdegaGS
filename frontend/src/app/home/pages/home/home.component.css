@@ -28,6 +28,14 @@
   margin-bottom: 0;
 }
 
+/* Imagem do banner do carrossel (desktop/mobile) */
+.banner-img {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: cover;
+}
+
 /* Fallback para quando não há banners */
 .main-banner .no-banners {
   background: linear-gradient(135deg, #4a90e2 0%, #50c878 100%);

@@ -5,7 +5,8 @@ import { environment } from '../../../environments/environment';
 
 export interface Banner {
   id: number;
-  image_url: string;
+  desktop_image: string;
+  mobile_image?: string;
   title?: string;
   subtitle?: string;
   link?: string;
@@ -16,7 +17,8 @@ export interface Banner {
 }
 
 export interface CreateBannerRequest {
-  image_url: string;
+  desktop_image: string;
+  mobile_image?: string;
   title?: string;
   subtitle?: string;
   link?: string;

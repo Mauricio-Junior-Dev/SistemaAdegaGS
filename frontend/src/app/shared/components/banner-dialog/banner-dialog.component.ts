@@ -31,25 +31,48 @@ import { Banner, CreateBannerRequest, UpdateBannerRequest } from '../../../core/
     
     <mat-dialog-content>
       <div class="banner-form">
-        <!-- Upload de Imagem -->
+        <!-- Upload de Imagem Desktop -->
         <div class="image-upload-section">
+          <label class="image-label">Imagem Desktop</label>
           <div class="current-image" 
-               [class.has-image]="bannerForm.image_url"
-               (click)="imageInput.click()">
-            <img *ngIf="bannerForm.image_url" [src]="getImageUrl(bannerForm.image_url)" alt="Preview">
+               [class.has-image]="bannerForm.desktop_image"
+               (click)="desktopInput.click()">
+            <img *ngIf="bannerForm.desktop_image" [src]="getImageUrl(bannerForm.desktop_image)" alt="Preview Desktop">
             <div class="overlay">
-              <mat-icon>{{ bannerForm.image_url ? 'edit' : 'add_photo_alternate' }}</mat-icon>
-              <span>{{ bannerForm.image_url ? 'Alterar Imagem' : 'Adicionar Imagem' }}</span>
+              <mat-icon>{{ bannerForm.desktop_image ? 'edit' : 'add_photo_alternate' }}</mat-icon>
+              <span>{{ bannerForm.desktop_image ? 'Alterar Imagem Desktop' : 'Adicionar Imagem Desktop' }}</span>
             </div>
           </div>
           
-          <input #imageInput 
+          <input #desktopInput 
                  type="file" 
                  accept="image/*" 
-                 (change)="onImageSelected($event)"
+                 (change)="onDesktopImageSelected($event)"
                  style="display: none">
           
-          <mat-progress-bar *ngIf="uploading" mode="indeterminate"></mat-progress-bar>
+          <mat-progress-bar *ngIf="uploadingDesktop" mode="indeterminate"></mat-progress-bar>
+        </div>
+
+        <!-- Upload de Imagem Mobile -->
+        <div class="image-upload-section">
+          <label class="image-label">Imagem Mobile</label>
+          <div class="current-image" 
+               [class.has-image]="bannerForm.mobile_image"
+               (click)="mobileInput.click()">
+            <img *ngIf="bannerForm.mobile_image" [src]="getImageUrl(bannerForm.mobile_image)" alt="Preview Mobile">
+            <div class="overlay">
+              <mat-icon>{{ bannerForm.mobile_image ? 'edit' : 'add_photo_alternate' }}</mat-icon>
+              <span>{{ bannerForm.mobile_image ? 'Alterar Imagem Mobile' : 'Adicionar Imagem Mobile' }}</span>
+            </div>
+          </div>
+          
+          <input #mobileInput 
+                 type="file" 
+                 accept="image/*" 
+                 (change)="onMobileImageSelected($event)"
+                 style="display: none">
+          
+          <mat-progress-bar *ngIf="uploadingMobile" mode="indeterminate"></mat-progress-bar>
         </div>
 
         <!-- Formulário -->
@@ -80,9 +103,9 @@ import { Banner, CreateBannerRequest, UpdateBannerRequest } from '../../../core/
 
     <mat-dialog-actions align="end">
       <button mat-button (click)="dialogRef.close()">Cancelar</button>
-      <button mat-raised-button 
+              <button mat-raised-button 
               color="primary"
-              [disabled]="!bannerForm.image_url || uploading"
+              [disabled]="!bannerForm.desktop_image || uploadingDesktop || uploadingMobile"
               (click)="saveBanner()">
         {{ isEdit ? 'Salvar' : 'Adicionar' }}
       </button>
@@ -95,6 +118,13 @@ import { Banner, CreateBannerRequest, UpdateBannerRequest } from '../../../core/
 
     .image-upload-section {
       margin-bottom: 24px;
+    }
+
+    .image-label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+      color: #555;
     }
 
     .current-image {
@@ -186,17 +216,20 @@ import { Banner, CreateBannerRequest, UpdateBannerRequest } from '../../../core/
 export class BannerDialogComponent implements OnInit {
   bannerForm: {
     link: string;
-    image_url: string;
+    desktop_image: string;
+    mobile_image: string;
     order: number;
     is_active: boolean;
   } = {
     link: '',
-    image_url: '',
+    desktop_image: '',
+    mobile_image: '',
     order: 1,
     is_active: true
   };
 
-  uploading = false;
+  uploadingDesktop = false;
+  uploadingMobile = false;
   isEdit = false;
 
   constructor(
@@ -215,28 +248,49 @@ export class BannerDialogComponent implements OnInit {
       this.isEdit = true;
       this.bannerForm = {
         link: this.data.banner.link || '',
-        image_url: this.data.banner.image_url || '',
+        desktop_image: this.data.banner.desktop_image || '',
+        mobile_image: this.data.banner.mobile_image || '',
         order: this.data.banner.order || 1,
         is_active: this.data.banner.is_active
       };
     }
   }
 
-  onImageSelected(event: Event): void {
+  onDesktopImageSelected(event: Event): void {
     const file = (event.target as HTMLInputElement).files?.[0];
     if (file) {
-      this.uploading = true;
+      this.uploadingDesktop = true;
       
       this.data.uploadImage(file).subscribe({
         next: (response: any) => {
-          this.bannerForm.image_url = response.image_url;
-          this.uploading = false;
-          this.snackBar.open('Imagem enviada com sucesso!', 'Fechar', { duration: 3000 });
+          this.bannerForm.desktop_image = response.image_url || response.desktop_image || '';
+          this.uploadingDesktop = false;
+          this.snackBar.open('Imagem Desktop enviada com sucesso!', 'Fechar', { duration: 3000 });
         },
         error: (error: any) => {
           console.error('Erro ao fazer upload da imagem:', error);
-          this.snackBar.open('Erro ao fazer upload da imagem', 'Fechar', { duration: 3000 });
-          this.uploading = false;
+          this.snackBar.open('Erro ao fazer upload da imagem Desktop', 'Fechar', { duration: 3000 });
+          this.uploadingDesktop = false;
+        }
+      });
+    }
+  }
+
+  onMobileImageSelected(event: Event): void {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (file) {
+      this.uploadingMobile = true;
+      
+      this.data.uploadImage(file).subscribe({
+        next: (response: any) => {
+          this.bannerForm.mobile_image = response.image_url || response.mobile_image || '';
+          this.uploadingMobile = false;
+          this.snackBar.open('Imagem Mobile enviada com sucesso!', 'Fechar', { duration: 3000 });
+        },
+        error: (error: any) => {
+          console.error('Erro ao fazer upload da imagem:', error);
+          this.snackBar.open('Erro ao fazer upload da imagem Mobile', 'Fechar', { duration: 3000 });
+          this.uploadingMobile = false;
         }
       });
     }
@@ -261,10 +315,12 @@ export class BannerDialogComponent implements OnInit {
   }
 
   saveBanner(): void {
-    if (!this.bannerForm.image_url) {
-      this.snackBar.open('Por favor, selecione uma imagem', 'Fechar', { duration: 3000 });
+    if (!this.bannerForm.desktop_image) {
+      this.snackBar.open('Por favor, selecione a imagem Desktop', 'Fechar', { duration: 3000 });
       return;
     }
+
+    // Se não houver imagem mobile, deixa para o backend fazer o fallback (mobile = desktop)
 
     if (this.isEdit && this.data.banner) {
       const updateData: UpdateBannerRequest = {
