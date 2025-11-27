@@ -117,7 +117,8 @@
 
               <!-- Formulário de Novo Endereço -->
               <div class="address-form" *ngIf="!useSavedAddress">
-                <div class="cep-field">
+                <!-- Linha 1: CEP + Botão Buscar -->
+                <div class="form-row cep-row">
                   <mat-form-field class="cep-input">
                     <mat-label>CEP</mat-label>
                     <input matInput formControlName="zipcode" placeholder="00000-000" (input)="formatZipcode($event); clearError()" (blur)="calculateFreteFromCep()">
@@ -133,54 +134,59 @@
                   </button>
                 </div>
 
-                <div class="form-grid">
-                  <mat-form-field>
+                <!-- Linha 2: Endereço + Número -->
+                <div class="form-row address-number-row">
+                  <mat-form-field class="address-field">
                     <mat-label>Endereço</mat-label>
                     <input matInput formControlName="address" placeholder="Rua, Avenida, etc">
                     <mat-error *ngIf="deliveryForm.get('address')?.errors?.['required']">Endereço é obrigatório</mat-error>
                   </mat-form-field>
-
-                  <mat-form-field>
+                  <mat-form-field class="number-field">
                     <mat-label>Número</mat-label>
                     <input matInput formControlName="number" placeholder="123">
                     <mat-error *ngIf="deliveryForm.get('number')?.errors?.['required']">Número é obrigatório</mat-error>
                   </mat-form-field>
+                </div>
 
-                  <mat-form-field>
+                <!-- Linha 3: Bairro + Complemento -->
+                <div class="form-row neighborhood-complement-row">
+                  <mat-form-field class="neighborhood-field">
+                    <mat-label>Bairro</mat-label>
+                    <input matInput formControlName="neighborhood" placeholder="Seu bairro" (input)="onNeighborhoodChange()">
+                    <mat-error *ngIf="deliveryForm.get('neighborhood')?.errors?.['required']">Bairro é obrigatório</mat-error>
+                  </mat-form-field>
+                  <mat-form-field class="complement-field">
                     <mat-label>Complemento</mat-label>
                     <input matInput formControlName="complement" placeholder="Apto, Bloco, etc">
                   </mat-form-field>
+                </div>
 
-                  <mat-form-field>
-                    <mat-label>Bairro</mat-label>
-                    <mat-select formControlName="neighborhood" [(ngModel)]="selectedNeighborhood">
-                      <mat-option value="">Selecione seu bairro</mat-option>
-                      <mat-option *ngFor="let zone of deliveryZones" [value]="zone.nome_bairro">
-                        {{ zone.nome_bairro }}
-                      </mat-option>
-                    </mat-select>
-                    <mat-error *ngIf="deliveryForm.get('neighborhood')?.errors?.['required']">Bairro é obrigatório</mat-error>
-                  </mat-form-field>
-
-                  <mat-form-field>
+                <!-- Linha 4: Cidade + Estado/UF -->
+                <div class="form-row city-state-row">
+                  <mat-form-field class="city-field">
                     <mat-label>Cidade</mat-label>
                     <input matInput formControlName="city" placeholder="Sua cidade">
                     <mat-error *ngIf="deliveryForm.get('city')?.errors?.['required']">Cidade é obrigatória</mat-error>
                   </mat-form-field>
-
-                  <mat-form-field>
+                  <mat-form-field class="state-field">
                     <mat-label>Estado</mat-label>
-                    <input matInput formControlName="state" placeholder="UF">
+                    <input matInput formControlName="state" placeholder="UF" maxlength="2">
                     <mat-error *ngIf="deliveryForm.get('state')?.errors?.['required']">Estado é obrigatório</mat-error>
                   </mat-form-field>
+                </div>
 
-                  <mat-form-field>
+                <!-- Linha 5: Telefone -->
+                <div class="form-row">
+                  <mat-form-field class="phone-field">
                     <mat-label>Telefone</mat-label>
                     <input matInput formControlName="phone" placeholder="(00) 00000-0000" (input)="formatPhone($event)">
                     <mat-error *ngIf="deliveryForm.get('phone')?.errors?.['required']">Telefone é obrigatório</mat-error>
                     <mat-error *ngIf="deliveryForm.get('phone')?.errors?.['pattern']">Telefone inválido</mat-error>
                   </mat-form-field>
+                </div>
 
+                <!-- Instruções para entrega -->
+                <div class="form-row">
                   <mat-form-field class="full-width">
                     <mat-label>Instruções para entrega</mat-label>
                     <textarea matInput formControlName="instructions" placeholder="Instruções especiais para entrega"></textarea>
@@ -357,7 +363,7 @@
                 color="primary" 
                 class="finalize-button"
                 (click)="onSubmit()" 
-                [disabled]="!isDeliveryFormValid() || paymentForm.invalid || loading || isProcessingPayment || !isDeliveryAreaValid || !(isStoreOpen$ | async)">
+                [disabled]="loading || isProcessingPayment || !isDeliveryAreaValid || !(isStoreOpen$ | async)">
           <mat-spinner *ngIf="loading || isProcessingPayment" diameter="20" style="display: inline-block; margin-right: 8px;"></mat-spinner>
           <mat-icon *ngIf="!(loading || isProcessingPayment)">shopping_cart</mat-icon>
           <span *ngIf="!(loading || isProcessingPayment)">Fazer Pedido</span>

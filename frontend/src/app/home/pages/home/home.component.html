@@ -46,16 +46,7 @@
 
       <!-- Categories Horizontal Scroll -->
       <div *ngIf="!loading.categories && !error.categories" class="categories-scroll">
-        <!-- Categoria Combos -->
-        <button 
-          type="button"
-          class="category-pill"
-          [class.active]="selectedCategory === null"
-          (click)="selectCategory(null)">
-          Combos
-        </button>
-        
-        <!-- Outras Categorias -->
+        <!-- Categorias -->
         <button 
           type="button"
           *ngFor="let category of categories; trackBy: trackByCategoryId" 
@@ -101,6 +92,14 @@
         </app-product-card>
       </div>
 
+      <!-- Botão Ver Mais -->
+      <div *ngIf="!isLoadingProducts && !loading.featured && !error.filtered && !error.featured && currentPage < lastPage" 
+           class="load-more-container">
+        <button type="button" class="btn-load-more" (click)="loadMore()" [disabled]="isLoadingProducts">
+          {{ isLoadingProducts ? 'Carregando...' : 'Ver Mais Produtos' }}
+        </button>
+      </div>
+
       <!-- Empty State -->
       <div *ngIf="!isLoadingProducts && !loading.featured && !error.filtered && !error.featured && filteredProducts.length === 0" 
            class="empty-state">
@@ -109,11 +108,11 @@
     </div>
   </section>
 
-  <!-- Combos em Destaque -->
-  <section class="featured-combos" *ngIf="featuredCombos.length > 0">
+  <!-- Combos & Ofertas -->
+  <section class="combos-section" *ngIf="featuredCombos.length > 0">
     <div class="container">
       <div class="section-header">
-        <h2>Combos Especiais</h2>
+        <h2 class="section-title">Combos & Ofertas</h2>
         <a routerLink="/combos" class="view-all">Ver Todos</a>
       </div>
 
@@ -128,12 +127,12 @@
       </div>
 
       <!-- Combos Grid -->
-      <div *ngIf="!loading.combos && !error.combos" class="combos-grid">
-        <app-combo-card 
+      <div *ngIf="!loading.combos && !error.combos" class="products-grid">
+        <app-product-card 
           *ngFor="let combo of featuredCombos; trackBy: trackByComboId"
-          [combo]="combo"
-          (addToCart)="addComboToCart($event)">
-        </app-combo-card>
+          [product]="comboAdapter(combo)"
+          (addToCart)="addToCart($event)">
+        </app-product-card>
       </div>
     </div>
   </section>

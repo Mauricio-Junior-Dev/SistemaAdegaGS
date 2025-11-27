@@ -17,24 +17,6 @@
     </div>
   </div>
 
-  <!-- Categorias no topo (opcional, pode remover se quiser) -->
-  <div class="categories-nav" *ngIf="!selectedCategory">
-    <div class="container">
-      <div class="categories-scroll">
-        <a *ngFor="let category of categories" 
-           [routerLink]="[]" 
-           [queryParams]="{categoria: category.id}"
-           [class.active]="selectedCategory === category.id"
-           class="category-item">
-          <div class="category-icon">
-            <img [src]="getCategoryImageUrl(category)" [alt]="category.name">
-          </div>
-          <span class="category-name">{{ category.name }}</span>
-        </a>
-      </div>
-    </div>
-  </div>
-
   <div class="container">
     <!-- Loading State -->
     <div *ngIf="loading" class="loading-container">
@@ -51,6 +33,59 @@
 
     <!-- Lista de Produtos Agrupada por Categoria -->
     <div *ngIf="!loading && !error" class="menu-list">
+      <!-- Seção de Combos -->
+      <div *ngIf="combos.length > 0 && (!searchTerm || searchTerm.trim() === '')" class="category-group">
+        <h2 class="category-separator">Combos</h2>
+        
+        <div class="menu-items">
+          <div *ngFor="let combo of combos" class="menu-item">
+            <!-- Imagem -->
+            <div class="menu-item-image">
+              <img [src]="getImageUrl(comboAdapter(combo))" [alt]="combo.name">
+            </div>
+
+            <!-- Informações -->
+            <div class="menu-item-info">
+              <h3 class="menu-item-name">{{ combo.name }}</h3>
+              <p class="menu-item-description" *ngIf="combo.description">
+                {{ combo.description }}
+              </p>
+            </div>
+
+            <!-- Ação (Preço e Botão) -->
+            <div class="menu-item-action">
+              <div class="item-actions">
+                <span class="price">R$ {{ combo.price | number:'1.2-2' }}</span>
+                
+                <!-- Botão Adicionar (quando quantidade = 0) -->
+                <button 
+                  *ngIf="getQuantity(comboAdapter(combo)) === 0" 
+                  (click)="addComboToCart(combo)" 
+                  class="btn-add">
+                  Adicionar
+                </button>
+                
+                <!-- Controles de Quantidade (quando quantidade > 0) -->
+                <div *ngIf="getQuantity(comboAdapter(combo)) > 0" class="qty-controls">
+                  <button 
+                    (click)="decrease(comboAdapter(combo))" 
+                    class="qty-btn minus">
+                    -
+                  </button>
+                  <span class="qty-value">{{ getQuantity(comboAdapter(combo)) }}</span>
+                  <button 
+                    (click)="addComboToCart(combo)" 
+                    class="qty-btn plus">
+                    +
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Outras Categorias -->
       <div *ngFor="let group of productsByCategory" class="category-group">
         <h2 class="category-separator">{{ group.category.name }}</h2>
         

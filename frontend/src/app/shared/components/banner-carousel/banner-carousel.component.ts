@@ -6,6 +6,7 @@ export interface Banner {
   id: number;
   desktop_image: string;
   mobile_image?: string;
+  image_url?: string;
   link?: string;
   order: number;
   is_active: boolean;
@@ -259,7 +260,7 @@ export class BannerCarouselComponent implements OnInit {
     }
   }
 
-  getImageUrl(imageUrl: string): string {
+  getImageUrl(imageUrl: string | undefined): string {
     if (!imageUrl) return '';
     
     if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {

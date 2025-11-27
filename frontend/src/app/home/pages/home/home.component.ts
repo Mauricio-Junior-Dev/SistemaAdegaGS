@@ -29,6 +29,8 @@ export class HomeComponent implements OnInit {
   filteredProducts: Product[] = []; // Produtos filtrados exibidos na grade
   isLoadingProducts: boolean = false; // Loading para filtro de produtos
   skeletonItems = new Array(6); // Array para gerar 6 placeholders de skeleton
+  currentPage: number = 1; // Página atual da paginação
+  lastPage: number = 1; // Última página disponível
   loading = {
     categories: true,
     featured: true,
@@ -67,7 +69,10 @@ export class HomeComponent implements OnInit {
 
     this.productService.getCategories().subscribe({
       next: (categories) => {
-        this.categories = categories;
+        // Filtrar categoria "Combos" do menu pílula
+        this.categories = categories.filter(
+          cat => cat.name.toLowerCase() !== 'combos' && cat.slug.toLowerCase() !== 'combos'
+        );
         this.loading.categories = false;
       },
       error: (error) => {
@@ -85,9 +90,9 @@ export class HomeComponent implements OnInit {
     this.productService.getFeaturedProducts().subscribe({
       next: (products) => {
         this.featuredProducts = products;
-        // Se não há categoria selecionada, mostrar produtos em destaque
+        // Se não há categoria selecionada, carregar produtos com paginação
         if (this.selectedCategory === null) {
-          this.filteredProducts = products;
+          this.loadAllProducts(1);
         }
         this.loading.featured = false;
       },
@@ -134,6 +139,15 @@ export class HomeComponent implements OnInit {
   }
 
   addToCart(product: Product): void {
+    // Verificar se é um combo adaptado (category_id === 0 e não tem doses_por_garrafa)
+    if (product.category_id === 0 && product.doses_por_garrafa === 0 && product.current_stock === 999) {
+      // É um combo, buscar o combo original
+      const combo = this.featuredCombos.find(c => c.id === product.id);
+      if (combo) {
+        this.cartService.addComboToCart(combo, 1);
+        return;
+      }
+    }
     this.cartService.addItem(product);
   }
 
@@ -154,6 +168,10 @@ export class HomeComponent implements OnInit {
   }
 
   selectCategory(category: Category | null): void {
+    // Resetar paginação ao mudar de categoria
+    this.currentPage = 1;
+    this.lastPage = 1;
+
     // Se clicou na mesma categoria, limpar o filtro
     if (category && this.selectedCategory === category.id) {
       this.selectedCategory = null;
@@ -161,31 +179,29 @@ export class HomeComponent implements OnInit {
       return;
     }
 
-    // Se clicou em "Combos" (null)
-    if (category === null) {
-      // Se já estava selecionado, limpar
-      if (this.selectedCategory === null) {
-        this.loadAllProducts();
-        return;
-      }
-      this.selectedCategory = null;
-      this.loadAllProducts();
-      return;
-    }
-
     // Nova categoria selecionada
-    this.selectedCategory = category.id;
-    this.loadProductsByCategory(category.id);
+    this.selectedCategory = category ? category.id : null;
+    if (category) {
+      this.loadProductsByCategory(category.id);
+    } else {
+      this.loadAllProducts();
+    }
   }
 
-  loadAllProducts(): void {
+  loadAllProducts(page: number = 1): void {
     // Carregar todos os produtos (em destaque)
     this.isLoadingProducts = true;
     this.error.filtered = null;
     
-    this.productService.getFeaturedProducts().subscribe({
-      next: (products) => {
-        this.filteredProducts = products;
+    this.productService.getProducts({ featured: true, per_page: 12, page }).subscribe({
+      next: (response) => {
+        if (page === 1) {
+          this.filteredProducts = response.data || [];
+        } else {
+          this.filteredProducts = [...this.filteredProducts, ...(response.data || [])];
+        }
+        this.currentPage = response.current_page;
+        this.lastPage = response.last_page;
       },
       error: (error) => {
         console.error('Erro ao carregar produtos:', error);
@@ -196,13 +212,19 @@ export class HomeComponent implements OnInit {
     });
   }
 
-  loadProductsByCategory(categoryId: number): void {
+  loadProductsByCategory(categoryId: number, page: number = 1): void {
     this.isLoadingProducts = true;
     this.error.filtered = null;
 
-    this.productService.getProducts({ category_id: categoryId, per_page: 50 }).subscribe({
+    this.productService.getProducts({ category_id: categoryId, per_page: 12, page }).subscribe({
       next: (response) => {
-        this.filteredProducts = response.data || [];
+        if (page === 1) {
+          this.filteredProducts = response.data || [];
+        } else {
+          this.filteredProducts = [...this.filteredProducts, ...(response.data || [])];
+        }
+        this.currentPage = response.current_page;
+        this.lastPage = response.last_page;
       },
       error: (error) => {
         console.error('Erro ao carregar produtos da categoria:', error);
@@ -211,6 +233,47 @@ export class HomeComponent implements OnInit {
     }).add(() => {
       this.isLoadingProducts = false;
     });
+  }
+
+  comboAdapter(combo: Combo): Product {
+    // Mapear combo para formato de Product para usar os mesmos cards
+    return {
+      id: combo.id,
+      category_id: 0, // Combos não têm categoria
+      name: combo.name,
+      slug: combo.slug || '',
+      description: combo.description,
+      price: combo.price,
+      original_price: combo.original_price,
+      cost_price: combo.price,
+      current_stock: 999, // Combos sempre disponíveis
+      min_stock: 0,
+      doses_por_garrafa: 0,
+      doses_vendidas: 0,
+      can_sell_by_dose: false,
+      sku: combo.sku,
+      barcode: combo.barcode,
+      is_active: combo.is_active,
+      featured: combo.featured,
+      offers: combo.offers,
+      popular: combo.popular,
+      images: combo.images,
+      image_url: combo.images?.[0] || undefined
+    } as Product;
+  }
+
+  loadMore(): void {
+    if (this.currentPage >= this.lastPage || this.isLoadingProducts) {
+      return;
+    }
+
+    const nextPage = this.currentPage + 1;
+
+    if (this.selectedCategory) {
+      this.loadProductsByCategory(this.selectedCategory, nextPage);
+    } else {
+      this.loadAllProducts(nextPage);
+    }
   }
 
   getCategoryImage(category: Category): string {

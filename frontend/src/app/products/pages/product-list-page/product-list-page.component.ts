@@ -5,8 +5,10 @@ import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { ProductService } from '../../../core/services/product.service';
+import { ComboService } from '../../../core/services/combo.service';
 import { CartService } from '../../../core/services/cart.service';
 import { Product, Category } from '../../../core/models/product.model';
+import { Combo } from '../../../core/models/combo.model';
 import { environment } from '../../../../environments/environment';
 import { Subscription } from 'rxjs';
 import { map } from 'rxjs/operators';
@@ -29,7 +31,9 @@ export class ProductListPageComponent implements OnInit, OnDestroy {
   products: Product[] = [];
   filteredProducts: Product[] = [];
   categories: Category[] = [];
+  combos: Combo[] = [];
   loading = true;
+  loadingCombos = true;
   selectedCategory: number | null = null;
   searchTerm: string = '';
   error: string | null = null;
@@ -42,6 +46,7 @@ export class ProductListPageComponent implements OnInit, OnDestroy {
 
   constructor(
     private productService: ProductService,
+    private comboService: ComboService,
     private cartService: CartService,
     private route: ActivatedRoute,
     private cdr: ChangeDetectorRef,
@@ -67,6 +72,7 @@ export class ProductListPageComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.loadCategories();
+    this.loadCombos();
     
     // Observar itens do carrinho para manter cache atualizado
     this.cartSubscription = this.cartService.cartItems$.subscribe(items => {
@@ -90,12 +96,56 @@ export class ProductListPageComponent implements OnInit, OnDestroy {
   loadCategories(): void {
     this.productService.getCategories().subscribe({
       next: (categories) => {
-        this.categories = categories;
+        // Filtrar categoria "Combos" da lista
+        this.categories = categories.filter(
+          cat => cat.name.toLowerCase() !== 'combos' && cat.slug.toLowerCase() !== 'combos'
+        );
       },
       error: (err) => {
         console.error('Error loading categories:', err);
       }
     });
+  }
+
+  loadCombos(): void {
+    this.loadingCombos = true;
+    this.comboService.getCombos({ per_page: 20 }).subscribe({
+      next: (response) => {
+        this.combos = response.data || [];
+        this.loadingCombos = false;
+      },
+      error: (err) => {
+        console.error('Error loading combos:', err);
+        this.loadingCombos = false;
+      }
+    });
+  }
+
+  comboAdapter(combo: Combo): Product {
+    // Mapear combo para formato de Product para usar os mesmos cards
+    return {
+      id: combo.id,
+      category_id: 0, // Combos não têm categoria
+      name: combo.name,
+      slug: combo.slug || '',
+      description: combo.description,
+      price: combo.price,
+      original_price: combo.original_price,
+      cost_price: combo.price,
+      current_stock: 999, // Combos sempre disponíveis
+      min_stock: 0,
+      doses_por_garrafa: 0,
+      doses_vendidas: 0,
+      can_sell_by_dose: false,
+      sku: combo.sku,
+      barcode: combo.barcode,
+      is_active: combo.is_active,
+      featured: combo.featured,
+      offers: combo.offers,
+      popular: combo.popular,
+      images: combo.images,
+      image_url: combo.images?.[0] || undefined
+    } as Product;
   }
 
   loadProducts(): void {
@@ -280,5 +330,28 @@ export class ProductListPageComponent implements OnInit, OnDestroy {
     const originalPrice = (product as any).original_price;
     if (!originalPrice || originalPrice <= product.price) return 0;
     return Math.round(((originalPrice - product.price) / originalPrice) * 100);
+  }
+
+  addComboToCart(combo: Combo): void {
+    const product = this.comboAdapter(combo);
+    const currentQuantity = this.getQuantity(product);
+    this.cartService.addComboToCart(combo, 1);
+    
+    // Mostrar notificação apenas quando a quantidade for de 0 para 1 (primeira adição)
+    if (currentQuantity === 0) {
+      const comboName = combo.name;
+      const isFeminine = comboName.toLowerCase().endsWith('a') || 
+                         comboName.toLowerCase().endsWith('ão') ||
+                         comboName.toLowerCase().endsWith('ade');
+      const message = isFeminine ? `${comboName} adicionado!` : `${comboName} adicionado!`;
+      
+      this.toastr.success(message, '', {
+        timeOut: 1500,
+        positionClass: 'toast-bottom-center',
+        progressBar: false
+      });
+    }
+    
+    this.cdr.detectChanges();
   }
 }

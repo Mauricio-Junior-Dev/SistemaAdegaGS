@@ -379,17 +379,25 @@ export class CheckoutComponent implements OnInit, OnDestroy {
           patchData.neighborhood = matchingZone.nome_bairro;
           this.selectedNeighborhood = matchingZone.nome_bairro;
         } else {
-          // Se não encontrou, tentar usar o bairro do CEP diretamente
+          // Se não encontrou, usar o bairro do CEP diretamente
           patchData.neighborhood = cepData.neighborhood || '';
           this.selectedNeighborhood = cepData.neighborhood || '';
         }
         
+        // Garantir que o neighborhood está sendo preenchido corretamente
         this.deliveryForm.patchValue(patchData);
+        
+        // Forçar atualização do campo neighborhood
+        const neighborhoodControl = this.deliveryForm.get('neighborhood');
+        if (neighborhoodControl && patchData.neighborhood) {
+          neighborhoodControl.setValue(patchData.neighborhood, { emitEvent: true });
+        }
         
         // Dispara a validação de área de entrega e cálculo de frete
         this.calculateFreteFromCep();
         
         this.loading = false;
+        this.cdr.detectChanges();
       },
       error: (error) => {
         console.error('Erro ao buscar CEP:', error);
@@ -397,6 +405,33 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         this.loading = false;
       }
     });
+  }
+
+  /**
+   * Atualiza selectedNeighborhood quando o campo neighborhood é alterado manualmente
+   */
+  onNeighborhoodChange(): void {
+    const neighborhoodValue = this.deliveryForm.get('neighborhood')?.value;
+    if (neighborhoodValue) {
+      this.selectedNeighborhood = neighborhoodValue;
+      // Verificar se o bairro está na lista de zonas de entrega
+      const matchingZone = this.deliveryZones.find(zone => 
+        zone.nome_bairro.toLowerCase() === neighborhoodValue.toLowerCase() ||
+        zone.nome_bairro.toLowerCase().includes(neighborhoodValue.toLowerCase()) ||
+        neighborhoodValue.toLowerCase().includes(zone.nome_bairro.toLowerCase())
+      );
+      
+      if (matchingZone) {
+        this.selectedNeighborhood = matchingZone.nome_bairro;
+        this.deliveryForm.patchValue({ neighborhood: matchingZone.nome_bairro });
+      }
+      
+      // Recalcular frete se houver CEP válido
+      const zipcode = this.deliveryForm.get('zipcode')?.value;
+      if (zipcode && this.cepService.isValidCep(zipcode)) {
+        this.calculateFreteFromCep();
+      }
+    }
   }
 
   /**
@@ -483,6 +518,86 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     }, 100);
   }
 
+  /**
+   * Encontra o primeiro campo inválido e faz scroll até ele
+   */
+  private scrollToFirstInvalidField(): void {
+    setTimeout(() => {
+      // Lista de campos do formulário de entrega na ordem de exibição
+      const deliveryFields = [
+        'zipcode',
+        'address',
+        'number',
+        'neighborhood',
+        'complement',
+        'city',
+        'state',
+        'phone',
+        'instructions'
+      ];
+
+      // Verificar campos do deliveryForm (após markAllAsTouched, todos estarão touched)
+      for (const fieldName of deliveryFields) {
+        const control = this.deliveryForm.get(fieldName);
+        if (control && control.invalid) {
+          const element = document.querySelector(`[formControlName="${fieldName}"]`);
+          if (element) {
+            const inputElement = element as HTMLElement;
+            const headerOffset = 100;
+            const elementPosition = inputElement.getBoundingClientRect().top;
+            const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+            window.scrollTo({
+              top: offsetPosition,
+              behavior: 'smooth'
+            });
+            // Tentar focar no input dentro do mat-form-field
+            const input = inputElement.querySelector('input') || inputElement.querySelector('textarea') || inputElement;
+            if (input && input.focus) {
+              setTimeout(() => input.focus(), 300);
+            }
+            return;
+          }
+        }
+      }
+
+      // Verificar campos do paymentForm
+      const paymentFields = ['method', 'received_amount'];
+      for (const fieldName of paymentFields) {
+        const control = this.paymentForm.get(fieldName);
+        if (control && control.invalid) {
+          const element = document.querySelector(`[formControlName="${fieldName}"]`);
+          if (element) {
+            const inputElement = element as HTMLElement;
+            const headerOffset = 100;
+            const elementPosition = inputElement.getBoundingClientRect().top;
+            const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+            window.scrollTo({
+              top: offsetPosition,
+              behavior: 'smooth'
+            });
+            const input = inputElement.querySelector('input') || inputElement.querySelector('textarea') || inputElement;
+            if (input && input.focus) {
+              setTimeout(() => input.focus(), 300);
+            }
+            return;
+          }
+        }
+      }
+
+      // Se não encontrou nenhum campo específico, fazer scroll até o formulário de endereço
+      const addressForm = document.querySelector('.address-form-expandable');
+      if (addressForm) {
+        const headerOffset = 100;
+        const elementPosition = (addressForm as HTMLElement).getBoundingClientRect().top;
+        const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+        window.scrollTo({
+          top: offsetPosition,
+          behavior: 'smooth'
+        });
+      }
+    }, 100);
+  }
+
   public async onSubmit(): Promise<void> {
     console.log('--- DEBUG CHECKOUT: Início do onSubmit ---');
 
@@ -509,8 +624,25 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       return;
     }
 
+    // Validação de formulários com feedback visual
     if (!this.isDeliveryFormValid() || this.paymentForm.invalid) {
-      this.error = 'Por favor, preencha todos os campos obrigatórios';
+      // Expandir formulário de endereço se estiver fechado
+      if (!this.showAddressForm) {
+        this.showAddressForm = true;
+      }
+      
+      // Marcar todos os campos como touched para mostrar erros
+      this.deliveryForm.markAllAsTouched();
+      this.paymentForm.markAllAsTouched();
+      
+      // Mostrar toastr de aviso
+      this.toastr.warning('Por favor, preencha todos os campos obrigatórios (ex: Telefone, Número).', 'Campos Obrigatórios');
+      
+      // Aguardar um pouco para o formulário expandir antes de fazer scroll
+      setTimeout(() => {
+        this.scrollToFirstInvalidField();
+      }, 200);
+      
       return;
     }
 
