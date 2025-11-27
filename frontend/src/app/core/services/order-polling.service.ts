@@ -361,6 +361,13 @@ export class OrderPollingService implements OnDestroy {
       return;
     }
 
+    // Verificar se o usuário atual é do tipo 'employee'
+    // Apenas funcionários devem disparar impressão automática e notificações
+    const userType = this.authService.getUserType();
+    if (userType !== 'employee') {
+      return;
+    }
+
     orders.forEach((order, index) => {
       // Pega o método de pagamento (para o toast)
       const payment = order.payment || [];

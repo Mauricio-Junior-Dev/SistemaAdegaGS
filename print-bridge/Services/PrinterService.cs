@@ -24,7 +24,7 @@ public class PrinterService
 
     public PrinterService(ILogger<PrinterService> logger)
     {
-        _printerName = "POS-80C"; // Nome da impressora configurado
+        _printerName = "POS-80"; // Nome da impressora configurado
         _logger = logger;
         InitializeEncoding();
     }
@@ -126,7 +126,9 @@ public class PrinterService
         buffer.AddRange(PrintCentered("ADEGA GS", 2)); // Texto grande e centralizado
         buffer.AddRange(PrintLine());
         buffer.AddRange(PrintCentered("CNPJ: 48.015.662/0001-61"));
+        buffer.AddRange(PrintLine());
         buffer.AddRange(PrintCentered("Rua Alameda das Andorinhas, 119 - Recanto Campo Belo"));
+        buffer.AddRange(PrintLine());
         buffer.AddRange(PrintCentered("Tel: (11) 94510-7055"));
         buffer.AddRange(PrintLine());
         buffer.AddRange(PrintSeparator());
@@ -212,9 +214,32 @@ public class PrinterService
 
         buffer.AddRange(PrintSeparator());
 
-        // Total
+        // Totais
         // Aqui também usamos o ParseDecimal corrigido
         decimal total = ParseDecimal(order.Total);
+        decimal deliveryFee = 0;
+        
+        // Obter taxa de entrega se disponível
+        if (!string.IsNullOrEmpty(order.DeliveryFee))
+        {
+            deliveryFee = ParseDecimal(order.DeliveryFee);
+        }
+        
+        // Calcular subtotal (total - taxa de entrega)
+        decimal subtotal = total - deliveryFee;
+        
+        // Exibir subtotal
+        buffer.AddRange(PrintTextRight($"Subtotal: R$ {subtotal:F2}", width: 48));
+        buffer.AddRange(PrintLine());
+        
+        // Exibir taxa de entrega se maior que zero
+        if (deliveryFee > 0)
+        {
+            buffer.AddRange(PrintTextRight($"Taxa de Entrega: R$ {deliveryFee:F2}", width: 48));
+            buffer.AddRange(PrintLine());
+        }
+        
+        // Exibir total
         buffer.AddRange(PrintBold($"TOTAL: R$ {total:F2}", alignRight: true, width: 48));
         buffer.AddRange(PrintLine(2));
 

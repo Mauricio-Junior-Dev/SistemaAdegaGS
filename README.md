@@ -9,81 +9,87 @@ Sistema completo de e-commerce e PDV com API Laravel, frontend Angular e serviç
 - **Serviço de Impressão**: C# .NET Worker Service (Print Bridge)
 - **Banco de Dados**: MariaDB / MySQL
 
-## 🖥️ Configuração do Ambiente de Desenvolvimento
+## 🚀 Guia de Setup Rápido (Nova Máquina)
+
+Siga esta ordem exata para configurar o ambiente de desenvolvimento sem erros.
 
 ### Pré-requisitos
 
 - PHP 8.2+ e Composer
 - Node.js v20+ e NPM
-- .NET SDK 8.0+
+- .NET SDK 9.0+ (ou superior)
 - MariaDB/MySQL
 
-### 1. Configurar Backend (Laravel)
+### 1. Backend (Laravel)
 
 ```bash
-# 1. Clone o repositório
-git clone ...
-cd adega/backend
-
-# 2. Instale dependências
+cd backend
 composer install
-
-# 3. Configure o .env
 cp .env.example .env
-# (Edite o .env e configure a conexão com o banco de dados: DB_DATABASE, DB_USERNAME, DB_PASSWORD)
-
-# 4. Gere a chave e rode as migrações
+# Configure o banco de dados no arquivo .env
 php artisan key:generate
-php artisan migrate --seed
-```
-
-### 2. Configurar Frontend (Angular)
-
-```bash
-# 1. Navegue até a pasta do frontend
-cd ../frontend
-
-# 2. Instale dependências
-npm install
-```
-
-### 3. Configurar Print Bridge (C#)
-
-```bash
-# 1. Navegue até a pasta do bridge
-cd ../print-bridge
-
-# 2. Restaure as dependências do .NET
-dotnet restore
-```
-
-## 🏃‍♂️ Executando o Sistema (Modo de Desenvolvimento)
-
-Para rodar o sistema completo, você precisará de **3 terminais abertos simultaneamente**.
-
-### Terminal 1: Backend (API Laravel)
-
-```bash
-cd adega/backend
+php artisan migrate:fresh --seed
+php artisan storage:link
 php artisan serve
-# (Rodando em http://localhost:8000)
 ```
 
-### Terminal 2: Frontend (Angular)
+### 2. Frontend (Angular)
+
+⚠️ **Importante**: Devido a conflitos de versão em bibliotecas externas (QRCode), é obrigatório usar a flag `--legacy-peer-deps`.
 
 ```bash
-cd adega/frontend
-ng serve --open
-# (Rodando em http://localhost:4200)
+cd frontend
+# Instalação segura
+npm install --legacy-peer-deps
+# Rodar projeto
+ng serve
 ```
 
-### Terminal 3: Serviço de Impressão (Print Bridge)
+### 3. Impressão (.NET PrintBridge)
+
+Necessário para a impressão automática funcionar no Windows (Lojista).
+
+Instale o .NET SDK 9.0 (ou superior) no site da Microsoft.
+
+Execute o serviço:
 
 ```bash
-cd adega/print-bridge
+cd print-bridge
 dotnet run
-# (Obrigatório para impressão térmica)
-# (Rodando e escutando em http://localhost:9000)
+```
+
+O serviço rodará em `http://localhost:9000`.
+
+## 🛠️ Resolução de Problemas Comuns (Troubleshooting)
+
+### ❌ Erro: "npm ERESOLVE unable to resolve dependency tree"
+
+Acontece porque algumas libs pedem Angular 20+, mas o projeto usa a versão estável 19. **Solução**: Nunca rode apenas `npm install`. Sempre use `npm install --legacy-peer-deps`.
+
+### ❌ Erro: Imagens quebradas (404) no Backend
+
+O link simbólico do Windows costuma quebrar ao mover a pasta do projeto ou trocar de PC. **Solução**:
+
+1. Vá na pasta `backend/public` e delete o arquivo/atalho chamado `storage`.
+2. Rode no terminal (como Admin se possível):
+
+```bash
+php artisan storage:link
+```
+
+Se persistir, limpe o cache: `php artisan config:clear`.
+
+### ❌ Erro: "dotnet run" falha ou pede versão específica
+
+**Solução**: Baixe o SDK mais recente no site da Microsoft. Se der erro de versão, edite o arquivo `print-bridge/PrintBridge.csproj` e altere a tag `<TargetFramework>` para a versão instalada na sua máquina (ex: `net8.0` ou `net10.0`).
+
+### ❌ Erro: 404 ou 403 ao acessar rotas da API
+
+Geralmente é cache de rotas antigo após um git pull. **Solução**:
+
+```bash
+php artisan route:clear
+php artisan config:clear
 ```
 
 ## 📦 Implantação em Produção

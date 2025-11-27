@@ -137,6 +137,7 @@ export class PrintingBridgeService {
       payment_method: order.payment_method || null,
       delivery_address: deliveryAddress,
       delivery_notes: order.delivery_notes || null,
+      delivery_fee: order.delivery_fee != null ? String(order.delivery_fee) : '0',
       created_at: order.created_at || new Date().toISOString(),
       received_amount: receivedAmount,
       change_amount: changeAmount

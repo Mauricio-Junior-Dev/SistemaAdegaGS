@@ -45,6 +45,9 @@ public class OrderDto
 
     [JsonPropertyName("change_amount")]
     public string? ChangeAmount { get; set; }
+
+    [JsonPropertyName("delivery_fee")]
+    public string? DeliveryFee { get; set; }
 }
 
 public class UserDto
