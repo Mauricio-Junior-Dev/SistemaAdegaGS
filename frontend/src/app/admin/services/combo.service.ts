@@ -206,11 +206,13 @@ export class ComboService {
     formData.append('popular', comboData.popular ? '1' : '0');
     
     // Adicionar produtos
-    comboData.products.forEach((product: any, index: number) => {
-      formData.append(`products[${index}][product_id]`, product.product_id.toString());
-      formData.append(`products[${index}][quantity]`, product.quantity.toString());
-      formData.append(`products[${index}][sale_type]`, product.sale_type);
-    });
+    if (comboData.products && comboData.products.length > 0) {
+      comboData.products.forEach((item, index) => {
+        formData.append(`products[${index}][product_id]`, item.product_id.toString());
+        formData.append(`products[${index}][quantity]`, item.quantity.toString());
+        formData.append(`products[${index}][sale_type]`, item.sale_type);
+      });
+    }
     
     // Adicionar imagens
     if (comboData.images) {

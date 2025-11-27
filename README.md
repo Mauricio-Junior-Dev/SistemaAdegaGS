@@ -33,6 +33,20 @@ php artisan storage:link
 php artisan serve
 ```
 
+#### Configuração de Traduções PT-BR
+
+O projeto utiliza traduções em português brasileiro para as mensagens de validação do Laravel. Os arquivos de tradução já estão incluídos no projeto em `backend/lang/pt_BR/`.
+
+Se você precisar reinstalar ou atualizar os arquivos de tradução:
+
+```bash
+cd backend
+composer require lucascudo/laravel-pt-br-localization --dev
+php artisan vendor:publish --tag=laravel-pt-br-localization
+```
+
+**Nota**: O locale já está configurado como `pt_BR` no arquivo `config/app.php`. As mensagens de validação e erros do backend aparecerão automaticamente em português.
+
 ### 2. Frontend (Angular)
 
 ⚠️ **Importante**: Devido a conflitos de versão em bibliotecas externas (QRCode), é obrigatório usar a flag `--legacy-peer-deps`.

@@ -349,6 +349,34 @@ import { environment } from '../../../../../environments/environment';
       color: white;
     }
 
+    /* Forçar fundo branco nos campos do modal */
+    :host ::ng-deep mat-dialog-content .mat-mdc-form-field {
+      background-color: #ffffff !important;
+    }
+
+    :host ::ng-deep mat-dialog-content .mat-mdc-form-field .mat-mdc-text-field-wrapper {
+      background-color: #ffffff !important;
+    }
+
+    :host ::ng-deep mat-dialog-content .mat-mdc-form-field .mat-mdc-form-field-input-control input,
+    :host ::ng-deep mat-dialog-content .mat-mdc-form-field .mat-mdc-form-field-input-control textarea {
+      background-color: #ffffff !important;
+    }
+
+    :host ::ng-deep mat-dialog-content .mat-mdc-form-field .mdc-notched-outline {
+      border-color: rgba(0, 0, 0, 0.12) !important;
+    }
+
+    :host ::ng-deep mat-dialog-content .mat-mdc-form-field .mdc-notched-outline__notch {
+      border-color: rgba(0, 0, 0, 0.12) !important;
+    }
+
+    /* Adicionar sombra suave para destacar os campos */
+    :host ::ng-deep mat-dialog-content .mat-mdc-form-field {
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+      border-radius: 4px;
+    }
+
     @media (max-width: 600px) {
       .form-row {
         flex-direction: column;

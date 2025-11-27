@@ -27,6 +27,7 @@ export class HomeComponent implements OnInit {
   banners: Banner[] = [];
   selectedCategory: number | null = null; // Categoria ativa para destaque visual
   filteredProducts: Product[] = []; // Produtos filtrados exibidos na grade
+  sectionTitle: string = 'Destaques'; // Título da seção de produtos
   isLoadingProducts: boolean = false; // Loading para filtro de produtos
   skeletonItems = new Array(6); // Array para gerar 6 placeholders de skeleton
   currentPage: number = 1; // Página atual da paginação
@@ -175,6 +176,7 @@ export class HomeComponent implements OnInit {
     // Se clicou na mesma categoria, limpar o filtro
     if (category && this.selectedCategory === category.id) {
       this.selectedCategory = null;
+      this.sectionTitle = 'Destaques';
       this.loadAllProducts();
       return;
     }
@@ -182,8 +184,16 @@ export class HomeComponent implements OnInit {
     // Nova categoria selecionada
     this.selectedCategory = category ? category.id : null;
     if (category) {
+      // Verificar se é a categoria Combos (caso especial)
+      const categoryNameLower = category.name.toLowerCase();
+      if (categoryNameLower === 'combos' || category.slug?.toLowerCase() === 'combos') {
+        this.sectionTitle = 'Combos e Ofertas';
+      } else {
+        this.sectionTitle = category.name;
+      }
       this.loadProductsByCategory(category.id);
     } else {
+      this.sectionTitle = 'Destaques';
       this.loadAllProducts();
     }
   }

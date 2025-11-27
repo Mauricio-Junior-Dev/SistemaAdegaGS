@@ -63,7 +63,7 @@
   <section class="featured-products">
     <div class="container">
       <div class="section-header">
-        <h2>{{ selectedCategory ? 'Produtos da Categoria' : 'Itens Em Destaque' }}</h2>
+        <h2>{{ sectionTitle | titlecase }}</h2>
         <a routerLink="/produtos" class="view-all">Ver Mais</a>
       </div>
 
