@@ -91,6 +91,53 @@ import { environment } from '../../../../../environments/environment';
             <textarea matInput formControlName="description" rows="3"></textarea>
           </mat-form-field>
 
+          <!-- Configuração de Pack -->
+          <div class="pack-section">
+            <h3>Configuração de Pack (Caixa/Fardo)</h3>
+            <p class="pack-warning">
+              <mat-icon>info</mat-icon>
+              Use esta opção apenas para Caixas/Fardos. Para Doses, use o cadastro de produto normal.
+            </p>
+            
+            <mat-slide-toggle formControlName="is_pack" color="primary">
+              Este produto é um Pack (desconta estoque do produto pai)
+            </mat-slide-toggle>
+
+            <div *ngIf="productForm.get('is_pack')?.value" class="pack-config">
+              <div class="form-row">
+                <mat-form-field appearance="outline">
+                  <mat-label>Produto Pai (Unidade Base)</mat-label>
+                  <mat-select formControlName="parent_product_id" required>
+                    <mat-option [value]="null">Selecione o produto base</mat-option>
+                    <mat-option *ngFor="let parentProduct of availableParentProducts" [value]="parentProduct.id">
+                      {{parentProduct.name}} (SKU: {{parentProduct.sku}})
+                    </mat-option>
+                  </mat-select>
+                  <mat-error *ngIf="productForm.get('parent_product_id')?.hasError('required')">
+                    Produto pai é obrigatório para Packs
+                  </mat-error>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Multiplicador de Estoque</mat-label>
+                  <input matInput 
+                         type="number" 
+                         formControlName="stock_multiplier" 
+                         required
+                         min="2"
+                         [disabled]="!productForm.get('is_pack')?.value">
+                  <mat-hint>Quantas unidades do produto pai equivalem a 1 Pack</mat-hint>
+                  <mat-error *ngIf="productForm.get('stock_multiplier')?.hasError('required')">
+                    Multiplicador é obrigatório
+                  </mat-error>
+                  <mat-error *ngIf="productForm.get('stock_multiplier')?.hasError('min')">
+                    Multiplicador deve ser maior que 1
+                  </mat-error>
+                </mat-form-field>
+              </div>
+            </div>
+          </div>
+
           <!-- Códigos -->
           <div class="form-row">
             <mat-form-field appearance="outline">
@@ -123,7 +170,7 @@ import { environment } from '../../../../../environments/environment';
           <!-- Preço e Estoque -->
           <div class="form-row">
             <mat-form-field appearance="outline">
-              <mat-label>Preço da Garrafa</mat-label>
+              <mat-label>Preço de Venda (R$)</mat-label>
               <input matInput 
                      type="number" 
                      formControlName="price" 
@@ -140,19 +187,20 @@ import { environment } from '../../../../../environments/environment';
             </mat-form-field>
 
             <mat-form-field appearance="outline">
-              <mat-label>Preço Original (Oferta)</mat-label>
+              <mat-label>Preço "De:" (Apenas para Ofertas)</mat-label>
               <input matInput 
                      type="number" 
                      formControlName="original_price" 
                      min="0"
                      step="0.01">
               <span matPrefix>R$&nbsp;</span>
+              <mat-hint>Preço original antes do desconto (opcional)</mat-hint>
               <mat-error *ngIf="productForm.get('original_price')?.hasError('min')">
                 Preço original deve ser maior que zero
               </mat-error>
             </mat-form-field>
 
-            <mat-form-field appearance="outline">
+            <mat-form-field *ngIf="!productForm.get('is_pack')?.value" appearance="outline">
               <mat-label>Quantidade em Estoque</mat-label>
               <input matInput 
                      type="number" 
@@ -167,7 +215,7 @@ import { environment } from '../../../../../environments/environment';
               </mat-error>
             </mat-form-field>
 
-            <mat-form-field appearance="outline">
+            <mat-form-field *ngIf="!productForm.get('is_pack')?.value" appearance="outline">
               <mat-label>Estoque Mínimo</mat-label>
               <input matInput 
                      type="number" 
@@ -184,7 +232,7 @@ import { environment } from '../../../../../environments/environment';
           </div>
 
           <!-- Configurações de Dose -->
-          <div class="dose-section">
+          <div *ngIf="!productForm.get('is_pack')?.value" class="dose-section">
             <h3>Configurações de Venda por Dose</h3>
             
             <div class="form-row">
@@ -226,6 +274,10 @@ import { environment } from '../../../../../environments/environment';
           <div class="form-row status-row">
             <mat-slide-toggle formControlName="is_active" color="primary">
               Produto Ativo
+            </mat-slide-toggle>
+            
+            <mat-slide-toggle formControlName="visible_online" color="primary">
+              Visível no Site/App
             </mat-slide-toggle>
             
             <mat-slide-toggle formControlName="featured" color="accent">
@@ -281,14 +333,80 @@ import { environment } from '../../../../../environments/environment';
 
     .status-row {
       margin-top: 8px;
+      background-color: transparent !important;
+    }
+
+    /* Remover qualquer fundo amarelo dos toggles/checkboxes */
+    :host ::ng-deep .status-row mat-slide-toggle {
+      background-color: transparent !important;
+    }
+
+    :host ::ng-deep .status-row .mat-mdc-slide-toggle {
+      background-color: transparent !important;
+    }
+
+    :host ::ng-deep .status-row .mdc-switch {
+      background-color: transparent !important;
+    }
+
+    .pack-section {
+      margin-top: 24px;
+      padding: 16px;
+      background-color: #f9f9f9 !important;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+      border-left: 4px solid var(--primary, #673ab7);
+    }
+
+    /* Garantir que elementos internos não tenham fundo amarelo */
+    :host ::ng-deep .pack-section .mat-mdc-slide-toggle,
+    :host ::ng-deep .pack-section .mat-mdc-form-field {
+      background-color: transparent !important;
+    }
+
+    .pack-section h3 {
+      margin: 0 0 12px 0;
+      color: #333;
+      font-size: 16px;
+      font-weight: 500;
+    }
+
+    .pack-warning {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 0 0 16px 0;
+      padding: 12px;
+      background-color: #fff;
+      border-left: 4px solid var(--primary, #673ab7);
+      border-radius: 4px;
+      color: #666;
+      font-size: 14px;
+    }
+
+    .pack-warning mat-icon {
+      color: var(--primary, #673ab7);
+    }
+
+    .pack-config {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid #ddd;
     }
 
     .dose-section {
       margin-top: 24px;
       padding: 16px;
-      background-color: #f5f5f5;
+      background-color: #f9f9f9 !important;
       border-radius: 8px;
-      border: 1px solid #e0e0e0;
+      border: 1px solid #ddd;
+      border-left: 4px solid var(--primary, #673ab7);
+    }
+
+    /* Garantir que elementos internos não tenham fundo amarelo */
+    :host ::ng-deep .dose-section .mat-mdc-slide-toggle,
+    :host ::ng-deep .dose-section .mat-mdc-form-field {
+      background-color: transparent !important;
     }
 
     .dose-section h3 {
@@ -358,6 +476,14 @@ import { environment } from '../../../../../environments/environment';
       background-color: #ffffff !important;
     }
 
+    :host ::ng-deep mat-dialog-content .mat-mdc-form-field .mat-mdc-text-field-wrapper .mat-mdc-form-field-flex {
+      background-color: #ffffff !important;
+    }
+
+    :host ::ng-deep mat-dialog-content .mat-mdc-form-field .mat-mdc-form-field-focus-overlay {
+      background-color: #ffffff !important;
+    }
+
     :host ::ng-deep mat-dialog-content .mat-mdc-form-field .mat-mdc-form-field-input-control input,
     :host ::ng-deep mat-dialog-content .mat-mdc-form-field .mat-mdc-form-field-input-control textarea {
       background-color: #ffffff !important;
@@ -393,6 +519,7 @@ import { environment } from '../../../../../environments/environment';
 export class ProductFormDialogComponent implements OnInit {
   productForm: FormGroup;
   categories: any[] = [];
+  availableParentProducts: Product[] = [];
   loading = false;
   isEdit = false;
   imagePreview: string | null = null;
@@ -420,7 +547,11 @@ export class ProductFormDialogComponent implements OnInit {
       doses_por_garrafa: [5, [Validators.required, Validators.min(1)]],
       can_sell_by_dose: [false],
       dose_price: ['', [Validators.min(0)]],
+      is_pack: [false],
+      parent_product_id: [null], // Sem validators na inicialização
+      stock_multiplier: [1], // Sem validators na inicialização
       is_active: [true],
+      visible_online: [true],
       featured: [false],
       offers: [false],
       popular: [false]
@@ -428,7 +559,21 @@ export class ProductFormDialogComponent implements OnInit {
 
     if (this.isEdit) {
       if (data.product) {
-        this.productForm.patchValue(data.product);
+        const isPack = !!(data.product.parent_product_id && data.product.stock_multiplier && data.product.stock_multiplier > 1);
+        this.productForm.patchValue({
+          ...data.product,
+          is_pack: isPack
+        });
+        
+        // Se for Pack, desabilitar campo de estoque
+        if (isPack) {
+          const currentStockControl = this.productForm.get('current_stock');
+          if (currentStockControl) {
+            currentStockControl.disable();
+            currentStockControl.setValue(0);
+          }
+        }
+        
         this.imagePreview = data.product.image_url || null;
       }
     }
@@ -436,7 +581,24 @@ export class ProductFormDialogComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadCategories();
+    this.loadParentProducts();
     this.setupValidators();
+    this.setupPackValidators();
+    
+    // Garantir que os validators de Pack estejam corretos na inicialização
+    const isPackControl = this.productForm.get('is_pack');
+    if (isPackControl && !isPackControl.value) {
+      // Se não for Pack, garantir que os campos de Pack não tenham validators
+      const parentProductControl = this.productForm.get('parent_product_id');
+      const stockMultiplierControl = this.productForm.get('stock_multiplier');
+      
+      if (parentProductControl && stockMultiplierControl) {
+        parentProductControl.clearValidators();
+        stockMultiplierControl.clearValidators();
+        parentProductControl.updateValueAndValidity({ emitEvent: false });
+        stockMultiplierControl.updateValueAndValidity({ emitEvent: false });
+      }
+    }
   }
 
   private loadCategories(): void {
@@ -447,6 +609,111 @@ export class ProductFormDialogComponent implements OnInit {
         this.snackBar.open('Erro ao carregar categorias', 'Fechar', { duration: 3000 });
       }
     });
+  }
+
+  private loadParentProducts(): void {
+    // Carregar produtos que podem ser pais (excluindo o produto atual se estiver editando)
+    this.productService.getProducts({ per_page: 1000, is_active: true }).subscribe({
+      next: (response) => {
+        this.availableParentProducts = response.data.filter(p => 
+          !this.isEdit || p.id !== this.data.product?.id
+        );
+      },
+      error: (error) => {
+        console.error('Erro ao carregar produtos para Pack:', error);
+      }
+    });
+  }
+
+  private setupPackValidators(): void {
+    const isPackControl = this.productForm.get('is_pack');
+    const parentProductControl = this.productForm.get('parent_product_id');
+    const stockMultiplierControl = this.productForm.get('stock_multiplier');
+    const currentStockControl = this.productForm.get('current_stock');
+
+    if (isPackControl && parentProductControl && stockMultiplierControl && currentStockControl) {
+      // Obter referências aos controles de dose e estoque mínimo
+      const dosesPorGarrafaControl = this.productForm.get('doses_por_garrafa');
+      const dosePriceControl = this.productForm.get('dose_price');
+      const canSellByDoseControl = this.productForm.get('can_sell_by_dose');
+      const minStockControl = this.productForm.get('min_stock');
+      
+      isPackControl.valueChanges.subscribe(isPack => {
+        if (isPack) {
+          // Ativar validações de Pack
+          parentProductControl.setValidators([Validators.required]);
+          stockMultiplierControl.setValidators([Validators.required, Validators.min(2)]);
+          
+          // Zerar e limpar campos que não se aplicam a Packs
+          currentStockControl.setValue(0);
+          currentStockControl.clearValidators();
+          currentStockControl.setValidators([Validators.min(0)]);
+          
+          // Zerar campos de dose
+          if (dosesPorGarrafaControl) {
+            dosesPorGarrafaControl.setValue(5);
+            dosesPorGarrafaControl.clearValidators();
+            dosesPorGarrafaControl.setValidators([Validators.min(1)]);
+            dosesPorGarrafaControl.updateValueAndValidity({ emitEvent: false });
+          }
+          
+          if (dosePriceControl) {
+            dosePriceControl.setValue(null);
+            dosePriceControl.clearValidators();
+            dosePriceControl.updateValueAndValidity({ emitEvent: false });
+          }
+          
+          if (canSellByDoseControl) {
+            canSellByDoseControl.setValue(false);
+          }
+          
+          if (minStockControl) {
+            minStockControl.setValue(0);
+            minStockControl.clearValidators();
+            minStockControl.setValidators([Validators.min(0)]);
+            minStockControl.updateValueAndValidity({ emitEvent: false });
+          }
+        } else {
+          // Desativar validações de Pack - remover todos os validators
+          parentProductControl.clearValidators();
+          stockMultiplierControl.clearValidators();
+          parentProductControl.setValue(null);
+          stockMultiplierControl.setValue(1);
+          
+          // Reabilitar estoque e restaurar validação
+          currentStockControl.clearValidators();
+          currentStockControl.setValidators([Validators.required, Validators.min(0)]);
+          
+          // Restaurar validações de dose
+          if (dosesPorGarrafaControl) {
+            dosesPorGarrafaControl.clearValidators();
+            dosesPorGarrafaControl.setValidators([Validators.required, Validators.min(1)]);
+            dosesPorGarrafaControl.updateValueAndValidity({ emitEvent: false });
+          }
+          
+          if (minStockControl) {
+            minStockControl.clearValidators();
+            minStockControl.setValidators([Validators.required, Validators.min(0)]);
+            minStockControl.updateValueAndValidity({ emitEvent: false });
+          }
+        }
+        
+        // Atualizar validação de todos os controles
+        parentProductControl.updateValueAndValidity({ emitEvent: false });
+        stockMultiplierControl.updateValueAndValidity({ emitEvent: false });
+        currentStockControl.updateValueAndValidity({ emitEvent: false });
+      });
+      
+      // Executar validação inicial baseada no estado atual
+      const initialIsPack = isPackControl.value;
+      if (!initialIsPack) {
+        // Garantir que os validators estão limpos na inicialização
+        parentProductControl.clearValidators();
+        stockMultiplierControl.clearValidators();
+        parentProductControl.updateValueAndValidity({ emitEvent: false });
+        stockMultiplierControl.updateValueAndValidity({ emitEvent: false });
+      }
+    }
   }
 
   private setupValidators(): void {
@@ -518,8 +785,8 @@ export class ProductFormDialogComponent implements OnInit {
     if (this.productForm.valid) {
       this.loading = true;
       
-      // Garantir que todos os campos do formulário sejam incluídos
-      const formValue = this.productForm.value;
+      // Usar getRawValue() para incluir campos desabilitados (como current_stock quando é Pack)
+      const formValue = this.productForm.getRawValue();
       const productData: CreateProductDTO = {
         name: formValue.name ?? '',
         description: formValue.description ?? '',
@@ -528,12 +795,16 @@ export class ProductFormDialogComponent implements OnInit {
         barcode: formValue.barcode ?? null,
         price: formValue.price,
         original_price: formValue.original_price ?? null,
-        current_stock: formValue.current_stock,
-        min_stock: formValue.min_stock,
-        doses_por_garrafa: formValue.doses_por_garrafa ?? 5,
-        can_sell_by_dose: formValue.can_sell_by_dose ?? false,
-        dose_price: formValue.dose_price ?? null,
+        // Se for Pack, sempre enviar 0. Se não for Pack, usar o valor do formulário
+        current_stock: formValue.is_pack ? 0 : formValue.current_stock,
+        min_stock: formValue.is_pack ? 0 : formValue.min_stock,
+        doses_por_garrafa: formValue.is_pack ? 5 : (formValue.doses_por_garrafa ?? 5),
+        can_sell_by_dose: formValue.is_pack ? false : (formValue.can_sell_by_dose ?? false),
+        dose_price: formValue.is_pack ? null : (formValue.dose_price ?? null),
+        parent_product_id: formValue.is_pack ? formValue.parent_product_id : null,
+        stock_multiplier: formValue.is_pack ? formValue.stock_multiplier : 1,
         is_active: formValue.is_active ?? true,
+        visible_online: formValue.visible_online ?? true,
         featured: formValue.featured ?? false,
         offers: formValue.offers ?? false,
         popular: formValue.popular ?? false

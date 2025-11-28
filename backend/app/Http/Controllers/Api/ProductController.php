@@ -11,7 +11,8 @@ class ProductController extends Controller
     public function index(Request $request)
     {
         $query = Product::with('category')
-            ->where('is_active', true);
+            ->where('is_active', true)
+            ->where('visible_online', true);
 
         // Filtrar por categoria
         if ($request->has('category_id')) {
@@ -56,6 +57,7 @@ class ProductController extends Controller
     {
         $product = Product::with('category')
             ->where('is_active', true)
+            ->where('visible_online', true)
             ->findOrFail($id);
         return response()->json($product);
     }
@@ -81,6 +83,7 @@ class ProductController extends Controller
         // Buscar produtos populares primeiro
         $suggestions = Product::with('category')
             ->where('is_active', true)
+            ->where('visible_online', true)
             ->where('current_stock', '>', 0)
             ->where('popular', true) // Priorizar produtos populares
             ->whereNotIn('id', $cartIds) // Excluir produtos já no carrinho
@@ -92,6 +95,7 @@ class ProductController extends Controller
         if ($suggestions->count() < $limit) {
             $categorySuggestions = Product::with('category')
                 ->where('is_active', true)
+                ->where('visible_online', true)
                 ->where('current_stock', '>', 0)
                 ->whereNotIn('id', $cartIds)
                 ->whereNotIn('id', $suggestions->pluck('id'))
@@ -112,6 +116,7 @@ class ProductController extends Controller
         if ($suggestions->count() < $limit) {
             $lowValueSuggestions = Product::with('category')
                 ->where('is_active', true)
+                ->where('visible_online', true)
                 ->where('current_stock', '>', 0)
                 ->whereNotIn('id', $cartIds)
                 ->whereNotIn('id', $suggestions->pluck('id'))
@@ -127,6 +132,7 @@ class ProductController extends Controller
         if ($suggestions->count() < $limit) {
             $finalSuggestions = Product::with('category')
                 ->where('is_active', true)
+                ->where('visible_online', true)
                 ->where('current_stock', '>', 0)
                 ->whereNotIn('id', $cartIds)
                 ->whereNotIn('id', $suggestions->pluck('id'))

@@ -317,29 +317,51 @@ class OrderController extends Controller
 
                 if (!empty($item['product_id'])) {
                     // Processar produto individual
-                    $product = Product::findOrFail($item['product_id']);
+                    $product = Product::with('parentProduct')->findOrFail($item['product_id']);
                     $saleType = $item['sale_type'] ?? 'garrafa';
                     
-                    // Verificar disponibilidade baseada no tipo de venda
-                    if ($saleType === 'garrafa') {
-                        $currentStock = (int) $product->current_stock;
-                        if ($currentStock < $item['quantity']) {
+                    // VALIDAÇÃO DE ESTOQUE PARA PACKS
+                    if ($product->isPack()) {
+                        $parentProduct = $product->getParentProduct();
+                        if (!$parentProduct) {
                             DB::rollBack();
                             return response()->json([
-                                'error' => "Estoque insuficiente para {$product->name}. Restam apenas {$currentStock} unidades."
+                                'error' => "Produto pai não encontrado para o Pack {$product->name}"
+                            ], 400);
+                        }
+
+                        // Para Packs, sempre verificar estoque do produto pai
+                        $unidadesPaiNecessarias = $item['quantity'] * $product->stock_multiplier;
+                        $estoquePai = (int) $parentProduct->current_stock;
+
+                        if ($estoquePai < $unidadesPaiNecessarias) {
+                            DB::rollBack();
+                            return response()->json([
+                                'error' => "Estoque insuficiente para {$product->name} (Pack). Necessário: {$unidadesPaiNecessarias} unidades do produto base ({$parentProduct->name}), disponível: {$estoquePai}"
                             ], 400);
                         }
                     } else {
-                        // Para doses, verificar se há garrafas suficientes para converter
-                        $dosesNecessarias = $item['quantity'];
-                        $garrafasNecessarias = ceil($dosesNecessarias / $product->doses_por_garrafa);
-                        $currentStock = (int) $product->current_stock;
-                        
-                        if ($currentStock < $garrafasNecessarias) {
-                            DB::rollBack();
-                            return response()->json([
-                                'error' => "Estoque insuficiente para {$product->name}. Restam apenas {$currentStock} garrafas para as doses solicitadas."
-                            ], 400);
+                        // VALIDAÇÃO NORMAL: Produto não é Pack
+                        if ($saleType === 'garrafa') {
+                            $currentStock = (int) $product->current_stock;
+                            if ($currentStock < $item['quantity']) {
+                                DB::rollBack();
+                                return response()->json([
+                                    'error' => "Estoque insuficiente para {$product->name}. Restam apenas {$currentStock} unidades."
+                                ], 400);
+                            }
+                        } else {
+                            // Para doses, verificar se há garrafas suficientes para converter
+                            $dosesNecessarias = $item['quantity'];
+                            $garrafasNecessarias = ceil($dosesNecessarias / $product->doses_por_garrafa);
+                            $currentStock = (int) $product->current_stock;
+                            
+                            if ($currentStock < $garrafasNecessarias) {
+                                DB::rollBack();
+                                return response()->json([
+                                    'error' => "Estoque insuficiente para {$product->name}. Restam apenas {$currentStock} garrafas para as doses solicitadas."
+                                ], 400);
+                            }
                         }
                     }
 
@@ -679,23 +701,39 @@ class OrderController extends Controller
 
                 if (!empty($item['product_id'])) {
                     // Processar produto individual
-                    $product = Product::findOrFail($item['product_id']);
+                    $product = Product::with('parentProduct')->findOrFail($item['product_id']);
                     $saleType = $item['sale_type'] ?? 'garrafa';
                     
-                    // Verificar disponibilidade baseada no tipo de venda
-                    if ($saleType === 'garrafa') {
-                        $currentStock = (int) $product->current_stock;
-                        if ($currentStock < $item['quantity']) {
-                            throw new \Exception("Produto {$product->name} não possui estoque suficiente de garrafas");
+                    // VALIDAÇÃO DE ESTOQUE PARA PACKS
+                    if ($product->isPack()) {
+                        $parentProduct = $product->getParentProduct();
+                        if (!$parentProduct) {
+                            throw new \Exception("Produto pai não encontrado para o Pack {$product->name}");
+                        }
+
+                        // Para Packs, sempre verificar estoque do produto pai
+                        $unidadesPaiNecessarias = $item['quantity'] * $product->stock_multiplier;
+                        $estoquePai = (int) $parentProduct->current_stock;
+
+                        if ($estoquePai < $unidadesPaiNecessarias) {
+                            throw new \Exception("Estoque insuficiente para {$product->name} (Pack). Necessário: {$unidadesPaiNecessarias} unidades do produto base ({$parentProduct->name}), disponível: {$estoquePai}");
                         }
                     } else {
-                        // Para doses, verificar se há garrafas suficientes para converter
-                        $dosesNecessarias = $item['quantity'];
-                        $garrafasNecessarias = ceil($dosesNecessarias / $product->doses_por_garrafa);
-                        $currentStock = (int) $product->current_stock;
-                        
-                        if ($currentStock < $garrafasNecessarias) {
-                            throw new \Exception("Produto {$product->name} não possui garrafas suficientes para as doses solicitadas");
+                        // VALIDAÇÃO NORMAL: Produto não é Pack
+                        if ($saleType === 'garrafa') {
+                            $currentStock = (int) $product->current_stock;
+                            if ($currentStock < $item['quantity']) {
+                                throw new \Exception("Produto {$product->name} não possui estoque suficiente de garrafas");
+                            }
+                        } else {
+                            // Para doses, verificar se há garrafas suficientes para converter
+                            $dosesNecessarias = $item['quantity'];
+                            $garrafasNecessarias = ceil($dosesNecessarias / $product->doses_por_garrafa);
+                            $currentStock = (int) $product->current_stock;
+                            
+                            if ($currentStock < $garrafasNecessarias) {
+                                throw new \Exception("Produto {$product->name} não possui garrafas suficientes para as doses solicitadas");
+                            }
                         }
                     }
 

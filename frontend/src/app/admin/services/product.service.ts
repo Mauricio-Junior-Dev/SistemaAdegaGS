@@ -25,12 +25,16 @@ export interface Product {
   sku: string;
   barcode?: string;
   category_id: number;
+  parent_product_id?: number | null;
+  stock_multiplier?: number;
   category?: {
     id: number;
     name: string;
   };
+  parent_product?: Product;
   image_url?: string;
   is_active: boolean;
+  visible_online?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -48,8 +52,11 @@ export interface CreateProductDTO {
   sku: string;
   barcode?: string | null;
   category_id: number;
+  parent_product_id?: number | null;
+  stock_multiplier?: number;
   image?: File;
   is_active: boolean;
+  visible_online?: boolean;
   featured?: boolean;
   offers?: boolean;
   popular?: boolean;
@@ -115,7 +122,7 @@ export class ProductService {
     }
     
     // Normalizar booleanos
-    const booleanFields = ['is_active', 'featured', 'offers', 'popular', 'can_sell_by_dose'];
+    const booleanFields = ['is_active', 'visible_online', 'featured', 'offers', 'popular', 'can_sell_by_dose'];
     booleanFields.forEach(field => {
       if (payload[field] !== undefined) {
         payload[field] = payload[field] === true || payload[field] === 'true' || payload[field] === 1 || payload[field] === '1';
@@ -183,7 +190,7 @@ export class ProductService {
     }
     
     // Normalizar booleanos
-    const booleanFields = ['is_active', 'featured', 'offers', 'popular', 'can_sell_by_dose'];
+    const booleanFields = ['is_active', 'visible_online', 'featured', 'offers', 'popular', 'can_sell_by_dose'];
     booleanFields.forEach(field => {
       if (payload[field] !== undefined) {
         payload[field] = payload[field] === true || payload[field] === 'true' || payload[field] === 1 || payload[field] === '1';

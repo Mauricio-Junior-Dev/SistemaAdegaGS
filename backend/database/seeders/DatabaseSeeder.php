@@ -129,6 +129,7 @@ class DatabaseSeeder extends Seeder
             'dose_price' => 4.50, // Preço da dose
             'sku' => 'TEST-DOSE-001',
             'is_active' => true,
+            'visible_online' => true,
             'featured' => false,
             'offers' => false,
             'popular' => false
@@ -150,6 +151,7 @@ class DatabaseSeeder extends Seeder
             'dose_price' => null, // Sem preço de dose
             'sku' => 'TEST-GARRAFA-001',
             'is_active' => true,
+            'visible_online' => true,
             'featured' => false,
             'offers' => false,
             'popular' => false
@@ -547,6 +549,7 @@ class DatabaseSeeder extends Seeder
                 'min_stock' => $productData['min_stock'],
                 'sku' => Str::upper(Str::random(8)),
                 'is_active' => true,
+                'visible_online' => true,
                 'featured' => $productData['featured'] ?? false,
                 'offers' => $productData['offers'] ?? false,
                 'popular' => $productData['popular'] ?? false,

@@ -1,6 +1,8 @@
 export interface Product {
     id: number;
     category_id: number;
+    parent_product_id?: number | null;
+    stock_multiplier?: number;
     name: string;
     slug: string;
     description?: string;
@@ -16,11 +18,13 @@ export interface Product {
     sku: string;
     barcode?: string;
     is_active: boolean;
+    visible_online?: boolean;
     featured: boolean;
     offers?: boolean;
     popular?: boolean;
     images?: string[];
     category?: Category;
+    parent_product?: Product;
     low_stock?: boolean;
     image_url?: string;
     updated_at?: string;

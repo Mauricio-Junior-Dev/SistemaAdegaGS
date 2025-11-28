@@ -34,6 +34,7 @@ return new class extends Migration
             $table->string('sku')->unique();
             $table->string('barcode')->nullable();
             $table->boolean('is_active')->default(true);
+            $table->boolean('visible_online')->default(true);
             $table->boolean('featured')->default(false);
             $table->boolean('offers')->default(false);
             $table->boolean('popular')->default(false);

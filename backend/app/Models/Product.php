@@ -5,12 +5,16 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
 class Product extends Model
 {
     use HasFactory;
 
     protected $fillable = [
         'category_id',
+        'parent_product_id',
+        'stock_multiplier',
         'name',
         'slug',
         'description',
@@ -26,6 +30,7 @@ class Product extends Model
         'sku',
         'barcode',
         'is_active',
+        'visible_online',
         'featured',
         'offers',
         'popular',
@@ -43,10 +48,13 @@ class Product extends Model
         'can_sell_by_dose' => 'boolean',
         'dose_price' => 'decimal:2',
         'is_active' => 'boolean',
+        'visible_online' => 'boolean',
         'featured' => 'boolean',
         'offers' => 'boolean',
         'popular' => 'boolean',
-        'images' => 'array'
+        'images' => 'array',
+        'parent_product_id' => 'integer',
+        'stock_multiplier' => 'integer'
     ];
 
     protected $appends = ['low_stock'];
@@ -54,6 +62,16 @@ class Product extends Model
     public function category()
     {
         return $this->belongsTo(Category::class);
+    }
+
+    public function parentProduct(): BelongsTo
+    {
+        return $this->belongsTo(Product::class, 'parent_product_id');
+    }
+
+    public function childProducts(): HasMany
+    {
+        return $this->hasMany(Product::class, 'parent_product_id');
     }
 
     public function orderItems()
@@ -71,6 +89,25 @@ class Product extends Model
         return $this->belongsToMany(Combo::class, 'combo_products')
                     ->withPivot(['quantity', 'sale_type'])
                     ->withTimestamps();
+    }
+
+    /**
+     * Verifica se este produto é um Pack (tem parent_product_id e stock_multiplier > 1)
+     */
+    public function isPack(): bool
+    {
+        return !is_null($this->parent_product_id) && $this->stock_multiplier > 1;
+    }
+
+    /**
+     * Obtém o produto pai (unidade base) deste pack
+     */
+    public function getParentProduct(): ?Product
+    {
+        if (!$this->parent_product_id) {
+            return null;
+        }
+        return $this->parentProduct;
     }
 
     public function getLowStockAttribute(): bool
@@ -108,9 +145,43 @@ class Product extends Model
 
     /**
      * Atualiza o estoque baseado no tipo de venda (dose ou garrafa)
+     * Suporta lógica de Packs: se o produto é um Pack, desconta do produto pai
      */
     public function atualizarEstoquePorVenda(int $quantidade, string $tipo): void
     {
+        // LÓGICA DE PACK: Se este produto é um Pack, desconta do produto pai
+        if ($this->isPack()) {
+            $parentProduct = $this->getParentProduct();
+            if (!$parentProduct) {
+                throw new \Exception('Produto pai não encontrado para o Pack');
+            }
+
+            // Calcula quantas unidades do produto pai devem ser descontadas
+            $unidadesPai = $quantidade * $this->stock_multiplier;
+
+            // Verifica estoque do produto pai
+            if ($parentProduct->current_stock < $unidadesPai) {
+                throw new \Exception("Estoque insuficiente no produto pai. Necessário: {$unidadesPai}, Disponível: {$parentProduct->current_stock}");
+            }
+
+            // Desconta do produto pai
+            $parentProduct->decrement('current_stock', $unidadesPai);
+            $parentProduct->save();
+
+            // Registra movimentação no produto pai
+            $parentProduct->stockMovements()->create([
+                'user_id' => auth()->id(),
+                'type' => 'saida',
+                'quantity' => $unidadesPai,
+                'description' => "Venda Pack ({$tipo}) - {$quantidade} pack(s) x {$this->stock_multiplier} unidades = {$unidadesPai} unidades",
+                'unit_cost' => $this->cost_price ?? 0
+            ]);
+
+            // Pack não tem estoque próprio, apenas referencia o pai
+            return;
+        }
+
+        // LÓGICA NORMAL: Produto não é Pack, usa lógica padrão
         if ($tipo === 'dose') {
             // Incrementa o contador de doses vendidas
             $this->increment('doses_vendidas', $quantidade);

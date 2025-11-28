@@ -78,6 +78,8 @@ class ProductController extends Controller
             'sku' => 'required|string|unique:products,sku',
             'barcode' => 'nullable|string|unique:products,barcode',
             'category_id' => 'required|exists:categories,id',
+            'parent_product_id' => 'nullable|exists:products,id',
+            'stock_multiplier' => 'nullable|integer|min:1',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:10240',
             'is_active' => 'boolean',
             'featured' => 'boolean',
@@ -101,6 +103,17 @@ class ProductController extends Controller
             $counter++;
         }
 
+        // Validação adicional: se parent_product_id está presente, stock_multiplier deve ser > 1
+        if ($request->has('parent_product_id') && $request->parent_product_id) {
+            if (!$request->has('stock_multiplier') || $request->stock_multiplier < 2) {
+                return response()->json([
+                    'error' => 'Para produtos Pack, o multiplicador de estoque deve ser maior que 1'
+                ], 422);
+            }
+            // Para Packs, garantir que current_stock seja 0 (estoque é gerenciado pelo produto pai)
+            $request->merge(['current_stock' => 0]);
+        }
+
         $product = new Product();
         $product->name = $request->name;
         $product->slug = $slug;
@@ -116,7 +129,10 @@ class ProductController extends Controller
         $product->sku = $request->sku;
         $product->barcode = $request->barcode;
         $product->category_id = $request->category_id;
+        $product->parent_product_id = $request->parent_product_id;
+        $product->stock_multiplier = $request->input('stock_multiplier', 1);
         $product->is_active = $request->boolean('is_active', true);
+        $product->visible_online = $request->boolean('visible_online', true);
         $product->featured = $request->boolean('featured', false);
         $product->offers = $request->boolean('offers', false);
         $product->popular = $request->boolean('popular', false);
@@ -134,15 +150,26 @@ class ProductController extends Controller
             $product->image_url = Storage::disk('public')->url($path);
         }
 
+        // LÓGICA DE PACK: Se for um Pack, estoque sempre é 0 (gerenciado pelo produto pai)
+        if ($product->isPack()) {
+            // Pack não tem estoque próprio, sempre 0
+            $product->current_stock = 0;
+            
+            // Nota: Estoque inicial de Packs não é aplicado automaticamente no produto pai
+            // O admin deve gerenciar o estoque diretamente no produto pai
+        }
+
         $product->save();
 
-        // Criar movimento de estoque inicial
-        $product->stockMovements()->create([
-            'user_id' => auth()->id(),
-            'type' => 'entrada',
-            'quantity' => $request->current_stock,
-            'description' => 'Estoque inicial'
-        ]);
+        // Criar movimento de estoque inicial (apenas para produtos normais, não Packs)
+        if (!$product->isPack()) {
+            $product->stockMovements()->create([
+                'user_id' => auth()->id(),
+                'type' => 'entrada',
+                'quantity' => $request->current_stock,
+                'description' => 'Estoque inicial'
+            ]);
+        }
 
         return response()->json($product, 201);
     }
@@ -174,8 +201,11 @@ class ProductController extends Controller
             'sku' => 'required|string|unique:products,sku,' . $product->id,
             'barcode' => 'nullable|string|unique:products,barcode,' . $product->id,
             'category_id' => 'required|exists:categories,id',
+            'parent_product_id' => 'nullable|exists:products,id',
+            'stock_multiplier' => 'nullable|integer|min:1',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:10240',
             'is_active' => 'boolean',
+            'visible_online' => 'boolean',
             'featured' => 'boolean',
             'offers' => 'boolean',
             'popular' => 'boolean'
@@ -203,6 +233,15 @@ class ProductController extends Controller
             $product->slug = $slug;
         }
 
+        // Validação adicional: se parent_product_id está presente, stock_multiplier deve ser > 1
+        if ($request->has('parent_product_id') && $request->parent_product_id) {
+            if (!$request->has('stock_multiplier') || $request->stock_multiplier < 2) {
+                return response()->json([
+                    'error' => 'Para produtos Pack, o multiplicador de estoque deve ser maior que 1'
+                ], 422);
+            }
+        }
+
         $product->name = $request->name;
         $product->description = $request->description;
         $product->price = $request->price;
@@ -216,7 +255,10 @@ class ProductController extends Controller
         $product->sku = $request->sku;
         $product->barcode = $request->barcode;
         $product->category_id = $request->category_id;
+        $product->parent_product_id = $request->parent_product_id;
+        $product->stock_multiplier = $request->input('stock_multiplier', $product->stock_multiplier ?? 1);
         $product->is_active = $request->boolean('is_active', true);
+        $product->visible_online = $request->boolean('visible_online', true);
         $product->featured = $request->boolean('featured', false);
         $product->offers = $request->boolean('offers', false);
         $product->popular = $request->boolean('popular', false);
@@ -239,10 +281,51 @@ class ProductController extends Controller
             $product->image_url = Storage::disk('public')->url($path);
         }
 
+        // LÓGICA DE PACK: Se for um Pack, interceptar e aplicar no produto pai
+        if ($product->isPack()) {
+            $parentProduct = $product->getParentProduct();
+            if (!$parentProduct) {
+                return response()->json([
+                    'error' => 'Produto pai não encontrado para o Pack'
+                ], 400);
+            }
+
+            // Se o estoque mudou, aplicar a diferença no produto pai multiplicado pelo multiplier
+            if ($oldStock != $newStock) {
+                $difference = $newStock - $oldStock;
+                $unidadesPai = abs($difference) * $product->stock_multiplier;
+                $type = $difference > 0 ? 'entrada' : 'saida';
+
+                if ($type === 'entrada') {
+                    $parentProduct->increment('current_stock', $unidadesPai);
+                } else {
+                    // Verificar se há estoque suficiente no pai
+                    if ($parentProduct->current_stock < $unidadesPai) {
+                        return response()->json([
+                            'error' => "Estoque insuficiente no produto pai. Tentativa de remover {$unidadesPai} unidades, mas há apenas {$parentProduct->current_stock} disponíveis."
+                        ], 400);
+                    }
+                    $parentProduct->decrement('current_stock', $unidadesPai);
+                }
+                $parentProduct->save();
+
+                // Registrar movimentação no produto pai
+                $parentProduct->stockMovements()->create([
+                    'type' => $type,
+                    'quantity' => $unidadesPai,
+                    'description' => "Ajuste de estoque Pack ({$product->name}): {$difference} pack(s) x {$product->stock_multiplier} = {$unidadesPai} unidades",
+                    'user_id' => auth()->id()
+                ]);
+            }
+
+            // Pack não tem estoque próprio, manter como 0 ou valor simbólico
+            $product->current_stock = 0;
+        }
+
         $product->save();
 
-        // Criar movimento de estoque se a quantidade mudou
-        if ($oldStock != $newStock) {
+        // Criar movimento de estoque se a quantidade mudou (apenas para produtos normais, não Packs)
+        if (!$product->isPack() && $oldStock != $newStock) {
             $difference = $newStock - $oldStock;
             $type = $difference > 0 ? 'entrada' : 'saida';
             $description = $difference > 0 ? 'Ajuste de estoque (entrada)' : 'Ajuste de estoque (saída)';
