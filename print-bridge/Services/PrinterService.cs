@@ -245,13 +245,7 @@ public class PrinterService
 
         // Informações de pagamento
         buffer.AddRange(PrintBold("PAGAMENTO:"));
-        buffer.AddRange(PrintLine(1)); // <-- Quebra linha após "PAGAMENTO:"
-        
-        string paymentMethodFormatted = GetPaymentMethod(order); // Ex: "DINHEIRO", "PIX"
-        buffer.AddRange(PrintText(paymentMethodFormatted));
-        buffer.AddRange(PrintLine(1)); // <-- Quebra linha após o método de pagamento
-
-        // --- INÍCIO DA MODIFICAÇÃO CORRIGIDA ---
+        buffer.AddRange(PrintLine(1));
         
         // Pega o método de pagamento *original* (raw) para a verificação
         string rawPaymentMethod = "desconhecido";
@@ -264,47 +258,119 @@ public class PrinterService
             rawPaymentMethod = order.PaymentMethod;
         }
 
-        // Só mostre "Recebido" e "Troco" se o pagamento for em dinheiro
-        // Usamos o 'rawPaymentMethod' em minúsculo para uma verificação segura
-        if (rawPaymentMethod.ToLower().Contains("dinheiro"))
-        {
-            // Valor recebido e troco (se houver)
-            if (!string.IsNullOrEmpty(order.ReceivedAmount))
-            {
-                decimal received = ParseDecimal(order.ReceivedAmount);
-                // 'total' já foi declarado acima (linha 223), reutilizando aqui
+        string paymentMethodFormatted = GetPaymentMethod(order); // Ex: "DINHEIRO", "PIX"
+        
+        // Verificar status do pedido para determinar situação de pagamento
+        bool isCompleted = !string.IsNullOrEmpty(order.Status) && 
+                          order.Status.ToLower() == "completed";
+        bool isPending = !string.IsNullOrEmpty(order.Status) && 
+                        order.Status.ToLower() == "pending";
+        bool hasDelivery = order.DeliveryAddress != null && HasDeliveryAddress(order.DeliveryAddress);
 
+        // Mostrar situação de pagamento
+        if (isCompleted)
+        {
+            buffer.AddRange(PrintBold($"SITUAÇÃO: PAGO ({paymentMethodFormatted})"));
+        }
+        else if (isPending)
+        {
+            buffer.AddRange(PrintBold("SITUAÇÃO: A COBRAR NA ENTREGA"));
+        }
+        else
+        {
+            buffer.AddRange(PrintText(paymentMethodFormatted));
+        }
+        buffer.AddRange(PrintLine(1));
+
+        // Se for entrega pendente, mostrar instruções para o entregador
+        if (isPending && hasDelivery)
+        {
+            buffer.AddRange(PrintLine(1));
+            buffer.AddRange(PrintSeparator());
+            
+            // Instruções destacadas para o entregador
+            if (rawPaymentMethod.ToLower().Contains("dinheiro"))
+            {
+                decimal received = 0;
+                if (!string.IsNullOrEmpty(order.ReceivedAmount))
+                {
+                    received = ParseDecimal(order.ReceivedAmount);
+                }
+                
                 if (received > 0)
                 {
-                    // --- CORREÇÃO DE TEXTO E LAYOUT ---
-                    buffer.AddRange(PrintText($"DINHEIRO A RECEBER: R$ {received:F2}"));
-                    buffer.AddRange(PrintLine(1)); // <-- Quebra linha após "DINHEIRO A RECEBER"
-
+                    buffer.AddRange(PrintBold("⚠ LEVAR TROCO PARA R$ " + received.ToString("F2")));
+                    buffer.AddRange(PrintLine(1));
+                    
                     decimal change = 0;
-
-                    // Verifica se o troco já veio calculado do frontend
                     if (!string.IsNullOrEmpty(order.ChangeAmount))
                     {
                         change = ParseDecimal(order.ChangeAmount);
                     }
-                    // Se não veio, e o valor recebido é maior, calcula agora
+                    else if (received > total)
+                    {
+                        change = received - total;
+                    }
+                    
+                    if (change > 0)
+                    {
+                        buffer.AddRange(PrintBold($"TROCO: R$ {change:F2}"));
+                        buffer.AddRange(PrintLine(1));
+                    }
+                }
+                else
+                {
+                    buffer.AddRange(PrintBold("⚠ COBRAR EM DINHEIRO"));
+                    buffer.AddRange(PrintLine(1));
+                }
+            }
+            else if (rawPaymentMethod.ToLower().Contains("cartão") || 
+                     rawPaymentMethod.ToLower().Contains("credito") || 
+                     rawPaymentMethod.ToLower().Contains("crédito") ||
+                     rawPaymentMethod.ToLower().Contains("debito") ||
+                     rawPaymentMethod.ToLower().Contains("débito"))
+            {
+                buffer.AddRange(PrintBold("⚠ LEVAR MAQUININHA"));
+                buffer.AddRange(PrintLine(1));
+            }
+            else if (rawPaymentMethod.ToLower().Contains("pix"))
+            {
+                buffer.AddRange(PrintBold("⚠ COBRAR VIA PIX"));
+                buffer.AddRange(PrintLine(1));
+            }
+            
+            buffer.AddRange(PrintSeparator());
+            buffer.AddRange(PrintLine(1));
+        }
+        else if (isCompleted && rawPaymentMethod.ToLower().Contains("dinheiro"))
+        {
+            // Para vendas balcão pagas em dinheiro, mostrar valores recebidos e troco
+            if (!string.IsNullOrEmpty(order.ReceivedAmount))
+            {
+                decimal received = ParseDecimal(order.ReceivedAmount);
+                if (received > 0)
+                {
+                    buffer.AddRange(PrintText($"RECEBIDO: R$ {received:F2}"));
+                    buffer.AddRange(PrintLine(1));
+
+                    decimal change = 0;
+                    if (!string.IsNullOrEmpty(order.ChangeAmount))
+                    {
+                        change = ParseDecimal(order.ChangeAmount);
+                    }
                     else if (received > total)
                     {
                         change = received - total;
                     }
 
-                    // Imprime o troco se ele for maior que zero
                     if (change > 0)
                     {
-                        // --- CORREÇÃO DE LAYOUT ---
                         buffer.AddRange(PrintBold($"TROCO: R$ {change:F2}"));
-                        buffer.AddRange(PrintLine(1)); // <-- Quebra linha após "TROCO"
+                        buffer.AddRange(PrintLine(1));
                     }
                 }
             }
         }
-
-        // --- FIM DA MODIFICAÇÃO CORRIGIDA ---
 
         buffer.AddRange(PrintSeparator());
 

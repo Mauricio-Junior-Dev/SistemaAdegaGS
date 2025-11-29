@@ -57,6 +57,27 @@ class OrderController extends Controller
             if ($request->has('status')) {
                 $query->where('status', $request->status);
             }
+            
+            // FILTRO: Esconder pedidos do Ecommerce (Online) com PIX pendente
+            // Regra: Não mostrar pedidos onde TODAS as condições são verdadeiras:
+            // - type = 'online'
+            // - payment_method = 'pix' (na tabela payments)
+            // - status = 'pending'
+            // Lógica: Mostrar tudo EXCETO (online AND PIX AND pending)
+            // Usando whereNot para excluir pedidos que atendem todas as condições
+            $query->where(function($q) {
+                $q->where('status', '!=', 'pending') // Se não for pendente, mostra sempre
+                  ->orWhere('type', '!=', 'online') // Se não for online, mostra sempre
+                  ->orWhere(function($orderQuery) {
+                      // Se for online e pending, verificar se NÃO tem payment PIX pendente
+                      $orderQuery->where('type', 'online')
+                                 ->where('status', 'pending')
+                                 ->whereDoesntHave('payment', function($paymentQuery) {
+                                     $paymentQuery->where('payment_method', 'pix')
+                                                  ->where('status', 'pending');
+                                 });
+                  });
+            });
         } else {
             // Se não for nenhum, não retorna nada
             return response()->json(['error' => 'Não autorizado'], 403);
@@ -146,6 +167,8 @@ class OrderController extends Controller
             'customer_name' => 'nullable|string|max:255',
             'customer_phone' => 'nullable|string|max:20',
             'delivery' => 'nullable|array',
+            'delivery_address_id' => 'nullable|integer|exists:addresses,id',
+            'delivery_fee' => 'nullable|numeric|min:0',
             'received_amount' => 'nullable|numeric|min:0',
             'change_amount' => 'nullable|numeric|min:0'
         ]);
@@ -212,10 +235,21 @@ class OrderController extends Controller
 
             // Criar pedido
             // Respeitar status enviado pelo frontend (para caixa: completed ou pending)
+            // Determinar type: se for pending e não for funcionário/admin, é online; senão é local
+            $orderType = 'local'; // Padrão: pedidos do caixa são 'local'
+            if ($isPending && !$isEmployeeOrAdmin) {
+                // Pedido pending criado por cliente = online (ecommerce)
+                $orderType = 'online';
+            } elseif ($request->has('type')) {
+                // Se o frontend enviou type explicitamente, usar
+                $orderType = $request->input('type') === 'online' ? 'online' : 'local';
+            }
+            
             $orderData = [
                 'user_id' => $orderUserId,
                 'order_number' => date('Ymd') . str_pad(Order::count() + 1, 4, '0', STR_PAD_LEFT),
                 'status' => in_array($requestedStatus, ['pending', 'completed']) ? $requestedStatus : 'pending',
+                'type' => $orderType,
                 'total' => 0 // Será calculado depois
             ];
 
@@ -226,7 +260,24 @@ class OrderController extends Controller
             $deliveryZipcode = null;
             $requiresDelivery = $isPending; // Se for pending, requer entrega
             
-            if ($request->has('delivery') && is_array($request->delivery)) {
+            // Aceitar delivery_address_id na raiz do request (prioridade)
+            if ($request->has('delivery_address_id') && $request->delivery_address_id) {
+                $deliveryAddressId = $request->delivery_address_id;
+                $savedAddress = Address::find($deliveryAddressId);
+                if ($savedAddress) {
+                    $deliveryZipcode = $savedAddress->zipcode;
+                    // Adicionar ao orderData imediatamente
+                    $orderData['delivery_address_id'] = $deliveryAddressId;
+                } else {
+                    // Endereço não encontrado
+                    if ($requiresDelivery) {
+                        DB::rollBack();
+                        return response()->json([
+                            'error' => 'Endereço não encontrado'
+                        ], 404);
+                    }
+                }
+            } elseif ($request->has('delivery') && is_array($request->delivery)) {
                 $delivery = $request->delivery;
                 
                 // Se é um endereço salvo (tem ID)
@@ -298,6 +349,23 @@ class OrderController extends Controller
                 return response()->json([
                     'error' => 'Endereço de entrega é obrigatório para pedidos de entrega.'
                 ], 422);
+            }
+
+            // GARANTIR que delivery_address_id seja atribuído ao orderData se existir
+            // (pode ter sido definido dentro do bloco delivery ou na raiz)
+            if ($deliveryAddressId && !isset($orderData['delivery_address_id'])) {
+                $orderData['delivery_address_id'] = $deliveryAddressId;
+            }
+
+            // Garantir que delivery_notes seja atribuído se fornecido
+            if ($request->has('delivery_notes') && !isset($orderData['delivery_notes'])) {
+                $orderData['delivery_notes'] = $request->input('delivery_notes');
+            }
+
+            // Garantir que delivery_fee seja atribuído (pode ser 0 para frete grátis)
+            // Nota: O delivery_fee será recalculado depois, mas definimos aqui para garantir que existe
+            if (!isset($orderData['delivery_fee'])) {
+                $orderData['delivery_fee'] = (float) $request->input('delivery_fee', 0);
             }
 
             $order = Order::create($orderData);
@@ -490,18 +558,29 @@ class OrderController extends Controller
                     if ($deliveryZone) {
                         $frete = (float) $deliveryZone->valor_frete;
                     } else {
-                        // Se não encontrou zona de entrega, mas é obrigatório, retornar erro
-                        DB::rollBack();
-                        return response()->json([
-                            'error' => 'Infelizmente não entregamos neste endereço.'
-                        ], 422);
+                        // Se não encontrou zona de entrega, mas o frontend enviou delivery_fee (pode ser frete grátis manual)
+                        $frontendFrete = (float) $request->input('delivery_fee', 0);
+                        if ($frontendFrete > 0) {
+                            $frete = $frontendFrete; // Aceitar frete manual do frontend
+                        } else {
+                            // Se não tem frete e não encontrou zona, retornar erro
+                            DB::rollBack();
+                            return response()->json([
+                                'error' => 'Infelizmente não entregamos neste endereço.'
+                            ], 422);
+                        }
                     }
                 } else {
-                    // Se não tem CEP no endereço e é obrigatório, retornar erro
-                    DB::rollBack();
-                    return response()->json([
-                        'error' => 'Endereço de entrega inválido ou sem CEP.'
-                    ], 422);
+                    // Se não tem CEP no endereço, usar frete do frontend se fornecido
+                    $frontendFrete = (float) $request->input('delivery_fee', 0);
+                    if ($frontendFrete > 0) {
+                        $frete = $frontendFrete;
+                    } else {
+                        DB::rollBack();
+                        return response()->json([
+                            'error' => 'Endereço de entrega inválido ou sem CEP.'
+                        ], 422);
+                    }
                 }
             } elseif ($isPending) {
                 // Se é pending mas não tem endereço, retornar erro
@@ -512,9 +591,13 @@ class OrderController extends Controller
             }
             
             // Se o frontend enviou delivery_fee, usar o maior valor (segurança)
+            // Mas se já calculamos o frete e o frontend enviou 0, aceitar (pode ser frete grátis)
             $frontendFrete = (float) $request->input('delivery_fee', 0);
             if ($frontendFrete > $frete) {
                 $frete = $frontendFrete;
+            } elseif ($isPending && $frontendFrete === 0 && $frete === 0) {
+                // Se ambos são 0 e é entrega, aceitar (frete grátis)
+                $frete = 0;
             }
 
             // Calcular total final (subtotal + frete)

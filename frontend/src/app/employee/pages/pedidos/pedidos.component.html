@@ -87,15 +87,16 @@
             <th mat-header-cell *matHeaderCellDef>Endereço</th>
             <td mat-cell *matCellDef="let order">
               <div class="address-info" *ngIf="order.delivery_address; else noAddress">
-                <span class="neighborhood">{{order.delivery_address.neighborhood}}</span>
-                <span class="city">{{order.delivery_address.city}}</span>
+                <span class="address-line">
+                  {{order.delivery_address.street}}, {{order.delivery_address.number}} - {{order.delivery_address.neighborhood}}
+                </span>
                 <span *ngIf="order.delivery_notes" class="notes">
                   <mat-icon>note</mat-icon>
                   {{order.delivery_notes}}
                 </span>
               </div>
               <ng-template #noAddress>
-                <span class="no-address">Sem endereço</span>
+                <span class="no-address">Retirada no Balcão</span>
               </ng-template>
             </td>
           </ng-container>
@@ -241,15 +242,16 @@
                     <th mat-header-cell *matHeaderCellDef>Endereço</th>
                     <td mat-cell *matCellDef="let order">
                       <div class="address-info" *ngIf="order.delivery_address; else noAddress">
-                        <span class="neighborhood">{{order.delivery_address.neighborhood}}</span>
-                        <span class="city">{{order.delivery_address.city}}</span>
+                        <span class="address-line">
+                          {{order.delivery_address.street}}, {{order.delivery_address.number}} - {{order.delivery_address.neighborhood}}
+                        </span>
                         <span *ngIf="order.delivery_notes" class="notes">
                           <mat-icon>note</mat-icon>
                           {{order.delivery_notes}}
                         </span>
                       </div>
                       <ng-template #noAddress>
-                        <span class="no-address">Sem endereço</span>
+                        <span class="no-address">Retirada no Balcão</span>
                       </ng-template>
                     </td>
                   </ng-container>
@@ -371,15 +373,16 @@
                     <th mat-header-cell *matHeaderCellDef>Endereço</th>
                     <td mat-cell *matCellDef="let order">
                       <div class="address-info" *ngIf="order.delivery_address; else noAddress">
-                        <span class="neighborhood">{{order.delivery_address.neighborhood}}</span>
-                        <span class="city">{{order.delivery_address.city}}</span>
+                        <span class="address-line">
+                          {{order.delivery_address.street}}, {{order.delivery_address.number}} - {{order.delivery_address.neighborhood}}
+                        </span>
                         <span *ngIf="order.delivery_notes" class="notes">
                           <mat-icon>note</mat-icon>
                           {{order.delivery_notes}}
                         </span>
                       </div>
                       <ng-template #noAddress>
-                        <span class="no-address">Sem endereço</span>
+                        <span class="no-address">Retirada no Balcão</span>
                       </ng-template>
                     </td>
                   </ng-container>
@@ -504,15 +507,16 @@
                     <th mat-header-cell *matHeaderCellDef>Endereço</th>
                     <td mat-cell *matCellDef="let order">
                       <div class="address-info" *ngIf="order.delivery_address; else noAddress">
-                        <span class="neighborhood">{{order.delivery_address.neighborhood}}</span>
-                        <span class="city">{{order.delivery_address.city}}</span>
+                        <span class="address-line">
+                          {{order.delivery_address.street}}, {{order.delivery_address.number}} - {{order.delivery_address.neighborhood}}
+                        </span>
                         <span *ngIf="order.delivery_notes" class="notes">
                           <mat-icon>note</mat-icon>
                           {{order.delivery_notes}}
                         </span>
                       </div>
                       <ng-template #noAddress>
-                        <span class="no-address">Sem endereço</span>
+                        <span class="no-address">Retirada no Balcão</span>
                       </ng-template>
                     </td>
                   </ng-container>

@@ -83,6 +83,7 @@ export interface Order {
   items: OrderItem[];
   total: number;
   status: OrderStatus;
+  type?: 'local' | 'online';
   payment?: Payment | Payment[]; // Pode ser um objeto ou array
   payment_method?: PaymentMethod;
   customer_name?: string;
@@ -113,6 +114,7 @@ export interface CreateOrderRequest {
   status?: 'pending' | 'completed';
   payment_status?: 'pending' | 'completed';
   delivery_fee?: number;
+  delivery_address_id?: number;
   delivery?: {
     address?: string;
     number?: string;

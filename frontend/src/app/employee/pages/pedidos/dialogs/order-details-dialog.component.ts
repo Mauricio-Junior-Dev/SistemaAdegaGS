@@ -33,20 +33,18 @@ import { Order, OrderStatus } from '../../../services/order.service';
       <div class="section" *ngIf="data.order.delivery_address">
         <h3>Endereço de Entrega</h3>
         <div class="address-details">
-          <p><strong>Endereço:</strong> {{data.order.delivery_address.street}}, {{data.order.delivery_address.number}}</p>
-          <p *ngIf="data.order.delivery_address.complement"><strong>Complemento:</strong> {{data.order.delivery_address.complement}}</p>
-          <p><strong>Bairro:</strong> {{data.order.delivery_address.neighborhood}}</p>
-          <p><strong>Cidade:</strong> {{data.order.delivery_address.city}}/{{data.order.delivery_address.state}}</p>
-          <p><strong>CEP:</strong> {{data.order.delivery_address.zipcode}}</p>
-          <p *ngIf="data.order.delivery_address.name"><strong>Nome do Endereço:</strong> {{data.order.delivery_address.name}}</p>
-          <p *ngIf="data.order.delivery_address.notes"><strong>Observações:</strong> {{data.order.delivery_address.notes}}</p>
-          <p *ngIf="data.order.delivery_notes"><strong>Observações do Pedido:</strong> {{data.order.delivery_notes}}</p>
+          <p>
+            {{data.order.delivery_address.street}}, {{data.order.delivery_address.number}}<br>
+            {{data.order.delivery_address.neighborhood}} - {{data.order.delivery_address.city}}/{{data.order.delivery_address.state}}<br>
+            <span *ngIf="data.order.delivery_address.complement">Obs: {{data.order.delivery_address.complement}}<br></span>
+            <span *ngIf="data.order.delivery_notes">Obs do Pedido: {{data.order.delivery_notes}}</span>
+          </p>
         </div>
       </div>
 
       <div class="section" *ngIf="!data.order.delivery_address">
-        <h3>Endereço de Entrega</h3>
-        <p class="no-address">Nenhum endereço de entrega informado</p>
+        <h3>Tipo de Entrega</h3>
+        <p class="no-address">Retirada no Local (Balcão)</p>
       </div>
 
       <mat-divider></mat-divider>

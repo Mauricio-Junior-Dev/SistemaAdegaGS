@@ -461,7 +461,14 @@ export class PedidosComponent implements OnInit, OnDestroy {
     switch (order.status) {
       case 'pending':
         if (paymentMethod === 'pix') {
-          return 'Aguardando PIX'; // PIX ainda não pago
+          // Diferenciar entre pedidos do Caixa (local) e Ecommerce (online)
+          if (order.type === 'local') {
+            return 'Cobrar PIX na Entrega'; // Pedido do Caixa com PIX pendente
+          } else if (order.type === 'online') {
+            return 'Aguardando Pagto Online'; // Pedido do Ecommerce com PIX pendente
+          }
+          // Fallback para compatibilidade (se type não vier)
+          return 'Aguardando PIX';
         }
         return 'Pendente (Preparar)'; // Dinheiro ou Cartão na Entrega
 

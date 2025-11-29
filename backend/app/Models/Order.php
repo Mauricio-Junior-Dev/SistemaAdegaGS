@@ -13,6 +13,7 @@ class Order extends Model
         'user_id',
         'order_number',
         'status',
+        'type',
         'total',
         'delivery_address_id',
         'delivery_notes',

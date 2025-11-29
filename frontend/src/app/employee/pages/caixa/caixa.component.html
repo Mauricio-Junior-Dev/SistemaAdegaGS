@@ -383,10 +383,10 @@
               </div>
             </div>
 
-            <!-- Seção de Troco (apenas para pagamento em dinheiro e não entrega) -->
-            <div *ngIf="showChangeSection && !isPayOnDelivery" class="change-section">
+            <!-- Seção de Troco (para pagamento em dinheiro - balcão ou entrega) -->
+            <div *ngIf="selectedPaymentMethod === 'dinheiro'" class="change-section">
               <mat-form-field appearance="outline" class="full-width">
-                <mat-label>Valor Recebido</mat-label>
+                <mat-label>{{isPayOnDelivery ? 'Valor que o cliente vai pagar' : 'Valor Recebido'}}</mat-label>
                 <input matInput 
                        type="number" 
                        [(ngModel)]="receivedAmount" 
@@ -398,7 +398,7 @@
               </mat-form-field>
               
               <div *ngIf="changeAmount > 0" class="change-display">
-                <div class="change-label">Troco</div>
+                <div class="change-label">{{isPayOnDelivery ? 'Troco para levar' : 'Troco'}}</div>
                 <div class="change-value">{{formatCurrency(changeAmount)}}</div>
               </div>
               
@@ -406,67 +406,57 @@
                 <mat-icon color="warn">warning</mat-icon>
                 <span>Valor insuficiente</span>
               </div>
-              
-              <!-- Botões de ação para pagamento em dinheiro -->
-              <div class="cash-payment-actions">
-                <button mat-raised-button 
-                        color="accent"
-                        [disabled]="receivedAmount < total"
-                        (click)="finalizeSale('dinheiro')">
-                  <mat-icon>check</mat-icon>
-                  {{isPayOnDelivery ? 'Gerar Pedido de Entrega' : 'Finalizar Venda'}}
-                </button>
-                <button mat-stroked-button 
-                        color="warn"
-                        (click)="showChangeSection = false; receivedAmount = 0; changeAmount = 0">
-                  <mat-icon>cancel</mat-icon>
-                  Cancelar
-                </button>
-              </div>
             </div>
 
-            <!-- Formas de Pagamento -->
+            <!-- Formas de Pagamento (sempre visíveis) -->
             <div class="payment-methods">
               <button mat-raised-button 
                       color="primary"
                       class="payment-button"
-                      [disabled]="!cartItems.length || isPayOnDelivery"
-                      (click)="handleCashPayment()">
+                      [class.selected]="selectedPaymentMethod === 'dinheiro'"
+                      [disabled]="!cartItems.length"
+                      (click)="selectPaymentMethod('dinheiro')">
                 <mat-icon>payments</mat-icon>
                 Dinheiro
               </button>
               <button mat-raised-button 
                       color="primary"
                       class="payment-button"
-                      [disabled]="!cartItems.length || isPayOnDelivery"
-                      (click)="finalizeSale('cartão de débito')">
+                      [class.selected]="selectedPaymentMethod === 'cartão de débito'"
+                      [disabled]="!cartItems.length"
+                      (click)="selectPaymentMethod('cartão de débito')">
                 <mat-icon>credit_card</mat-icon>
                 Débito
               </button>
               <button mat-raised-button 
                       color="primary"
                       class="payment-button"
-                      [disabled]="!cartItems.length || isPayOnDelivery"
-                      (click)="finalizeSale('cartão de crédito')">
+                      [class.selected]="selectedPaymentMethod === 'cartão de crédito'"
+                      [disabled]="!cartItems.length"
+                      (click)="selectPaymentMethod('cartão de crédito')">
                 <mat-icon>credit_card</mat-icon>
                 Crédito
               </button>
               <button mat-raised-button 
                       color="primary"
                       class="payment-button"
-                      [disabled]="!cartItems.length || isPayOnDelivery"
-                      (click)="finalizeSale('pix')">
+                      [class.selected]="selectedPaymentMethod === 'pix'"
+                      [disabled]="!cartItems.length"
+                      (click)="selectPaymentMethod('pix')">
                 <mat-icon>qr_code</mat-icon>
                 PIX
               </button>
+            </div>
+
+            <!-- Botão Finalizar -->
+            <div class="finalize-section">
               <button mat-raised-button 
                       color="accent"
-                      class="payment-button"
-                      [disabled]="!cartItems.length"
-                      *ngIf="isPayOnDelivery"
-                      (click)="finalizeSale('dinheiro')">
-                <mat-icon>local_shipping</mat-icon>
-                Gerar Pedido de Entrega
+                      class="finalize-button"
+                      [disabled]="!cartItems.length || !selectedPaymentMethod || (selectedPaymentMethod === 'dinheiro' && receivedAmount < total)"
+                      (click)="confirmAndFinalizeSale()">
+                <mat-icon>{{isPayOnDelivery ? 'local_shipping' : 'check_circle'}}</mat-icon>
+                {{isPayOnDelivery ? 'Gerar Pedido de Entrega' : 'Finalizar Venda'}}
               </button>
             </div>
 

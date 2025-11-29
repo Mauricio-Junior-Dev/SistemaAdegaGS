@@ -108,6 +108,9 @@ export class CaixaComponent implements OnInit, OnDestroy {
   // Pagamento na Entrega
   isPayOnDelivery = false;
   
+  // Método de Pagamento Selecionado
+  selectedPaymentMethod: PaymentMethod | null = null;
+  
   // Endereços e Frete
   customerAddresses: CustomerAddress[] = [];
   selectedAddressId: number | null = null;
@@ -654,7 +657,7 @@ export class CaixaComponent implements OnInit, OnDestroy {
     this.showCustomerSearch = false;
     this.receivedAmount = 0;
     this.changeAmount = 0;
-    this.showChangeSection = false;
+    this.selectedPaymentMethod = null;
   }
 
   onReceivedAmountChange(): void {
@@ -665,15 +668,101 @@ export class CaixaComponent implements OnInit, OnDestroy {
     }
   }
 
-  handleCashPayment(): void {
+  selectPaymentMethod(method: PaymentMethod): void {
     if (!this.cartItems.length) {
       this.snackBar.open('Adicione produtos ao carrinho', 'Fechar', { duration: 3000 });
       return;
     }
-    this.showChangeSection = true;
+    this.selectedPaymentMethod = method;
+    
+    // Se for dinheiro, limpar valores anteriores
+    if (method === 'dinheiro') {
+      this.receivedAmount = 0;
+      this.changeAmount = 0;
+    }
   }
 
-  finalizeSale(paymentMethod: PaymentMethod): void {
+  confirmAndFinalizeSale(): void {
+    if (!this.selectedPaymentMethod) {
+      this.snackBar.open('Selecione um método de pagamento', 'Fechar', { duration: 3000 });
+      return;
+    }
+
+    // Validação adicional para dinheiro
+    if (this.selectedPaymentMethod === 'dinheiro' && this.receivedAmount < this.total) {
+      this.snackBar.open('Valor recebido insuficiente', 'Fechar', { duration: 3000 });
+      return;
+    }
+
+    // Se for entrega, mostrar diálogo com 3 opções
+    if (this.isPayOnDelivery) {
+      const paymentMethodName = this.getPaymentMethodName(this.selectedPaymentMethod);
+      const dialogRef = this.dialog.open(PrintConfirmationDialogComponent, {
+        width: '500px',
+        data: {
+          orderNumber: null,
+          total: this.total,
+          paymentMethod: this.selectedPaymentMethod,
+          customerName: this.selectedCustomer?.name || this.customerName,
+          changeAmount: this.selectedPaymentMethod === 'dinheiro' ? this.changeAmount : undefined,
+          receivedAmount: this.selectedPaymentMethod === 'dinheiro' ? this.receivedAmount : undefined,
+          isDeliveryConfirmation: true,
+          deliveryFee: this.deliveryFee,
+          confirmMessage: `Pedido de ENTREGA - Total: ${this.formatCurrency(this.total)}\n\nMétodo de pagamento: ${paymentMethodName}`
+        },
+        disableClose: true
+      });
+
+      dialogRef.afterClosed().subscribe((result: 'pay_on_delivery' | 'already_paid' | false) => {
+        if (result === 'pay_on_delivery') {
+          this.finalizeSale(this.selectedPaymentMethod!, 'pending');
+        } else if (result === 'already_paid') {
+          this.finalizeSale(this.selectedPaymentMethod!, 'completed');
+        }
+      });
+    } else {
+      // Balcão: confirmação simples
+      const paymentMethodName = this.getPaymentMethodName(this.selectedPaymentMethod);
+      let confirmMessage = `Confirmar recebimento de ${this.formatCurrency(this.total)} no ${paymentMethodName} agora?`;
+      
+      if (this.selectedPaymentMethod === 'dinheiro' && this.changeAmount > 0) {
+        confirmMessage += `\n\nTroco: ${this.formatCurrency(this.changeAmount)}`;
+      }
+
+      const dialogRef = this.dialog.open(PrintConfirmationDialogComponent, {
+        width: '450px',
+        data: {
+          orderNumber: null,
+          total: this.total,
+          paymentMethod: this.selectedPaymentMethod,
+          customerName: this.selectedCustomer?.name || this.customerName,
+          changeAmount: this.selectedPaymentMethod === 'dinheiro' ? this.changeAmount : undefined,
+          receivedAmount: this.selectedPaymentMethod === 'dinheiro' ? this.receivedAmount : undefined,
+          isConfirmation: true,
+          confirmMessage: confirmMessage
+        },
+        disableClose: true
+      });
+
+      dialogRef.afterClosed().subscribe((confirmed: boolean) => {
+        if (confirmed) {
+          this.finalizeSale(this.selectedPaymentMethod!, 'completed');
+        }
+      });
+    }
+  }
+
+  getPaymentMethodName(method: PaymentMethod): string {
+    const names: Record<PaymentMethod, string> = {
+      'dinheiro': 'Dinheiro',
+      'cartão de débito': 'Cartão de Débito',
+      'cartão de crédito': 'Cartão de Crédito',
+      'pix': 'PIX'
+    };
+    return names[method] || method;
+  }
+
+  finalizeSale(paymentMethod: PaymentMethod, paymentStatus: 'pending' | 'completed' = 'completed'): void {
     // Bloquear se método estiver desabilitado nas configurações
     if (this.settings && Array.isArray(this.settings.accepted_payment_methods)) {
       const map: Record<string, string> = {
@@ -711,8 +800,7 @@ export class CaixaComponent implements OnInit, OnDestroy {
       }
     }
 
-    // Preparar dados de entrega se for pagamento na entrega
-    let deliveryData: any = undefined;
+    // Validar entrega antes de continuar
     if (this.isPayOnDelivery) {
       if (!this.selectedCustomer) {
         this.snackBar.open('Para pedidos de entrega, é necessário selecionar um cliente cadastrado.', 'Fechar', { duration: 5000 });
@@ -723,16 +811,18 @@ export class CaixaComponent implements OnInit, OnDestroy {
         this.snackBar.open('Selecione um endereço de entrega para continuar.', 'Fechar', { duration: 5000 });
         return;
       }
-      
-      deliveryData = {
-        address_id: this.selectedAddressId
-      };
+
+      // Validar que o frete foi calculado (pode ser 0 se for frete grátis)
+      if (this.deliveryFee === null || this.deliveryFee === undefined) {
+        this.snackBar.open('Aguarde o cálculo do frete antes de finalizar.', 'Fechar', { duration: 3000 });
+        return;
+      }
     }
 
-    // Se for pagamento em dinheiro, verificar se tem troco
+    // Se for pagamento em dinheiro, calcular troco
     const isCashPayment = paymentMethod.toLowerCase() === 'dinheiro';
     
-    if (isCashPayment && !this.isPayOnDelivery) {
+    if (isCashPayment) {
       if (this.receivedAmount < this.total) {
         this.snackBar.open('Valor recebido insuficiente', 'Fechar', { duration: 3000 });
         return;
@@ -749,17 +839,18 @@ export class CaixaComponent implements OnInit, OnDestroy {
         price: item.product?.price || item.combo?.price || 0
       })),
       total: this.total - this.deliveryFee, // Subtotal sem frete (o backend recalcula)
-      delivery_fee: this.deliveryFee,
+      delivery_fee: this.isPayOnDelivery ? (this.deliveryFee || 0) : 0,
       payment_method: paymentMethod,
       customer_name: this.customerName || undefined,
       customer_phone: this.customerPhone || undefined,
       customer_email: this.customerEmail || undefined,
       customer_document: this.customerDocument || undefined,
-      received_amount: isCashPayment && !this.isPayOnDelivery ? this.receivedAmount : undefined,
-      change_amount: isCashPayment && !this.isPayOnDelivery ? this.changeAmount : undefined,
+      received_amount: isCashPayment ? this.receivedAmount : undefined,
+      change_amount: isCashPayment ? this.changeAmount : undefined,
       status: this.isPayOnDelivery ? 'pending' : 'completed',
-      payment_status: this.isPayOnDelivery ? 'pending' : 'completed',
-      delivery: deliveryData
+      payment_status: paymentStatus, // Usar o status passado como parâmetro
+      // Enviar delivery_address_id na raiz quando for entrega
+      delivery_address_id: this.isPayOnDelivery && this.selectedAddressId ? this.selectedAddressId : undefined
     };
 
     this.orderService.createOrder(order)
