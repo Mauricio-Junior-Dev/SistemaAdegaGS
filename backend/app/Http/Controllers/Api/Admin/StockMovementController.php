@@ -153,4 +153,38 @@ class StockMovementController extends Controller
             'total' => $exportData->count()
         ]);
     }
+
+    public function stats(Request $request): JsonResponse
+    {
+        // Filtrar apenas movimentações do mês atual
+        $startOfMonth = now()->startOfMonth();
+        $endOfMonth = now()->endOfMonth();
+
+        // Aplicar filtros de data se fornecidos
+        if ($request->has('date_from') && $request->date_from) {
+            $startOfMonth = \Carbon\Carbon::parse($request->date_from)->startOfDay();
+        }
+        if ($request->has('date_to') && $request->date_to) {
+            $endOfMonth = \Carbon\Carbon::parse($request->date_to)->endOfDay();
+        }
+
+        // Total de entradas (quantidade)
+        $totalIn = StockMovement::where('type', 'entrada')
+            ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
+            ->sum('quantity');
+
+        // Total de saídas (quantidade)
+        $totalOut = StockMovement::where('type', 'saida')
+            ->whereBetween('created_at', [$startOfMonth, $endOfMonth])
+            ->sum('quantity');
+
+        // Balanço (entradas - saídas)
+        $balance = $totalIn - $totalOut;
+
+        return response()->json([
+            'total_in' => (int) $totalIn,
+            'total_out' => (int) $totalOut,
+            'balance' => (int) $balance
+        ]);
+    }
 }

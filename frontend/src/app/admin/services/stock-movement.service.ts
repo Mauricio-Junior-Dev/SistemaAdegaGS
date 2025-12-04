@@ -108,4 +108,17 @@ export class StockMovementService {
 
     return this.http.get(`${this.apiUrl}/export`, { params });
   }
+
+  getMovementStats(filters: { date_from?: string; date_to?: string } = {}): Observable<{ total_in: number; total_out: number; balance: number }> {
+    let params = new HttpParams();
+    
+    if (filters.date_from) {
+      params = params.set('date_from', filters.date_from);
+    }
+    if (filters.date_to) {
+      params = params.set('date_to', filters.date_to);
+    }
+
+    return this.http.get<{ total_in: number; total_out: number; balance: number }>(`${this.apiUrl}/stats`, { params });
+  }
 }

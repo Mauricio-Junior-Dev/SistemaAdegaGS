@@ -283,6 +283,10 @@ export class CartService {
     return this.cartState.value?.total || 0;
   }
 
+  getCartState(): CartState {
+    return this.cartState.value || this.initialState;
+  }
+
   async finishOrder(orderData: any): Promise<any> {
     try {
       // Verificar se está autenticado

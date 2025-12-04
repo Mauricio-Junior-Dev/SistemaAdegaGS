@@ -66,7 +66,8 @@ export interface Banner {
     .banner-carousel {
       position: relative;
       width: 100%;
-      height: 400px;
+      height: auto;
+      min-height: 0;
       overflow: hidden;
       border-radius: 12px;
       box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
@@ -75,40 +76,53 @@ export interface Banner {
     .carousel-container {
       position: relative;
       width: 100%;
-      height: 100%;
+      height: auto;
+      min-height: 0;
     }
 
     .carousel-track {
       display: flex;
       width: 100%;
-      height: 100%;
+      height: auto;
+      min-height: 0;
       transition: transform 0.5s ease-in-out;
     }
 
     .carousel-slide {
       min-width: 100%;
-      height: 100%;
       position: relative;
+      height: auto;
+      min-height: 0;
     }
 
     .banner-content {
       position: relative;
       width: 100%;
-      height: 100%;
+      height: auto;
+      min-height: 0;
+      display: block;
+    }
+
+    .banner-content picture {
+      display: block;
+      width: 100%;
+      height: auto;
+      min-height: 0;
     }
 
     .banner-content img,
     .banner-img {
       width: 100%;
-      height: 100%;
-      object-fit: cover;
+      height: auto;
+      object-fit: contain;
       display: block;
     }
 
     .banner-link-wrapper {
       display: block;
       width: 100%;
-      height: 100%;
+      height: auto;
+      min-height: 0;
       text-decoration: none;
       transition: transform 0.3s ease;
     }
@@ -119,8 +133,8 @@ export interface Banner {
 
     .banner-link-wrapper img {
       width: 100%;
-      height: 100%;
-      object-fit: cover;
+      height: auto;
+      object-fit: contain;
     }
 
     .carousel-arrow {
@@ -182,10 +196,10 @@ export interface Banner {
     /* Mobile Responsive */
     @media (max-width: 768px) {
       .banner-carousel {
-        height: 250px;
+        height: auto;
+        min-height: 0;
         border-radius: 8px;
       }
-
 
       .carousel-arrow {
         width: 40px;
@@ -212,9 +226,9 @@ export interface Banner {
 
     @media (max-width: 480px) {
       .banner-carousel {
-        height: 200px;
+        height: auto;
+        min-height: 0;
       }
-
     }
   `]
 })

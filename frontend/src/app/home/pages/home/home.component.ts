@@ -149,7 +149,9 @@ export class HomeComponent implements OnInit {
         return;
       }
     }
-    this.cartService.addItem(product);
+    // Para produtos normais, o product-card já adiciona diretamente
+    // Este método só é chamado para combos ou casos especiais
+    // Não adicionar novamente para evitar duplicação
   }
 
   addComboToCart(combo: Combo): void {

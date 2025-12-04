@@ -10,6 +10,7 @@ import { RouterModule } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
 
 import { AdminDashboardService, AdminDashboardSummary, TopProducts, TopCustomers } from '../../services/admin-dashboard.service';
+import { AuthService } from '../../../core/services/auth.service';
 import { ReportService } from '../../services/report.service';
 import { NgChartsModule } from 'ng2-charts';
 import { PIE_CHART_OPTIONS, LINE_CHART_OPTIONS, CHART_COLORS } from './chart-config';
@@ -37,6 +38,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
   summary: AdminDashboardSummary | null = null;
   topProducts: TopProducts[] = [];
   topCustomers: TopCustomers[] = [];
+  
+  // Verificação de tipo de usuário
+  isAdmin = false;
+  isEmployee = false;
 
   // Gráfico de vendas
   salesChartData: any = {
@@ -117,11 +122,22 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   constructor(
     private dashboardService: AdminDashboardService,
-    private reportService: ReportService
+    private reportService: ReportService,
+    private authService: AuthService
   ) {}
 
   ngOnInit(): void {
-    this.loadDashboardData();
+    // Verificar tipo de usuário
+    this.isAdmin = this.authService.isAdmin();
+    this.isEmployee = this.authService.isEmployee() && !this.authService.isAdmin();
+    
+    if (this.isEmployee) {
+      // Para funcionários, carregar apenas dados operacionais (sem vendas e estoque)
+      this.loadEmployeeData();
+    } else {
+      // Para admin, carregar todos os dados
+      this.loadDashboardData();
+    }
   }
 
   ngOnDestroy(): void {
@@ -237,7 +253,45 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   refresh(): void {
     this.loading = true;
-    this.loadDashboardData();
+    if (this.isEmployee) {
+      this.loadEmployeeData();
+    } else {
+      this.loadDashboardData();
+    }
+  }
+
+  loadEmployeeData(): void {
+    // Carregar apenas resumo básico (pedidos) sem dados financeiros
+    this.dashboardService.getSummary()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (data) => {
+          // Criar summary mínimo apenas com pedidos (sem vendas e estoque)
+          this.summary = {
+            ...data,
+            sales: {
+              today: 0,
+              week: 0,
+              month: 0,
+              total_orders: data.orders.pending + data.orders.delivering + data.orders.completed,
+              average_ticket: 0,
+              by_payment_method: []
+            },
+            stock: {
+              total_products: 0,
+              low_stock_count: 0,
+              out_of_stock_count: 0,
+              total_value: 0,
+              categories_count: 0
+            }
+          };
+          this.loading = false;
+        },
+        error: (error) => {
+          console.error('Erro ao carregar dados do dashboard:', error);
+          this.loading = false;
+        }
+      });
   }
 
   // Método para forçar atualização dos gráficos

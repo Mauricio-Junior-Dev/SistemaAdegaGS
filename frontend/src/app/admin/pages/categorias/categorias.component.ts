@@ -66,7 +66,6 @@ export class CategoriasComponent implements OnInit, OnDestroy {
   currentPage = 0;
   loading = true;
   searchTerm = '';
-  selectedParent: number | null = null;
   showInactive = false;
   viewMode: 'list' | 'tree' = 'list';
 
@@ -129,7 +128,6 @@ export class CategoriasComponent implements OnInit, OnDestroy {
       page: this.currentPage + 1,
       per_page: this.pageSize,
       search: this.searchTerm || undefined,
-      parent_id: this.selectedParent || undefined,
       is_active: this.showInactive ? undefined : true,
       sort_by: this.sort?.active,
       sort_order: this.sort?.direction || undefined
@@ -176,11 +174,6 @@ export class CategoriasComponent implements OnInit, OnDestroy {
   }
 
   onSortChange(sort: Sort): void {
-    this.loadCategories();
-  }
-
-  onParentChange(): void {
-    this.currentPage = 0;
     this.loadCategories();
   }
 

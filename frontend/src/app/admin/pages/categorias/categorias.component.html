@@ -31,16 +31,6 @@
           <mat-icon matSuffix>search</mat-icon>
         </mat-form-field>
 
-        <mat-form-field appearance="outline" *ngIf="viewMode === 'list'">
-          <mat-label>Categoria Pai</mat-label>
-          <mat-select [(ngModel)]="selectedParent" (selectionChange)="onParentChange()">
-            <mat-option [value]="null">Todas</mat-option>
-            <mat-option *ngFor="let category of categories" [value]="category.id">
-              {{category.name}}
-            </mat-option>
-          </mat-select>
-        </mat-form-field>
-
         <div class="filter-toggles">
           <mat-chip-listbox>
             <mat-chip-option

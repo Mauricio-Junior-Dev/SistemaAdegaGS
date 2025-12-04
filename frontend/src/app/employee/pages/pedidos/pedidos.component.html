@@ -57,7 +57,8 @@
                 </mat-badge>
               </ng-template>
               <div class="tab-content">
-                <table mat-table [dataSource]="pedidosNovos" class="orders-table">
+                <div class="table-container">
+                  <table mat-table [dataSource]="pedidosNovos" class="orders-table">
           <!-- ID -->
           <ng-container matColumnDef="id">
             <th mat-header-cell *matHeaderCellDef>Pedido</th>
@@ -146,7 +147,7 @@
           </ng-container>
 
           <!-- Ações -->
-          <ng-container matColumnDef="actions">
+          <ng-container matColumnDef="actions" stickyEnd>
             <th mat-header-cell *matHeaderCellDef>Ações</th>
             <td mat-cell *matCellDef="let order">
               <div class="actions-container">
@@ -196,7 +197,8 @@
 
                   <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
                   <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
-                </table>
+                  </table>
+                </div>
                 <!-- Empty State -->
                 <div *ngIf="pedidosNovos.length === 0 && !loading" class="empty-state">
                   <mat-icon>receipt_long</mat-icon>
@@ -218,7 +220,8 @@
                 </mat-badge>
               </ng-template>
               <div class="tab-content">
-                <table mat-table [dataSource]="pedidosEmPreparo" class="orders-table">
+                <div class="table-container">
+                  <table mat-table [dataSource]="pedidosEmPreparo" class="orders-table">
                   <!-- Reutilizar as mesmas definições de colunas -->
                   <ng-container matColumnDef="id">
                     <th mat-header-cell *matHeaderCellDef>Pedido</th>
@@ -293,7 +296,7 @@
                       </mat-chip>
                     </td>
                   </ng-container>
-                  <ng-container matColumnDef="actions">
+                  <ng-container matColumnDef="actions" stickyEnd>
                     <th mat-header-cell *matHeaderCellDef>Ações</th>
                     <td mat-cell *matCellDef="let order">
                       <div class="actions-container">
@@ -327,7 +330,8 @@
                   </ng-container>
                   <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
                   <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
-                </table>
+                  </table>
+                </div>
                 <!-- Empty State -->
                 <div *ngIf="pedidosEmPreparo.length === 0 && !loading" class="empty-state">
                   <mat-icon>restaurant</mat-icon>
@@ -349,7 +353,8 @@
                 </mat-badge>
               </ng-template>
               <div class="tab-content">
-                <table mat-table [dataSource]="pedidosEmEntrega" class="orders-table">
+                <div class="table-container">
+                  <table mat-table [dataSource]="pedidosEmEntrega" class="orders-table">
                   <!-- Reutilizar as mesmas definições de colunas -->
                   <ng-container matColumnDef="id">
                     <th mat-header-cell *matHeaderCellDef>Pedido</th>
@@ -424,7 +429,7 @@
                       </mat-chip>
                     </td>
                   </ng-container>
-                  <ng-container matColumnDef="actions">
+                  <ng-container matColumnDef="actions" stickyEnd>
                     <th mat-header-cell *matHeaderCellDef>Ações</th>
                     <td mat-cell *matCellDef="let order">
                       <div class="actions-container">
@@ -458,7 +463,8 @@
                   </ng-container>
                   <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
                   <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
-                </table>
+                  </table>
+                </div>
                 <!-- Empty State -->
                 <div *ngIf="pedidosEmEntrega.length === 0 && !loading" class="empty-state">
                   <mat-icon>local_shipping</mat-icon>
@@ -483,7 +489,8 @@
                 <p>Carregando histórico...</p>
               </div>
               <div *ngIf="!concluidosLoading" class="tab-content">
-                <table *ngIf="pedidosConcluidos.length > 0; else noConcluidos" mat-table [dataSource]="pedidosConcluidos" class="orders-table">
+                <div class="table-container">
+                  <table *ngIf="pedidosConcluidos.length > 0; else noConcluidos" mat-table [dataSource]="pedidosConcluidos" class="orders-table">
                   <!-- Reutilizar as mesmas definições de colunas -->
                   <ng-container matColumnDef="id">
                     <th mat-header-cell *matHeaderCellDef>Pedido</th>
@@ -558,7 +565,7 @@
                       </mat-chip>
                     </td>
                   </ng-container>
-                  <ng-container matColumnDef="actions">
+                  <ng-container matColumnDef="actions" stickyEnd>
                     <th mat-header-cell *matHeaderCellDef>Ações</th>
                     <td mat-cell *matCellDef="let order">
                       <div class="actions-container">
@@ -585,7 +592,8 @@
                   </ng-container>
                   <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
                   <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
-                </table>
+                  </table>
+                </div>
                 <!-- Paginação para Concluídos -->
                 <mat-paginator 
                   *ngIf="!concluidosLoading && totalConcluidos > 0"

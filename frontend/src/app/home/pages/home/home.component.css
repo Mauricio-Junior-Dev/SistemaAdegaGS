@@ -229,10 +229,9 @@
     font-size: 1rem;
   }
 
-
   .products-grid {
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 10px;
   }
 }
 
@@ -305,9 +304,9 @@
 }
 
 .btn-load-more {
-  background-color: var(--primary);
-  color: var(--secondary);
-  border: 2px solid var(--primary);
+  background-color: var(--primary) !important;
+  color: #fff !important;
+  border: 2px solid var(--primary) !important;
   padding: 1rem 3rem;
   border-radius: 8px;
   font-size: 1rem;
@@ -318,8 +317,9 @@
 }
 
 .btn-load-more:hover:not(:disabled) {
-  background-color: var(--primary-dark);
-  border-color: var(--primary-dark);
+  background-color: #e68242 !important;
+  border-color: #e68242 !important;
+  color: #fff !important;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }

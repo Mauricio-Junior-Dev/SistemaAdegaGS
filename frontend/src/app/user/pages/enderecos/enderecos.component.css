@@ -77,14 +77,14 @@
 }
 
 .empty-state button {
-  background: linear-gradient(135deg, #00A868 0%, #00C978 100%);
-  color: white;
-  border: none;
+  background-color: var(--primary) !important;
+  color: #fff !important;
+  border: 1px solid var(--primary) !important;
   border-radius: 12px;
   padding: 1rem 2rem;
   font-size: 1rem;
   font-weight: 600;
-  box-shadow: 0 4px 15px rgba(0, 168, 104, 0.3);
+  box-shadow: 0 4px 15px rgba(255, 145, 73, 0.3);
   transition: all 0.3s ease;
   display: inline-flex;
   align-items: center;
@@ -93,9 +93,11 @@
 }
 
 .empty-state button:hover {
+  background-color: #e68242 !important;
+  border-color: #e68242 !important;
+  color: #fff !important;
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0, 168, 104, 0.4);
-  background: linear-gradient(135deg, #00C978 0%, #00A868 100%);
+  box-shadow: 0 6px 20px rgba(255, 145, 73, 0.4);
 }
 
 .empty-state button mat-icon {
@@ -114,12 +116,22 @@
   border-radius: 12px;
   font-size: 16px;
   min-height: 48px;
+  background-color: var(--primary) !important;
+  color: #fff !important;
+  border: 1px solid var(--primary) !important;
+}
+
+.add-address-btn:hover {
+  background-color: #e68242 !important;
+  border-color: #e68242 !important;
+  color: #fff !important;
 }
 
 .add-address-btn mat-icon {
   font-size: 20px;
   width: 20px;
   height: 20px;
+  color: #fff !important;
 }
 
 /* Grid de Endereços */

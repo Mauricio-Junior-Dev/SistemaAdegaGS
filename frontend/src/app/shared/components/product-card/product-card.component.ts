@@ -3,7 +3,9 @@ import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
+import { ToastrService } from 'ngx-toastr';
 import { Product } from '../../../core/models/product.model';
+import { CartService } from '../../../core/services/cart.service';
 import { environment } from '../../../../environments/environment';
 
 @Component({
@@ -17,10 +19,55 @@ export class ProductCardComponent {
   @Input() product!: Product;
   @Output() addToCart = new EventEmitter<Product>();
 
+  constructor(
+    private cartService: CartService,
+    private toastr: ToastrService
+  ) {}
+
   onAddToCart(event: Event): void {
     event.preventDefault();
     event.stopPropagation();
+    
+    // Verificar se é um combo adaptado (category_id === 0 e não tem doses_por_garrafa)
+    // Se for combo, apenas emitir evento para o componente pai tratar
+    const isCombo = this.product.category_id === 0 && 
+                    (this.product as any).doses_por_garrafa === 0 && 
+                    this.product.current_stock === 999;
+    
+    if (isCombo) {
+      // Para combos, apenas emitir evento - o componente pai vai tratar
+      this.addToCart.emit(this.product);
+      return;
+    }
+    
+    // Para produtos normais, adicionar diretamente ao carrinho
+    const currentQuantity = this.getCurrentQuantity();
+    this.cartService.addItem(this.product, 1);
+    
+    // Mostrar notificação apenas quando a quantidade for de 0 para 1 (primeira adição)
+    if (currentQuantity === 0) {
+      const productName = this.product.name;
+      const isFeminine = productName.toLowerCase().endsWith('a') || 
+                         productName.toLowerCase().endsWith('ão') ||
+                         productName.toLowerCase().endsWith('ade');
+      const message = isFeminine ? `${productName} adicionada!` : `${productName} adicionado!`;
+      
+      this.toastr.success(message, '', {
+        timeOut: 1500,
+        positionClass: 'toast-bottom-center',
+        progressBar: false
+      });
+    }
+    
+    // Emitir evento para compatibilidade (componente pai pode fazer algo adicional se necessário)
     this.addToCart.emit(this.product);
+  }
+
+  private getCurrentQuantity(): number {
+    const cartState = this.cartService.getCartState();
+    const items = cartState?.items || [];
+    const existingItem = items.find(item => item.id === this.product.id);
+    return existingItem ? existingItem.quantity : 0;
   }
 
   getImageUrl(product: Product): string {

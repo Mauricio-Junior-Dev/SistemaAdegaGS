@@ -18,6 +18,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { Subject, takeUntil } from 'rxjs';
 
 import { StockService, StockSummary, StockResponse } from '../../../core/services/stock.service';
+import { AuthService } from '../../../core/services/auth.service';
 import { Product } from '../../services/order.service';
 import { StockMovementDialogComponent } from '../../components/stock-movement-dialog/stock-movement-dialog.component';
 
@@ -61,16 +62,33 @@ export class EstoqueComponent implements OnInit, OnDestroy {
   pageSize = 15;
   currentPage = 0;
 
+  // Verificação de tipo de usuário
+  isEmployee = false;
+
   private destroy$ = new Subject<void>();
 
   constructor(
     private stockService: StockService,
+    private authService: AuthService,
     private dialog: MatDialog,
     private snackBar: MatSnackBar
   ) {}
 
   ngOnInit(): void {
-    this.loadSummary();
+    // Verificar se é funcionário (não admin)
+    this.isEmployee = this.authService.isEmployee() && !this.authService.isAdmin();
+    
+    // Se for funcionário, ajustar colunas e filtros
+    if (this.isEmployee) {
+      this.displayedColumns = ['name', 'status_badge'];
+      // Forçar filtro para mostrar apenas estoque baixo ou zerado
+      this.stockFilter = 'low';
+      this.showLowStock = true;
+    }
+    
+    if (!this.isEmployee) {
+      this.loadSummary();
+    }
     this.loadCategories();
     this.loadProducts();
   }
@@ -126,8 +144,11 @@ export class EstoqueComponent implements OnInit, OnDestroy {
       stock_filter: this.stockFilter
     };
 
-    // Só adicionar low_stock se for true
-    if (this.showLowStock) {
+    // Se for funcionário, forçar filtro de estoque baixo/zerado
+    if (this.isEmployee) {
+      params.stock_filter = 'low';
+      params.low_stock = true;
+    } else if (this.showLowStock) {
       params.low_stock = true;
     }
 
@@ -173,6 +194,11 @@ export class EstoqueComponent implements OnInit, OnDestroy {
   }
 
   onStockFilterChange(): void {
+    // Se for funcionário, não permitir mudar o filtro
+    if (this.isEmployee) {
+      this.stockFilter = 'low';
+      return;
+    }
     this.currentPage = 0;
     this.loadProducts();
   }
@@ -219,6 +245,19 @@ export class EstoqueComponent implements OnInit, OnDestroy {
     if (quantity === 0) return '#f44336'; // Vermelho
     if (quantity <= minQuantity) return '#ff9800'; // Laranja
     return '#4caf50'; // Verde
+  }
+
+  getStockStatus(product: Product): { label: string; color: string } {
+    const stock = product.current_stock || 0;
+    const minStock = product.min_stock || 0;
+    
+    if (stock <= 0) {
+      return { label: 'ESGOTADO', color: 'warn' };
+    } else if (stock <= minStock) {
+      return { label: 'BAIXO', color: 'accent' };
+    }
+    // Se chegou aqui, não deveria aparecer para funcionário, mas retorna BAIXO por segurança
+    return { label: 'BAIXO', color: 'accent' };
   }
 
   viewProductHistory(product: Product): void {

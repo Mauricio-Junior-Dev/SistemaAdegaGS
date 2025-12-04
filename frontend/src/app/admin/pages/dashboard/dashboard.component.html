@@ -15,6 +15,9 @@
       </button>
     </div>
 
+    <!-- Dashboard Admin - Completo -->
+    <div *ngIf="isAdmin">
+
     <!-- Cards de Resumo -->
     <div class="summary-cards">
       <!-- Vendas -->
@@ -244,6 +247,61 @@
             <tr mat-header-row *matHeaderRowDef="['name', 'orders', 'spent']"></tr>
             <tr mat-row *matRowDef="let row; columns: ['name', 'orders', 'spent'];"></tr>
           </table>
+        </mat-card-content>
+      </mat-card>
+    </div>
+    </div>
+
+    <!-- Dashboard Funcionário - Redesign Moderno -->
+    <div *ngIf="isEmployee" class="employee-dashboard-grid">
+      <!-- Card 1: Status do Caixa -->
+      <mat-card class="dash-card cash-status-card">
+        <mat-card-content>
+          <div class="dash-card-content">
+            <mat-icon class="dash-icon cash-icon-open">store</mat-icon>
+            <h2 class="dash-title">CAIXA ABERTO</h2>
+            <button mat-stroked-button [routerLink]="['/funcionario/caixa']" class="dash-button">
+              Gerenciar Caixa
+            </button>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Card 2: Ação Rápida -->
+      <mat-card class="dash-card action-card">
+        <mat-card-content>
+          <div class="dash-card-content">
+            <mat-icon class="dash-icon-large">shopping_cart</mat-icon>
+            <button mat-raised-button color="primary" [routerLink]="['/funcionario/caixa']" class="dash-button-large">
+              <mat-icon>shopping_cart</mat-icon>
+              Ir para o Caixa
+            </button>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Card 3: Resumo de Pedidos -->
+      <mat-card class="dash-card orders-card">
+        <mat-card-content>
+          <div class="dash-card-content">
+            <div class="orders-badges">
+              <div class="order-badge badge-new">
+                <span class="badge-number">{{summary.orders.pending}}</span>
+                <span class="badge-label">Novos</span>
+              </div>
+              <div class="order-badge badge-preparing">
+                <span class="badge-number">0</span>
+                <span class="badge-label">Preparo</span>
+              </div>
+              <div class="order-badge badge-delivery">
+                <span class="badge-number">{{summary.orders.delivering || 0}}</span>
+                <span class="badge-label">Entrega</span>
+              </div>
+            </div>
+            <button mat-stroked-button [routerLink]="['/funcionario/pedidos']" class="dash-button">
+              Ver Todos
+            </button>
+          </div>
         </mat-card-content>
       </mat-card>
     </div>

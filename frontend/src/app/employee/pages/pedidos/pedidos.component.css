@@ -178,8 +178,19 @@
   overflow: hidden;
 }
 
+/* Container de rolagem para tabelas */
+.table-container {
+  width: 100%;
+  overflow-x: auto; /* Permite rolar para o lado */
+  position: relative;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
 .orders-table {
   width: 100%;
+  min-width: 1000px; /* Força uma largura mínima para evitar que as colunas se esmaguem */
 }
 
 .customer-info {
@@ -268,6 +279,18 @@
   overflow: hidden;
 }
 
+/* Garante fundo sólido para a coluna sticky 'actions' */
+.mat-column-actions {
+  background-color: #ffffff; /* Fundo branco sólido */
+  box-shadow: -2px 0 5px rgba(0,0,0,0.05); /* Sombra para destacar a borda */
+  z-index: 10 !important; /* Garante que fique por cima */
+}
+
+/* Ajuste para o cabeçalho (que pode ter cor diferente) */
+th.mat-column-actions {
+  background-color: #f5f5f5; /* Cor do cabeçalho da tabela */
+}
+
 .mat-mdc-row:hover {
   transition: background-color 0.2s ease;
 }
@@ -296,6 +319,12 @@
 @media (max-width: 768px) {
   .pedidos-container {
     padding: 10px;
+  }
+
+  /* Desabilita sticky no mobile */
+  .mat-column-actions {
+    position: static !important;
+    box-shadow: none !important;
   }
 
   /* 1. Esconde o cabeçalho da tabela */

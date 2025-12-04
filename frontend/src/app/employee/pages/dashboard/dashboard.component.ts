@@ -9,7 +9,11 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { Subject, takeUntil, interval } from 'rxjs';
 
 import { DashboardService } from '../../services/dashboard.service';
+import { AuthService } from '../../../core/services/auth.service';
+import { CashService } from '../../services/cash.service';
+import { OrderService } from '../../services/order.service';
 import { DashboardSummary } from '../../models/dashboard.model';
+import { CashStatus } from '../../models/cash.model';
 
 @Component({
   selector: 'app-dashboard',
@@ -28,19 +32,42 @@ import { DashboardSummary } from '../../models/dashboard.model';
 })
 export class DashboardComponent implements OnInit, OnDestroy {
   summary: DashboardSummary | null = null;
+  cashStatus: CashStatus | null = null;
   loading = true;
   error = false;
+  isEmployee = false;
+  isAdmin = false;
   private destroy$ = new Subject<void>();
 
-  constructor(private dashboardService: DashboardService) {}
+  constructor(
+    private dashboardService: DashboardService,
+    private authService: AuthService,
+    private cashService: CashService,
+    private orderService: OrderService
+  ) {}
 
   ngOnInit() {
-    this.loadSummary(true); // Primeira carga mostra loading
+    // Verificar tipo de usuário
+    this.isEmployee = this.authService.isEmployee() && !this.authService.isAdmin();
+    this.isAdmin = this.authService.isAdmin();
+    
+    if (this.isEmployee) {
+      // Para funcionários, carregar apenas dados operacionais
+      this.loadEmployeeData(true);
+    } else {
+      // Para admin, carregar todos os dados
+      this.loadSummary(true);
+    }
+    
     // Atualizar os dados a cada 15 segundos para manter os números atualizados
     interval(15000)
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => {
-        this.loadSummary(false); // Atualizações subsequentes não mostram loading
+        if (this.isEmployee) {
+          this.loadEmployeeData(false);
+        } else {
+          this.loadSummary(false);
+        }
       });
   }
 
@@ -66,6 +93,68 @@ export class DashboardComponent implements OnInit, OnDestroy {
         },
         error: (error) => {
           console.error('Erro ao carregar dashboard:', error);
+          this.error = true;
+          if (showLoading) {
+            this.loading = false;
+          }
+        }
+      });
+  }
+
+  loadEmployeeData(showLoading = true) {
+    if (showLoading) {
+      this.loading = true;
+    }
+    this.error = false;
+
+    // Carregar apenas status do caixa e pedidos (sem vendas e estoque)
+    this.cashService.getStatus()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (cash) => {
+          this.cashStatus = cash;
+          
+          // Carregar resumo de pedidos
+          this.orderService.getOrdersSummary()
+            .pipe(takeUntil(this.destroy$))
+            .subscribe({
+              next: (orders) => {
+                // Criar summary mínimo apenas com pedidos
+                this.summary = {
+                  sales: {
+                    total_amount: 0,
+                    total_orders: 0
+                  },
+                  orders: {
+                    pending: orders.pending,
+                    delivering: orders.delivering,
+                    completed: orders.completed
+                  },
+                  cash: {
+                    is_open: cash.is_open,
+                    current_amount: cash.current_amount
+                  },
+                  stock: {
+                    total_products: 0,
+                    low_stock_count: 0
+                  }
+                };
+                
+                if (showLoading) {
+                  this.loading = false;
+                }
+              },
+              error: (error) => {
+                console.error('Erro ao carregar pedidos:', error);
+                this.error = true;
+                if (showLoading) {
+                  this.loading = false;
+                }
+              }
+            });
+        },
+        error: (error) => {
+          console.error('Erro ao carregar status do caixa:', error);
           this.error = true;
           if (showLoading) {
             this.loading = false;

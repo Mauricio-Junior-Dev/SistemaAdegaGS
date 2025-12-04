@@ -20,26 +20,38 @@
   gap: 10px;
 }
 
-/* Filtros */
+/* Filtros - Compacto e Alinhado */
 .filters-card {
   margin-bottom: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+}
+
+.filters-card mat-card-content {
+  padding: 16px !important;
 }
 
 .filters-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  align-items: center;
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 12px !important;
+  align-items: center !important;
+  padding: 0 !important;
+}
+
+.filters-container mat-form-field {
+  flex: 0 1 auto;
+  margin: 0 !important;
 }
 
 .search-field {
   flex: 1;
-  min-width: 300px;
+  min-width: 200px;
 }
 
 .filter-toggles {
   display: flex;
-  gap: 10px;
+  gap: 8px;
+  align-items: center;
 }
 
 /* Loading State */

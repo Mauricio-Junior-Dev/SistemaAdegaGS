@@ -19,6 +19,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { Subject, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
 
 import { ProductService, Product, ProductResponse } from '../../services/product.service';
+import { CategoryService, Category } from '../../services/category.service';
 import { environment } from '../../../../environments/environment';
 import { ProductFormDialogComponent } from './dialogs/product-form-dialog.component';
 import { ProductImportDialogComponent } from './dialogs/product-import-dialog.component';
@@ -61,7 +62,7 @@ export class ProdutosComponent implements OnInit, OnDestroy {
   selectedCategory: number | null = null;
   showInactive = false;
   showLowStock = false;
-  categories: any[] = [];
+  categories: Category[] = [];
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
@@ -72,6 +73,7 @@ export class ProdutosComponent implements OnInit, OnDestroy {
 
   constructor(
     private productService: ProductService,
+    private categoryService: CategoryService,
     private dialog: MatDialog,
     private snackBar: MatSnackBar
   ) {
@@ -99,7 +101,22 @@ export class ProdutosComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    this.loadCategories();
     this.loadProducts();
+  }
+
+  loadCategories(): void {
+    this.categoryService.getAllCategories()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (categories) => {
+          this.categories = categories;
+        },
+        error: (error) => {
+          console.error('Erro ao carregar categorias:', error);
+          this.snackBar.open('Erro ao carregar categorias', 'Fechar', { duration: 3000 });
+        }
+      });
   }
 
   ngOnDestroy(): void {

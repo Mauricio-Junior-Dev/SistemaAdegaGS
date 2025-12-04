@@ -17,7 +17,7 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { Subject, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
 
-import { StockMovementService, StockMovement, MovementSummary, MovementFilters } from '../../services/stock-movement.service';
+import { StockMovementService, StockMovement, MovementFilters } from '../../services/stock-movement.service';
 import { ProductService } from '../../services/product.service';
 import { UserService } from '../../services/user.service';
 
@@ -63,9 +63,8 @@ export class MovimentacoesComponent implements OnInit, OnDestroy {
   products: any[] = [];
   users: any[] = [];
   
-  // Resumo
-  summary: MovementSummary | null = null;
-  showSummary = true;
+  // Stats do mês
+  movementStats: { total_in: number; total_out: number; balance: number } | null = null;
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatTable) table!: MatTable<StockMovement>;
@@ -80,8 +79,8 @@ export class MovimentacoesComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
+    this.loadMovementStats();
     this.loadMovements();
-    this.loadSummary();
     this.loadFilterData();
   }
 
@@ -117,20 +116,20 @@ export class MovimentacoesComponent implements OnInit, OnDestroy {
       });
   }
 
-  loadSummary(): void {
+  loadMovementStats(): void {
     const params = {
       date_from: this.dateFrom ? this.dateFrom.toISOString().split('T')[0] : undefined,
       date_to: this.dateTo ? this.dateTo.toISOString().split('T')[0] : undefined
     };
 
-    this.stockMovementService.getSummary(params)
+    this.stockMovementService.getMovementStats(params)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: (summary) => {
-          this.summary = summary;
+        next: (stats) => {
+          this.movementStats = stats;
         },
         error: (error) => {
-          console.error('Erro ao carregar resumo:', error);
+          console.error('Erro ao carregar estatísticas:', error);
         }
       });
   }
@@ -170,7 +169,7 @@ export class MovimentacoesComponent implements OnInit, OnDestroy {
   applyFilters(): void {
     this.currentPage = 0;
     this.loadMovements();
-    this.loadSummary();
+    this.loadMovementStats();
   }
 
   clearFilters(): void {
@@ -179,7 +178,7 @@ export class MovimentacoesComponent implements OnInit, OnDestroy {
     this.dateTo = null;
     this.currentPage = 0;
     this.loadMovements();
-    this.loadSummary();
+    this.loadMovementStats();
   }
 
   exportMovements(): void {

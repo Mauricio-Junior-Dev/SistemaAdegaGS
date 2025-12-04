@@ -23,111 +23,151 @@
   gap: 12px;
 }
 
-/* Resumo */
-.summary-cards {
+/* KPIs - Redesign Vertical Moderno */
+.kpi-cards {
   display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 24px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
   margin-bottom: 24px;
+  width: 100%;
 }
 
-.summary-card {
+.kpi-card {
   background: var(--white);
-  color: var(--text-primary);
-  border-top: 4px solid var(--primary);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
+  border-radius: 12px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  overflow: hidden;
 }
 
-.summary-card:last-child {
-  background: var(--white);
-  border-top-color: var(--primary);
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.08);
 }
 
-.summary-stats {
+.kpi-card mat-card-content {
+  padding: 16px !important;
+  margin: 0 !important;
+}
+
+.kpi-content {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.stat-item {
+.kpi-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 8px 0;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  justify-content: center;
+  flex-shrink: 0;
+  margin-bottom: 4px;
 }
 
-.stat-item:last-child {
-  border-bottom: none;
-}
-
-.stat-label {
-  font-size: 14px;
-  color: var(--text-secondary);
-}
-
-.stat-value {
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.stat-value.primary {
+.kpi-entrada .kpi-icon {
+  background-color: rgba(76, 175, 80, 0.12);
   color: #4caf50;
 }
 
-.stat-value.warn {
-  color: #ff9800;
+.kpi-saida .kpi-icon {
+  background-color: rgba(244, 67, 54, 0.12);
+  color: #f44336;
 }
 
-.user-stats {
+.kpi-balance .kpi-icon {
+  background-color: rgba(95, 178, 251, 0.12);
+  color: #5FB2FB;
+}
+
+.kpi-icon mat-icon {
+  font-size: 24px;
+  width: 24px;
+  height: 24px;
+}
+
+.kpi-info {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px;
 }
 
-.user-stat {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 4px 0;
-}
-
-.user-name {
-  font-size: 14px;
-  font-weight: 500;
-}
-
-.user-count {
+.kpi-label {
   font-size: 12px;
-  opacity: 0.8;
+  color: #666;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0;
 }
 
-/* Filtros */
+.kpi-value {
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1;
+  margin: 0;
+  letter-spacing: -0.5px;
+}
+
+.kpi-entrada .kpi-value {
+  color: #4caf50;
+}
+
+.kpi-saida .kpi-value {
+  color: #f44336;
+}
+
+.kpi-balance .kpi-value {
+  color: #5FB2FB;
+}
+
+.kpi-value.positive {
+  color: #4caf50;
+}
+
+.kpi-value.negative {
+  color: #f44336;
+}
+
+/* Filtros - Compacto e Alinhado */
 .filters-card {
   margin-bottom: 24px;
+  margin-top: 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+}
+
+.filters-card mat-card-content {
+  padding: 16px !important;
 }
 
 .filters-container {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  gap: 12px !important;
+  padding: 0 !important;
 }
 
-.filter-row {
-  display: flex;
-  gap: 16px;
-  align-items: end;
-}
-
-.filter-row > * {
-  flex: 1;
+.filters-container mat-form-field {
+  flex: 0 1 auto;
+  min-width: 160px;
+  margin: 0 !important;
 }
 
 .filter-actions {
   display: flex;
   align-items: center;
   gap: 8px;
+  margin-left: auto;
+}
+
+.filter-actions button {
+  height: 40px;
+  min-width: auto;
+  padding: 0 16px;
 }
 
 /* Tabela */
@@ -197,17 +237,32 @@
     align-items: stretch;
   }
 
-  .summary-cards {
+  .kpi-cards {
     grid-template-columns: 1fr;
+    gap: 12px;
   }
 
-  .filter-row {
+  .kpi-value {
+    font-size: 28px;
+  }
+
+  .filters-container {
     flex-direction: column;
-    gap: 8px;
+    align-items: stretch !important;
   }
 
-  .filter-row > * {
-    flex: none;
+  .filters-container > * {
+    width: 100%;
+  }
+
+  .filters-container mat-form-field {
+    min-width: 100% !important;
+  }
+
+  .filter-actions {
+    margin-left: 0;
+    width: 100%;
+    justify-content: center;
   }
 
   .header-actions {

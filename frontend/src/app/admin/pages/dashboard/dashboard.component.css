@@ -431,3 +431,242 @@ tr.mat-row:hover {
   background: rgba(255, 255, 255, 0.3);
   transform: scale(1.05);
 }
+
+/* ==========================================
+   DASHBOARD FUNCIONÁRIO - REDESIGN MODERNO
+   ========================================== */
+
+.employee-dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  margin-top: 24px;
+}
+
+/* Cards Padronizados */
+.dash-card {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  padding: 24px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border: none;
+}
+
+.dash-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+.dash-card mat-card-content {
+  padding: 0 !important;
+  margin: 0 !important;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dash-card-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  width: 100%;
+  gap: 20px;
+}
+
+/* Ícones */
+.dash-icon {
+  font-size: 48px;
+  width: 48px;
+  height: 48px;
+  margin-bottom: 8px;
+}
+
+.dash-icon-large {
+  font-size: 64px;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 16px;
+  color: var(--primary);
+}
+
+.dash-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: 0.5px;
+}
+
+/* Botões */
+.dash-button {
+  width: 100%;
+  height: 40px;
+  font-size: 14px;
+  font-weight: 500;
+  margin-top: 8px;
+}
+
+.dash-button-large {
+  width: 100%;
+  height: 64px;
+  font-size: 18px;
+  font-weight: 600;
+  margin-top: 8px;
+}
+
+.dash-button-large mat-icon {
+  margin-right: 8px;
+  font-size: 24px;
+  width: 24px;
+  height: 24px;
+}
+
+/* Card 1 - Status do Caixa */
+.cash-status-card {
+  border-left: 6px solid #10b981;
+}
+
+.cash-status-card.cash-closed {
+  border-left-color: #ef4444;
+}
+
+.cash-icon-open {
+  color: #10b981;
+}
+
+.cash-icon-closed {
+  color: #ef4444;
+}
+
+/* Card 2 - Ação Rápida */
+.action-card {
+  border-left: 6px solid var(--primary);
+}
+
+/* Card 3 - Resumo de Pedidos */
+.orders-card {
+  border-left: 6px solid var(--accent);
+}
+
+.orders-badges {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.order-badge {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16px 8px;
+  border-radius: 12px;
+  background: #f5f5f5;
+  min-height: 100px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.order-badge:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.badge-number {
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.badge-label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.badge-new {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: #fff;
+}
+
+.badge-new .badge-number,
+.badge-new .badge-label {
+  color: #fff;
+}
+
+.badge-preparing {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+  color: #fff;
+}
+
+.badge-preparing .badge-number,
+.badge-preparing .badge-label {
+  color: #fff;
+}
+
+.badge-delivery {
+  background: linear-gradient(135deg, #eab308 0%, #ca8a04 100%);
+  color: #fff;
+}
+
+.badge-delivery .badge-number,
+.badge-delivery .badge-label {
+  color: #fff;
+}
+
+/* Responsivo - Dashboard Funcionário */
+@media (max-width: 768px) {
+  .employee-dashboard-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .dash-card {
+    padding: 20px;
+  }
+
+  .dash-icon {
+    font-size: 40px;
+    width: 40px;
+    height: 40px;
+  }
+
+  .dash-icon-large {
+    font-size: 56px;
+    width: 56px;
+    height: 56px;
+  }
+
+  .dash-title {
+    font-size: 18px;
+  }
+
+  .orders-badges {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .order-badge {
+    min-height: 80px;
+    padding: 12px;
+  }
+
+  .badge-number {
+    font-size: 32px;
+  }
+}

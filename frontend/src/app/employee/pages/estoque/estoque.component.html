@@ -9,8 +9,8 @@
 
   <!-- Main Content -->
   <div *ngIf="!loading" class="estoque-content">
-    <!-- Resumo do Estoque -->
-    <div class="summary-cards" *ngIf="summary">
+    <!-- Resumo do Estoque (Apenas para Admin) -->
+    <div class="summary-cards" *ngIf="summary && !isEmployee">
       <mat-card>
         <mat-card-content>
           <div class="summary-item">
@@ -70,7 +70,7 @@
             </mat-select>
           </mat-form-field>
 
-          <mat-form-field appearance="outline">
+          <mat-form-field appearance="outline" *ngIf="!isEmployee">
             <mat-label>Status do Estoque</mat-label>
             <mat-select [(ngModel)]="stockFilter" (selectionChange)="onStockFilterChange()">
               <mat-option value="all">Todos os produtos</mat-option>
@@ -80,12 +80,19 @@
             </mat-select>
           </mat-form-field>
 
-          <div class="filter-buttons">
+          <div class="filter-buttons" *ngIf="!isEmployee">
             <button mat-raised-button [color]="showLowStock ? 'warn' : 'primary'" (click)="toggleLowStock()">
               <mat-icon>warning</mat-icon>
               {{showLowStock ? 'Mostrar Todos' : 'Estoque Baixo'}}
             </button>
             
+            <button mat-raised-button color="accent" (click)="refreshData()">
+              <mat-icon>refresh</mat-icon>
+              Atualizar
+            </button>
+          </div>
+          
+          <div class="filter-buttons" *ngIf="isEmployee">
             <button mat-raised-button color="accent" (click)="refreshData()">
               <mat-icon>refresh</mat-icon>
               Atualizar
@@ -107,14 +114,14 @@
             </td>
           </ng-container>
 
-          <!-- Categoria -->
-          <ng-container matColumnDef="category">
+          <!-- Categoria (Apenas para Admin) -->
+          <ng-container matColumnDef="category" *ngIf="!isEmployee">
             <th mat-header-cell *matHeaderCellDef>Categoria</th>
             <td mat-cell *matCellDef="let product">{{product.category?.name}}</td>
           </ng-container>
 
-          <!-- Estoque -->
-          <ng-container matColumnDef="current_stock">
+          <!-- Estoque (Apenas para Admin) -->
+          <ng-container matColumnDef="current_stock" *ngIf="!isEmployee">
             <th mat-header-cell *matHeaderCellDef>Estoque Atual</th>
             <td mat-cell *matCellDef="let product">
               <span [style.color]="getStockColor(product.current_stock, product.min_stock || 0)">
@@ -123,22 +130,22 @@
             </td>
           </ng-container>
 
-          <!-- Estoque Mínimo -->
-          <ng-container matColumnDef="min_stock">
+          <!-- Estoque Mínimo (Apenas para Admin) -->
+          <ng-container matColumnDef="min_stock" *ngIf="!isEmployee">
             <th mat-header-cell *matHeaderCellDef>Estoque Mín.</th>
             <td mat-cell *matCellDef="let product">
               {{product.min_stock || 0}}
             </td>
           </ng-container>
 
-          <!-- Preço de Venda -->
-          <ng-container matColumnDef="price">
+          <!-- Preço de Venda (Apenas para Admin) -->
+          <ng-container matColumnDef="price" *ngIf="!isEmployee">
             <th mat-header-cell *matHeaderCellDef>Preço Venda</th>
             <td mat-cell *matCellDef="let product">{{formatCurrency(product.price)}}</td>
           </ng-container>
 
-          <!-- Preço de Custo -->
-          <ng-container matColumnDef="cost_price">
+          <!-- Preço de Custo (Apenas para Admin) -->
+          <ng-container matColumnDef="cost_price" *ngIf="!isEmployee">
             <th mat-header-cell *matHeaderCellDef>Preço Custo</th>
             <td mat-cell *matCellDef="let product">
               <span *ngIf="product.cost_price">{{formatCurrency(product.cost_price)}}</span>
@@ -146,8 +153,18 @@
             </td>
           </ng-container>
 
-          <!-- Ações -->
-          <ng-container matColumnDef="actions">
+          <!-- Status Badge (Apenas para Funcionário) -->
+          <ng-container matColumnDef="status_badge" *ngIf="isEmployee">
+            <th mat-header-cell *matHeaderCellDef>Status</th>
+            <td mat-cell *matCellDef="let product">
+              <mat-chip [color]="getStockStatus(product).color" selected>
+                {{getStockStatus(product).label}}
+              </mat-chip>
+            </td>
+          </ng-container>
+
+          <!-- Ações (Apenas para Admin) -->
+          <ng-container matColumnDef="actions" *ngIf="!isEmployee">
             <th mat-header-cell *matHeaderCellDef>Ações</th>
             <td mat-cell *matCellDef="let product">
               <button mat-icon-button 

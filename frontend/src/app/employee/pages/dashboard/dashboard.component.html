@@ -10,11 +10,11 @@
   <div *ngIf="error" class="error-container">
     <mat-icon color="warn">error</mat-icon>
     <p>Erro ao carregar informações</p>
-    <button mat-raised-button color="primary" (click)="loadSummary()">Tentar Novamente</button>
+    <button mat-raised-button color="primary" (click)="isEmployee ? loadEmployeeData(true) : loadSummary(true)">Tentar Novamente</button>
   </div>
 
-  <!-- Dashboard Content -->
-  <div *ngIf="!loading && !error && summary" class="dashboard-content">
+  <!-- Dashboard Content - Admin -->
+  <div *ngIf="!loading && !error && summary && isAdmin" class="dashboard-content">
     <!-- Status do Caixa -->
     <mat-card class="status-card" [ngClass]="{'open': summary.cash.is_open}">
       <mat-card-content>
@@ -105,6 +105,84 @@
         <div class="card-actions">
           <button mat-raised-button color="primary" [routerLink]="['/funcionario/estoque']">
             Gerenciar Estoque
+          </button>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <!-- Dashboard Content - Employee (Simplificado) -->
+  <div *ngIf="!loading && !error && summary && isEmployee" class="dashboard-content employee-dashboard">
+    <!-- Card 1: Status do Caixa (Destaque) -->
+    <mat-card class="status-card highlight-card" [ngClass]="{'open': summary.cash.is_open}">
+      <mat-card-content>
+        <div class="card-header">
+          <mat-icon [class.open-icon]="summary.cash.is_open" [class.closed-icon]="!summary.cash.is_open">
+            {{summary.cash.is_open ? 'point_of_sale' : 'lock'}}
+          </mat-icon>
+          <h2>Status do Caixa</h2>
+        </div>
+        <div class="card-body">
+          <p class="status-large">{{summary.cash.is_open ? 'ABERTO' : 'FECHADO'}}</p>
+        </div>
+        <div class="card-actions">
+          <button mat-raised-button 
+                  [color]="summary.cash.is_open ? 'primary' : 'accent'" 
+                  [routerLink]="['/funcionario/caixa']"
+                  class="action-button-large">
+            <mat-icon>{{summary.cash.is_open ? 'point_of_sale' : 'vpn_key'}}</mat-icon>
+            {{summary.cash.is_open ? 'Gerenciar Caixa' : 'Abrir Caixa'}}
+          </button>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Card 2: Atalho para Caixa -->
+    <mat-card class="summary-card action-card">
+      <mat-card-content>
+        <div class="card-header">
+          <mat-icon>shopping_cart</mat-icon>
+          <h2>Nova Venda</h2>
+        </div>
+        <div class="card-body">
+          <p class="card-description">Inicie uma nova venda no PDV</p>
+        </div>
+        <div class="card-actions">
+          <button mat-raised-button 
+                  color="primary" 
+                  [routerLink]="['/funcionario/caixa']"
+                  class="action-button-large">
+            <mat-icon>add_shopping_cart</mat-icon>
+            Ir para o Caixa
+          </button>
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Card 3: Status dos Pedidos -->
+    <mat-card class="summary-card">
+      <mat-card-content>
+        <div class="card-header">
+          <mat-icon>receipt_long</mat-icon>
+          <h2>Status dos Pedidos</h2>
+        </div>
+        <div class="card-body">
+          <div class="stat">
+            <span class="label">Pendentes</span>
+            <span class="value highlight">{{summary.orders.pending}}</span>
+          </div>
+          <div class="stat">
+            <span class="label">Em Entrega</span>
+            <span class="value">{{summary.orders.delivering}}</span>
+          </div>
+          <div class="stat">
+            <span class="label">Finalizados</span>
+            <span class="value">{{summary.orders.completed}}</span>
+          </div>
+        </div>
+        <div class="card-actions">
+          <button mat-raised-button color="primary" [routerLink]="['/funcionario/pedidos']">
+            Ver Pedidos
           </button>
         </div>
       </mat-card-content>

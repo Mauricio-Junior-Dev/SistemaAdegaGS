@@ -150,10 +150,82 @@ h1 {
   margin-top: 16px;
 }
 
+/* Employee Dashboard Specific Styles */
+.employee-dashboard {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.highlight-card {
+  grid-column: span 2;
+  background: linear-gradient(135deg, #FF9149 0%, #FFECDB 100%);
+  color: white;
+}
+
+.highlight-card .card-header h2,
+.highlight-card .status-large {
+  color: white;
+}
+
+.highlight-card .card-header mat-icon {
+  color: white;
+}
+
+.highlight-card.open {
+  background: linear-gradient(135deg, #4caf50 0%, #81c784 100%);
+}
+
+.highlight-card:not(.open) {
+  background: linear-gradient(135deg, #f44336 0%, #e57373 100%);
+}
+
+.status-large {
+  font-size: 36px;
+  font-weight: 700;
+  margin: 16px 0;
+  text-align: center;
+}
+
+.action-card {
+  background-color: #f5f5f5;
+}
+
+.action-card .card-header mat-icon {
+  color: var(--primary);
+}
+
+.card-description {
+  color: rgba(0, 0, 0, 0.6);
+  font-size: 14px;
+  margin: 8px 0;
+}
+
+.action-button-large {
+  width: 100%;
+  height: 56px;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.action-button-large mat-icon {
+  margin-right: 8px;
+}
+
+.open-icon {
+  color: #4caf50 !important;
+}
+
+.closed-icon {
+  color: #f44336 !important;
+}
+
 /* Responsive Adjustments */
 @media (max-width: 599px) {
   .dashboard-content {
     grid-template-columns: 1fr;
+  }
+
+  .highlight-card {
+    grid-column: span 1;
   }
 
   .stat {

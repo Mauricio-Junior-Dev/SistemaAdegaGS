@@ -8,6 +8,7 @@
 :root {
   --primary: #FF9149;
   --primary-light: #FFECDB;
+  --primary-dark: #e68242;
   --secondary: #0F4C81;
   --accent: #5FB2FB;
 
@@ -98,12 +99,15 @@ body {
 }
 
 .btn-primary {
-  background-color: var(--primary);
-  color: var(--secondary);
+  background-color: var(--primary) !important;
+  color: #fff !important;
+  border: 1px solid var(--primary) !important;
 }
 
 .btn-primary:hover {
-  background-color: var(--primary-dark);
+  background-color: var(--primary-dark) !important;
+  border-color: var(--primary-dark) !important;
+  color: #fff !important;
 }
 
 /* Cards */
@@ -190,7 +194,8 @@ button.mat-primary,
 button.mat-primary:hover,
 .mat-raised-button.mat-primary:hover,
 .mat-flat-button.mat-primary:hover {
-  background-color: var(--primary-light) !important;
+  background-color: var(--primary-dark) !important;
+  color: #fff !important;
 }
 
 button.mat-accent,
@@ -437,6 +442,53 @@ textarea:disabled {
   color: #212529 !important;
 }
 
+/* Correção de contraste no Select - Item Selecionado */
+.mat-mdc-option.mdc-list-item--selected:not(.mdc-list-item--disabled),
+.mat-option.mat-selected:not(.mat-option-disabled) {
+  background-color: var(--primary-light) !important;
+}
+
+.mat-mdc-option.mdc-list-item--selected:not(.mdc-list-item--disabled) .mdc-list-item__primary-text,
+.mat-option.mat-selected:not(.mat-option-disabled) {
+  color: var(--secondary) !important;
+  font-weight: 600 !important;
+}
+
+/* Correção do texto principal do item selecionado */
+.mat-mdc-option.mdc-list-item--selected:not(.mdc-list-item--disabled),
+.mat-mdc-option.mdc-list-item--selected:not(.mdc-list-item--disabled) .mdc-list-item__primary-text,
+.mat-option.mat-selected:not(.mat-option-disabled) {
+  color: var(--secondary) !important;
+}
+
+/* Correção do ícone de check (se houver) */
+.mat-mdc-option.mdc-list-item--selected:not(.mdc-list-item--disabled) .mat-pseudo-checkbox,
+.mat-mdc-option.mdc-list-item--selected:not(.mdc-list-item--disabled) .mat-pseudo-checkbox-minimal,
+.mat-option.mat-selected:not(.mat-option-disabled) .mat-pseudo-checkbox {
+  color: var(--secondary) !important;
+}
+
+/* Garantir que o ícone de check também seja visível */
+.mat-mdc-option.mdc-list-item--selected:not(.mdc-list-item--disabled) .mat-pseudo-checkbox::after,
+.mat-option.mat-selected:not(.mat-option-disabled) .mat-pseudo-checkbox::after {
+  color: var(--secondary) !important;
+  border-color: var(--secondary) !important;
+}
+
+/* Garantir que todos os elementos de texto dentro do item selecionado sejam escuros */
+.mat-mdc-option.mdc-list-item--selected:not(.mdc-list-item--disabled) span,
+.mat-mdc-option.mdc-list-item--selected:not(.mdc-list-item--disabled) div,
+.mat-option.mat-selected:not(.mat-option-disabled) span,
+.mat-option.mat-selected:not(.mat-option-disabled) div {
+  color: var(--secondary) !important;
+}
+
+/* Garantir que ícones também sejam escuros */
+.mat-mdc-option.mdc-list-item--selected:not(.mdc-list-item--disabled) mat-icon,
+.mat-option.mat-selected:not(.mat-option-disabled) mat-icon {
+  color: var(--secondary) !important;
+}
+
 /* Material Datepicker */
 .mat-datepicker-toggle {
   color: var(--text-secondary) !important;
@@ -536,6 +588,87 @@ mat-progress-spinner .mat-mdc-progress-spinner,
   min-height: 56px !important;
   box-sizing: border-box !important;
   line-height: normal !important;
+}
+
+/* ==========================================
+   FILTROS COMPACTOS - DENSIDADE -2/-3
+   ========================================== */
+
+/* Container de Filtros - Layout Compacto */
+.filters-container,
+.filter-container,
+.filter-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  flex-wrap: wrap !important;
+}
+
+/* Form Fields nos Filtros - Altura Compacta (40px) */
+.filters-container .mat-mdc-form-field,
+.filter-container .mat-mdc-form-field,
+.filter-row .mat-mdc-form-field {
+  height: 40px !important;
+  margin: 0 !important;
+}
+
+.filters-container .mat-mdc-form-field .mat-mdc-text-field-wrapper,
+.filter-container .mat-mdc-form-field .mat-mdc-text-field-wrapper,
+.filter-row .mat-mdc-form-field .mat-mdc-text-field-wrapper {
+  height: 40px !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.filters-container .mat-mdc-form-field-infix,
+.filter-container .mat-mdc-form-field-infix,
+.filter-row .mat-mdc-form-field-infix {
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+  min-height: 24px !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.filters-container .mat-mdc-form-field-infix input,
+.filters-container .mat-mdc-form-field-infix .mat-mdc-select,
+.filter-container .mat-mdc-form-field-infix input,
+.filter-container .mat-mdc-form-field-infix .mat-mdc-select,
+.filter-row .mat-mdc-form-field-infix input,
+.filter-row .mat-mdc-form-field-infix .mat-mdc-select {
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  line-height: 1.5 !important;
+  height: auto !important;
+}
+
+/* Botões nos Filtros - Altura Compacta (40px) */
+.filters-container button,
+.filter-container button,
+.filter-row button,
+.filter-actions button {
+  height: 40px !important;
+  min-height: 40px !important;
+  padding: 0 16px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Chips nos Filtros - Altura Compacta */
+.filters-container mat-chip-listbox,
+.filter-container mat-chip-listbox,
+.filter-row mat-chip-listbox {
+  height: 40px !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+.filters-container .mat-mdc-chip,
+.filter-container .mat-mdc-chip,
+.filter-row .mat-mdc-chip {
+  height: 32px !important;
+  min-height: 32px !important;
 }
 
 /* Input dentro do infix - alinhamento vertical correto */

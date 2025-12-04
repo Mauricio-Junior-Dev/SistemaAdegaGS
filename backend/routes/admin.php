@@ -72,6 +72,7 @@ Route::middleware(['admin'])->group(function () {
     // Movimentações de Estoque
     Route::get('/stock-movements', [StockMovementController::class, 'index']);
     Route::get('/stock-movements/summary', [StockMovementController::class, 'summary']);
+    Route::get('/stock-movements/stats', [StockMovementController::class, 'stats']);
     Route::get('/stock-movements/export', [StockMovementController::class, 'export']);
 
     // Dashboard
