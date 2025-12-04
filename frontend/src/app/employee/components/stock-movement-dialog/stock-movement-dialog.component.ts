@@ -29,7 +29,6 @@ interface DialogData {
     <mat-dialog-content>
       <div class="product-info">
         <h3>{{data.product.name}}</h3>
-        <p class="sku">SKU: {{data.product.sku}}</p>
         <p class="stock">Estoque atual: {{data.product.current_stock}}</p>
         <p class="min-stock">Estoque mínimo: {{data.product.min_stock}}</p>
       </div>
@@ -90,11 +89,6 @@ interface DialogData {
       margin: 0;
       font-size: 18px;
       font-weight: 500;
-    }
-    .sku {
-      margin: 5px 0;
-      color: rgba(0, 0, 0, 0.6);
-      font-size: 14px;
     }
     .stock, .min-stock {
       margin: 5px 0;

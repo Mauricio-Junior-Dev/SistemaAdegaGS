@@ -1,6 +1,6 @@
 .products-page {
   min-height: 100vh;
-  background-color: #f8f9fa;
+  background-color: var(--background);
   padding-top: 64px; /* Altura do header fixo */
 }
 

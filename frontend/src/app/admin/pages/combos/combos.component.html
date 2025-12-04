@@ -19,7 +19,7 @@
       <div class="filters-row">
         <mat-form-field appearance="outline" class="search-field">
           <mat-label>Buscar combos</mat-label>
-          <input matInput [(ngModel)]="searchTerm" (keyup.enter)="onSearch()" placeholder="Nome, SKU ou código de barras">
+          <input matInput [(ngModel)]="searchTerm" (keyup.enter)="onSearch()" placeholder="Nome ou código de barras">
           <mat-icon matSuffix>search</mat-icon>
         </mat-form-field>
 
@@ -71,12 +71,6 @@
                 </div>
               </div>
             </td>
-          </ng-container>
-
-          <!-- SKU -->
-          <ng-container matColumnDef="sku">
-            <th mat-header-cell *matHeaderCellDef>SKU</th>
-            <td mat-cell *matCellDef="let combo">{{ combo.sku }}</td>
           </ng-container>
 
           <!-- Preço -->

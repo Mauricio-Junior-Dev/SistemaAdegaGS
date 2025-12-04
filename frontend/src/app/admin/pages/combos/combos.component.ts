@@ -53,7 +53,7 @@ import { PaginatedResponse } from '../../../core/models/pagination.model';
 })
 export class CombosComponent implements OnInit {
   displayedColumns: string[] = [
-    'name', 'sku', 'price', 'original_price', 'discount', 'products_count', 
+    'name', 'price', 'original_price', 'discount', 'products_count',
     'status', 'featured', 'offers', 'popular', 'actions'
   ];
   

@@ -20,7 +20,6 @@ class ProductController extends Controller
         if ($request->has('search') && $request->search) {
             $query->where(function($q) use ($request) {
                 $q->where('name', 'like', '%' . $request->search . '%')
-                  ->orWhere('sku', 'like', '%' . $request->search . '%')
                   ->orWhere('barcode', 'like', '%' . $request->search . '%');
             });
         }
@@ -75,7 +74,6 @@ class ProductController extends Controller
             'doses_por_garrafa' => 'required|integer|min:1',
             'can_sell_by_dose' => 'boolean',
             'dose_price' => 'nullable|numeric|min:0',
-            'sku' => 'required|string|unique:products,sku',
             'barcode' => 'nullable|string|unique:products,barcode',
             'category_id' => 'required|exists:categories,id',
             'parent_product_id' => 'nullable|exists:products,id',
@@ -126,7 +124,6 @@ class ProductController extends Controller
         $product->doses_por_garrafa = $request->doses_por_garrafa;
         $product->can_sell_by_dose = $request->boolean('can_sell_by_dose', false);
         $product->dose_price = $request->dose_price;
-        $product->sku = $request->sku;
         $product->barcode = $request->barcode;
         $product->category_id = $request->category_id;
         $product->parent_product_id = $request->parent_product_id;
@@ -198,7 +195,6 @@ class ProductController extends Controller
             'doses_por_garrafa' => 'required|integer|min:1',
             'can_sell_by_dose' => 'boolean',
             'dose_price' => 'nullable|numeric|min:0',
-            'sku' => 'required|string|unique:products,sku,' . $product->id,
             'barcode' => 'nullable|string|unique:products,barcode,' . $product->id,
             'category_id' => 'required|exists:categories,id',
             'parent_product_id' => 'nullable|exists:products,id',
@@ -252,7 +248,6 @@ class ProductController extends Controller
         $product->doses_por_garrafa = $request->doses_por_garrafa;
         $product->can_sell_by_dose = $request->boolean('can_sell_by_dose', false);
         $product->dose_price = $request->dose_price;
-        $product->sku = $request->sku;
         $product->barcode = $request->barcode;
         $product->category_id = $request->category_id;
         $product->parent_product_id = $request->parent_product_id;
@@ -410,33 +405,6 @@ class ProductController extends Controller
         }
 
         return response()->json($product);
-    }
-
-    public function generateSku(): JsonResponse
-    {
-        do {
-            $sku = 'PRD' . str_pad(rand(1, 999999), 6, '0', STR_PAD_LEFT);
-        } while (Product::where('sku', $sku)->exists());
-
-        return response()->json(['sku' => $sku]);
-    }
-
-    public function validateSku(Request $request): JsonResponse
-    {
-        $request->validate([
-            'sku' => 'required|string',
-            'exclude_id' => 'nullable|integer'
-        ]);
-
-        $query = Product::where('sku', $request->sku);
-        
-        if ($request->has('exclude_id')) {
-            $query->where('id', '!=', $request->exclude_id);
-        }
-
-        $exists = $query->exists();
-
-        return response()->json(['valid' => !$exists]);
     }
 
     public function validateBarcode(Request $request): JsonResponse

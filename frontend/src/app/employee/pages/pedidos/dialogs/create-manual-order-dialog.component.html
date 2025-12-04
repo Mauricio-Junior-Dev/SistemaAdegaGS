@@ -68,7 +68,7 @@
                     <mat-label>Buscar produtos...</mat-label>
                     <input matInput 
                            formControlName="searchTerm"
-                           placeholder="Nome ou SKU do produto">
+                           placeholder="Nome do produto">
                     <mat-icon matSuffix>search</mat-icon>
                   </mat-form-field>
                 </div>
@@ -79,7 +79,7 @@
                        (click)="addProduct(product)">
                     <div class="product-info">
                       <h4>{{product.name}}</h4>
-                      <p class="product-sku" *ngIf="product.sku">SKU: {{product.sku}}</p>
+                      <!-- SKU removido do sistema -->
                       <p class="product-stock">Estoque: {{product.current_stock}}</p>
                       <p class="product-price">{{formatCurrency(product.price)}}</p>
                     </div>

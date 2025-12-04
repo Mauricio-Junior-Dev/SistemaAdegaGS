@@ -21,7 +21,6 @@ class ComboController extends Controller
         if ($request->has('search') && $request->search) {
             $query->where(function($q) use ($request) {
                 $q->where('name', 'like', '%' . $request->search . '%')
-                  ->orWhere('sku', 'like', '%' . $request->search . '%')
                   ->orWhere('barcode', 'like', '%' . $request->search . '%');
             });
         }
@@ -75,7 +74,6 @@ class ComboController extends Controller
             'price' => 'required|numeric|min:0',
             'original_price' => 'nullable|numeric|min:0',
             'discount_percentage' => 'nullable|numeric|min:0|max:100',
-            'sku' => 'required|string',
             'barcode' => 'nullable|string|unique:combos,barcode',
             'is_active' => 'nullable|boolean',
             'featured' => 'nullable|boolean',
@@ -104,7 +102,6 @@ class ComboController extends Controller
             $combo->price = $request->price;
             $combo->original_price = $request->original_price;
             $combo->discount_percentage = $request->discount_percentage;
-            $combo->sku = $request->sku;
             $combo->barcode = $request->barcode;
             // Converter '1'/'0' para boolean quando vem via FormData
             $combo->is_active = filter_var($request->input('is_active', true), FILTER_VALIDATE_BOOLEAN);
@@ -157,7 +154,6 @@ class ComboController extends Controller
             'price' => 'required|numeric|min:0',
             'original_price' => 'nullable|numeric|min:0',
             'discount_percentage' => 'nullable|numeric|min:0|max:100',
-            'sku' => 'required|string|unique:combos,sku,' . $combo->id,
             'barcode' => 'nullable|string|unique:combos,barcode,' . $combo->id,
             'is_active' => 'nullable|boolean',
             'featured' => 'nullable|boolean',
@@ -185,7 +181,6 @@ class ComboController extends Controller
             $combo->price = $request->price;
             $combo->original_price = $request->original_price;
             $combo->discount_percentage = $request->discount_percentage;
-            $combo->sku = $request->sku;
             $combo->barcode = $request->barcode;
             // Converter '1'/'0' para boolean quando vem via FormData
             $combo->is_active = filter_var($request->input('is_active', true), FILTER_VALIDATE_BOOLEAN);
@@ -330,25 +325,6 @@ class ComboController extends Controller
         return response()->json($combo);
     }
 
-    public function generateSku(): JsonResponse
-    {
-        do {
-            $sku = 'COMBO' . str_pad(rand(1, 999999), 6, '0', STR_PAD_LEFT);
-        } while (Combo::where('sku', $sku)->exists());
-
-        return response()->json(['sku' => $sku]);
-    }
-
-    public function validateSku(Request $request): JsonResponse
-    {
-        $request->validate([
-            'sku' => 'required|string'
-        ]);
-
-        $exists = Combo::where('sku', $request->sku)->exists();
-        return response()->json(['available' => !$exists]);
-    }
-
     public function validateBarcode(Request $request): JsonResponse
     {
         $request->validate([
@@ -362,7 +338,7 @@ class ComboController extends Controller
     public function getProducts(): JsonResponse
     {
         $products = Product::where('is_active', true)
-            ->select('id', 'name', 'sku', 'price', 'current_stock')
+            ->select('id', 'name', 'price', 'current_stock')
             ->get();
 
         return response()->json($products);

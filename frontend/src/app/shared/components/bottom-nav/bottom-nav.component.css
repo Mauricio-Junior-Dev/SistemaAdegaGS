@@ -59,7 +59,7 @@
 }
 
 .nav-item:not(.nav-item-cart):hover {
-  color: var(--primary-dark);
+  color: var(--primary-light);
 }
 
 /* Botão Central do Carrinho (Flutuante) */

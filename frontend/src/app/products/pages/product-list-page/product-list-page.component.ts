@@ -137,7 +137,6 @@ export class ProductListPageComponent implements OnInit, OnDestroy {
       doses_por_garrafa: 0,
       doses_vendidas: 0,
       can_sell_by_dose: false,
-      sku: combo.sku,
       barcode: combo.barcode,
       is_active: combo.is_active,
       featured: combo.featured,

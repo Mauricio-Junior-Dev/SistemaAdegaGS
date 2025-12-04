@@ -1,11 +1,18 @@
-// Cores principais
-$primary: #ffcc00;
-$primary-dark: #e6b800;
-$secondary: #1a1a1a;
-$text-primary: #333333;
-$text-secondary: #666666;
-$background: #f5f5f5;
-$white: #ffffff;
+// Cores da Marca
+$primary: #FF9149;       // Laranja Principal
+$primary-light: #FFECDB; // Laranja Claro (Fundo suave)
+
+// Cores de Detalhe/Texto (Azuis)
+$accent: #5FB2FB;        // Azul Claro (Destaques)
+$secondary: #0F4C81;     // Azul Escuro (Texto Principal / Elementos Escuros)
+
+// Cores Base
+$background: #F5F5F5;    // Cinza claro para o fundo geral
+$white: #FFFFFF;
+
+// Mapeamento de Texto (Importante para contraste)
+$text-primary: $secondary;    // Azul escuro como texto principal
+$text-secondary: #666666;    // Cinza para textos secundários
 
 // Breakpoints
 $mobile: 576px;

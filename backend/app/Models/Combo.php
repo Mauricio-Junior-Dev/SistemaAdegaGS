@@ -18,7 +18,6 @@ class Combo extends Model
         'price',
         'original_price',
         'discount_percentage',
-        'sku',
         'barcode',
         'is_active',
         'featured',

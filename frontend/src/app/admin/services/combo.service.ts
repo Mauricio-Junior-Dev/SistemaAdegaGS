@@ -137,18 +137,6 @@ export class ComboService {
     });
   }
 
-  // Gerar SKU
-  generateSku(): Observable<{ sku: string }> {
-    return this.http.get<{ sku: string }>(`${this.apiUrl}/generate-sku`);
-  }
-
-  // Validar SKU
-  validateSku(sku: string): Observable<{ available: boolean }> {
-    return this.http.get<{ available: boolean }>(`${this.apiUrl}/validate-sku`, {
-      params: { sku }
-    });
-  }
-
   // Validar código de barras
   validateBarcode(barcode: string): Observable<{ available: boolean }> {
     return this.http.get<{ available: boolean }>(`${this.apiUrl}/validate-barcode`, {
@@ -195,7 +183,6 @@ export class ComboService {
     if (comboData.discount_percentage) {
       formData.append('discount_percentage', comboData.discount_percentage.toString());
     }
-    formData.append('sku', comboData.sku);
     if (comboData.barcode) {
       formData.append('barcode', comboData.barcode);
     }

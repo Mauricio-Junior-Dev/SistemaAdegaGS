@@ -1,7 +1,7 @@
 .cart-page {
   padding: 2rem 0;
   min-height: calc(100vh - 64px);
-  background-color: #f8f9fa;
+  background-color: var(--background);
 }
 
 .container {
@@ -13,7 +13,7 @@
 h1 {
   font-size: 2rem;
   font-weight: bold;
-  color: #1A1A1A;
+  color: var(--text-primary);
   margin-bottom: 2rem;
 }
 
@@ -41,8 +41,8 @@ h1 {
 
 .browse-button {
   padding: 1rem 2rem;
-  background-color: #00A868;
-  color: white;
+  background-color: var(--primary);
+  color: var(--secondary);
   border: none;
   border-radius: 8px;
   font-weight: 600;
@@ -51,7 +51,7 @@ h1 {
 }
 
 .browse-button:hover {
-  background-color: #008F5A;
+  background-color: var(--primary-light);
 }
 
 /* Conteúdo do Carrinho */
@@ -101,14 +101,14 @@ h1 {
 .item-name {
   font-size: 1.1rem;
   font-weight: 600;
-  color: #1A1A1A;
+  color: var(--text-primary);
   margin-bottom: 0.5rem;
 }
 
 .item-price {
   font-size: 1.2rem;
   font-weight: 600;
-  color: #00A868;
+  color: var(--primary);
   margin-bottom: 1rem;
 }
 
@@ -133,8 +133,8 @@ h1 {
 }
 
 .quantity-button:hover {
-  border-color: #00A868;
-  color: #00A868;
+  border-color: var(--primary);
+  color: var(--primary);
 }
 
 .quantity-button svg {

@@ -51,7 +51,7 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
   styleUrls: ['./produtos.component.css']
 })
 export class ProdutosComponent implements OnInit, OnDestroy {
-  displayedColumns = ['image', 'name', 'sku', 'category', 'price', 'current_stock', 'status', 'actions'];
+  displayedColumns = ['image', 'name', 'category', 'price', 'current_stock', 'status', 'actions'];
   products: Product[] = [];
   totalItems = 0;
   pageSize = 10;

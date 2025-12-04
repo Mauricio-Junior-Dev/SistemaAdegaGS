@@ -22,7 +22,6 @@ export interface Product {
   doses_por_garrafa: number;
   can_sell_by_dose: boolean;
   dose_price?: number;
-  sku: string;
   barcode?: string;
   category_id: number;
   parent_product_id?: number | null;
@@ -49,7 +48,6 @@ export interface CreateProductDTO {
   doses_por_garrafa: number;
   can_sell_by_dose: boolean;
   dose_price?: number | null;
-  sku: string;
   barcode?: string | null;
   category_id: number;
   parent_product_id?: number | null;
@@ -155,7 +153,7 @@ export class ProductService {
     const payload: any = { ...rest };
     
     // Campos obrigatórios que sempre devem ser incluídos
-    const requiredFields = ['name', 'description', 'sku', 'category_id', 'price', 'current_stock', 'min_stock', 'doses_por_garrafa'];
+    const requiredFields = ['name', 'description', 'category_id', 'price', 'current_stock', 'min_stock', 'doses_por_garrafa'];
     
     // Converter category_id para número
     if (payload.category_id !== undefined && payload.category_id !== null && payload.category_id !== '') {
@@ -240,18 +238,6 @@ export class ProductService {
 
   deleteImage(id: number): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/${id}/image`);
-  }
-
-  generateSku(): Observable<{ sku: string }> {
-    return this.http.get<{ sku: string }>(`${this.apiUrl}/generate-sku`);
-  }
-
-  validateSku(sku: string, excludeId?: number): Observable<{ valid: boolean }> {
-    let params = new HttpParams().set('sku', sku);
-    if (excludeId) {
-      params = params.set('exclude_id', excludeId.toString());
-    }
-    return this.http.get<{ valid: boolean }>(`${this.apiUrl}/validate-sku`, { params });
   }
 
   validateBarcode(barcode: string, excludeId?: number): Observable<{ valid: boolean }> {

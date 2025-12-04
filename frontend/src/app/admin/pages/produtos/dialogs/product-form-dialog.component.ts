@@ -110,7 +110,7 @@ import { environment } from '../../../../../environments/environment';
                   <mat-select formControlName="parent_product_id" required>
                     <mat-option [value]="null">Selecione o produto base</mat-option>
                     <mat-option *ngFor="let parentProduct of availableParentProducts" [value]="parentProduct.id">
-                      {{parentProduct.name}} (SKU: {{parentProduct.sku}})
+                      {{parentProduct.name}}
                     </mat-option>
                   </mat-select>
                   <mat-error *ngIf="productForm.get('parent_product_id')?.hasError('required')">
@@ -138,26 +138,8 @@ import { environment } from '../../../../../environments/environment';
             </div>
           </div>
 
-          <!-- Códigos -->
+          <!-- Código de Barras -->
           <div class="form-row">
-            <mat-form-field appearance="outline">
-              <mat-label>SKU</mat-label>
-              <input matInput formControlName="sku" required>
-              <button type="button" 
-                      mat-icon-button 
-                      matSuffix
-                      (click)="generateSku()"
-                      matTooltip="Gerar SKU">
-                <mat-icon>autorenew</mat-icon>
-              </button>
-              <mat-error *ngIf="productForm.get('sku')?.hasError('required')">
-                SKU é obrigatório
-              </mat-error>
-              <mat-error *ngIf="productForm.get('sku')?.hasError('skuExists')">
-                SKU já existe
-              </mat-error>
-            </mat-form-field>
-
             <mat-form-field appearance="outline">
               <mat-label>Código de Barras</mat-label>
               <input matInput formControlName="barcode">
@@ -538,7 +520,6 @@ export class ProductFormDialogComponent implements OnInit {
       name: ['', Validators.required],
       description: [''],
       category_id: ['', Validators.required],
-      sku: ['', Validators.required],
       barcode: [''],
       price: ['', [Validators.required, Validators.min(0)]],
       original_price: ['', [Validators.min(0)]],
@@ -717,22 +698,7 @@ export class ProductFormDialogComponent implements OnInit {
   }
 
   private setupValidators(): void {
-    const skuControl = this.productForm.get('sku');
     const barcodeControl = this.productForm.get('barcode');
-
-    if (skuControl) {
-      skuControl.valueChanges.subscribe(value => {
-        if (value) {
-          this.productService.validateSku(value, this.data.product?.id).subscribe({
-            next: (response) => {
-              if (!response.valid) {
-                skuControl.setErrors({ skuExists: true });
-              }
-            }
-          });
-        }
-      });
-    }
 
     if (barcodeControl) {
       barcodeControl.valueChanges.subscribe(value => {
@@ -747,18 +713,6 @@ export class ProductFormDialogComponent implements OnInit {
         }
       });
     }
-  }
-
-  generateSku(): void {
-    this.productService.generateSku().subscribe({
-      next: (response) => {
-        this.productForm.patchValue({ sku: response.sku });
-      },
-      error: (error) => {
-        console.error('Erro ao gerar SKU:', error);
-        this.snackBar.open('Erro ao gerar SKU', 'Fechar', { duration: 3000 });
-      }
-    });
   }
 
   onImageSelected(event: Event): void {
@@ -791,7 +745,6 @@ export class ProductFormDialogComponent implements OnInit {
         name: formValue.name ?? '',
         description: formValue.description ?? '',
         category_id: formValue.category_id,
-        sku: formValue.sku ?? '',
         barcode: formValue.barcode ?? null,
         price: formValue.price,
         original_price: formValue.original_price ?? null,

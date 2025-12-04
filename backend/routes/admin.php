@@ -30,8 +30,6 @@ Route::middleware(['admin'])->group(function () {
     // Produtos
     // IMPORTANTE: Rotas específicas devem vir ANTES das rotas com parâmetros {product}
     Route::get('/products', [ProductController::class, 'index']);
-    Route::get('/products/generate-sku', [ProductController::class, 'generateSku']);
-    Route::get('/products/validate-sku', [ProductController::class, 'validateSku']);
     Route::get('/products/validate-barcode', [ProductController::class, 'validateBarcode']);
     Route::post('/products/import', [ProductController::class, 'import']);
     Route::get('/products/export', [ProductController::class, 'export']);
@@ -47,8 +45,6 @@ Route::middleware(['admin'])->group(function () {
 
     // Combos
     Route::get('/combos', [ComboController::class, 'index']);
-    Route::get('/combos/generate-sku', [ComboController::class, 'generateSku']);
-    Route::get('/combos/validate-sku', [ComboController::class, 'validateSku']);
     Route::get('/combos/validate-barcode', [ComboController::class, 'validateBarcode']);
     Route::get('/combos/products', [ComboController::class, 'getProducts']);
     Route::post('/combos/calculate-price', [ComboController::class, 'calculatePrice']);

@@ -15,7 +15,6 @@ export interface Product {
     doses_vendidas: number;
     can_sell_by_dose: boolean;
     dose_price?: number;
-    sku: string;
     barcode?: string;
     is_active: boolean;
     visible_online?: boolean;

@@ -6,13 +6,16 @@
 
 /* Variáveis CSS (funcionam na maioria dos navegadores modernos) */
 :root {
-  --primary: #ffcc00;
-  --primary-dark: #e6b800;
-  --secondary: #1a1a1a;
-  --text-primary: #333333;
+  --primary: #FF9149;
+  --primary-light: #FFECDB;
+  --secondary: #0F4C81;
+  --accent: #5FB2FB;
+
+  --text-primary: #0F4C81;
   --text-secondary: #666666;
-  --background: #f5f5f5;
-  --white: #ffffff;
+
+  --background: #F5F5F5;
+  --white: #FFFFFF;
   
   --spacing-xs: 4px;
   --spacing-sm: 8px;
@@ -48,10 +51,10 @@ body {
 }
 
 /* Utility Classes */
-.text-primary { color: var(--primary); }
-.bg-primary { background-color: var(--primary); }
-.text-secondary { color: var(--secondary); }
-.bg-secondary { background-color: var(--secondary); }
+  .text-primary { color: var(--text-primary); }
+  .bg-primary { background-color: var(--primary); }
+  .text-secondary { color: var(--text-secondary); }
+  .bg-secondary { background-color: var(--secondary); }
 
 /* Container */
 .container {
@@ -166,35 +169,35 @@ mat-sidenav-content {
   padding: 0;
 }
 
-/* Angular Material Theme Overrides - Amarelo/Preto */
+/* Angular Material Theme Overrides - Laranja/Azul */
 .mat-primary {
   background-color: var(--primary) !important;
-  color: var(--secondary) !important;
+  color: var(--white) !important;
 }
 
 .mat-toolbar.mat-primary {
   background-color: var(--primary) !important;
-  color: var(--secondary) !important;
+  color: var(--white) !important;
 }
 
 button.mat-primary,
 .mat-raised-button.mat-primary,
 .mat-flat-button.mat-primary {
   background-color: var(--primary) !important;
-  color: var(--secondary) !important;
+  color: var(--white) !important;
 }
 
 button.mat-primary:hover,
 .mat-raised-button.mat-primary:hover,
 .mat-flat-button.mat-primary:hover {
-  background-color: var(--primary-dark) !important;
+  background-color: var(--primary-light) !important;
 }
 
 button.mat-accent,
 .mat-raised-button.mat-accent,
 .mat-flat-button.mat-accent {
-  background-color: var(--secondary) !important;
-  color: var(--white) !important;
+  background-color: var(--accent) !important;
+  color: var(--secondary) !important;
 }
 
 .mat-icon-button.mat-primary {

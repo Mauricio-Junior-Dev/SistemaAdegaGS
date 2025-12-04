@@ -30,8 +30,7 @@ return new class extends Migration
             $table->integer('doses_vendidas')->default(0);
             $table->boolean('can_sell_by_dose')->default(false);
             $table->decimal('dose_price', 10, 2)->nullable();
-            
-            $table->string('sku')->unique();
+
             $table->string('barcode')->nullable();
             $table->boolean('is_active')->default(true);
             $table->boolean('visible_online')->default(true);

@@ -81,9 +81,6 @@ export class ComboFormComponent implements OnInit, OnDestroy {
         this.comboId = +params['id'];
         this.isEdit = true;
         this.loadCombo();
-      } else {
-        // Gerar SKU automaticamente apenas para novos combos
-        this.generateSku();
       }
     });
 
@@ -103,7 +100,6 @@ export class ComboFormComponent implements OnInit, OnDestroy {
       price: [0, [Validators.required, Validators.min(0.01)]],
       original_price: [0, [Validators.min(0)]],
       discount_percentage: [0, [Validators.min(0), Validators.max(100)]],
-      sku: ['', [Validators.required]],
       barcode: [''],
       is_active: [true],
       featured: [false],
@@ -161,8 +157,7 @@ export class ComboFormComponent implements OnInit, OnDestroy {
     } else {
       const term = searchTerm.toLowerCase();
       this.filteredProducts = this.products.filter(product => 
-        product.name.toLowerCase().includes(term) ||
-        product.sku?.toLowerCase().includes(term)
+        product.name.toLowerCase().includes(term)
       );
     }
   }
@@ -195,7 +190,6 @@ export class ComboFormComponent implements OnInit, OnDestroy {
       price: combo.price || 0.01, // Garantir que o preço seja maior que 0
       original_price: combo.original_price || 0,
       discount_percentage: combo.discount_percentage || 0,
-      sku: combo.sku,
       barcode: combo.barcode || '',
       is_active: combo.is_active !== undefined ? combo.is_active : true,
       featured: combo.featured || false,
@@ -284,17 +278,6 @@ export class ComboFormComponent implements OnInit, OnDestroy {
         this.originalPrice = 0;
         this.calculatedPrice = 0;
         this.discountAmount = 0;
-      }
-    });
-  }
-
-  generateSku(): void {
-    this.comboService.generateSku().subscribe({
-      next: (response) => {
-        this.comboForm.patchValue({ sku: response.sku });
-      },
-      error: (error: any) => {
-        console.error('Erro ao gerar SKU:', error);
       }
     });
   }

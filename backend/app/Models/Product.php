@@ -27,7 +27,6 @@ class Product extends Model
         'doses_vendidas',
         'can_sell_by_dose',
         'dose_price',
-        'sku',
         'barcode',
         'is_active',
         'visible_online',

@@ -19,7 +19,6 @@ return new class extends Migration
             $table->decimal('price', 10, 2);
             $table->decimal('original_price', 10, 2)->nullable();
             $table->decimal('discount_percentage', 5, 2)->nullable();
-            $table->string('sku')->unique();
             $table->string('barcode')->nullable()->unique();
             $table->boolean('is_active')->default(true);
             $table->boolean('featured')->default(false);

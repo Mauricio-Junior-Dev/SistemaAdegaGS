@@ -48,12 +48,11 @@ class StockService
                         break;
                 }
             })
-            // Busca por nome, SKU ou código de barras
+            // Busca por nome ou código de barras
             ->when(isset($filters['search']) && $filters['search'] !== '', function ($query) use ($filters) {
                 $search = $filters['search'];
                 $query->where(function ($q) use ($search) {
                     $q->where('name', 'like', "%{$search}%")
-                        ->orWhere('sku', 'like', "%{$search}%")
                         ->orWhere('barcode', 'like', "%{$search}%");
                 });
             })

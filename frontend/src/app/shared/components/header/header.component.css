@@ -32,7 +32,7 @@
 .logo-text {
   font-size: 1.5rem;
   font-weight: bold;
-  color: #1A1A1A;
+  color: var(--secondary);
 }
 
 .logo-image {
@@ -56,7 +56,7 @@
 }
 
 .nav-link {
-  color: #1A1A1A;
+  color: var(--text-primary);
   text-decoration: none;
   font-weight: 500;
   font-size: 1rem;
@@ -67,7 +67,7 @@
 
 .nav-link:hover,
 .nav-link.active {
-  color: var(--primary-dark);
+  color: var(--primary);
 }
 
 .nav-link.active::after {
@@ -97,7 +97,7 @@
   .search-field {
     display: flex;
     align-items: center;
-    background-color: #F5F5F5;
+    background-color: var(--background);
     border-radius: 20px;
     padding: 0.5rem 1rem;
     width: 300px;
@@ -121,7 +121,7 @@
   outline: none;
   width: 100%;
   font-size: 0.9rem;
-  color: #1A1A1A;
+  color: var(--text-primary);
 }
 
 .search-input::placeholder {
@@ -131,7 +131,7 @@
 /* Ícone do Carrinho com Badge */
 .cart-btn-icon {
   position: relative;
-  color: #1A1A1A;
+  color: var(--text-primary);
   overflow: visible;
 }
 
@@ -185,7 +185,7 @@
 /* Menu Mobile */
 .mobile-menu-button {
   display: block;
-  color: #1A1A1A;
+  color: var(--text-primary);
   z-index: 1002;
   position: relative;
 }
@@ -284,7 +284,7 @@
   align-items: center;
   gap: 1rem;
   padding: 1rem 1.5rem;
-  color: #1A1A1A;
+  color: var(--text-primary);
   text-decoration: none;
   font-weight: 500;
   transition: background-color 0.2s;

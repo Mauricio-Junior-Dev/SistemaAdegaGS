@@ -32,20 +32,6 @@
         </div>
 
         <div class="form-row">
-          <mat-form-field appearance="outline" class="sku-field">
-            <mat-label>SKU</mat-label>
-            <input matInput formControlName="sku" placeholder="Ex: COMBO001">
-            <mat-error *ngIf="comboForm.get('sku')?.hasError('required')">
-              SKU é obrigatório
-            </mat-error>
-          </mat-form-field>
-          <button type="button" mat-stroked-button (click)="generateSku()" class="generate-btn">
-            <mat-icon>refresh</mat-icon>
-            Gerar SKU
-          </button>
-        </div>
-
-        <div class="form-row">
           <mat-form-field appearance="outline" class="barcode-field">
             <mat-label>Código de Barras</mat-label>
             <input matInput formControlName="barcode" placeholder="Opcional">
@@ -68,7 +54,7 @@
             <input matInput 
                    formControlName="productSearchTerm" 
                    (input)="filterProducts()"
-                   placeholder="Digite o nome ou SKU do produto...">
+                   placeholder="Digite o nome do produto...">
             <mat-icon matSuffix>search</mat-icon>
           </mat-form-field>
         </div>
@@ -83,7 +69,6 @@
                 <mat-select formControlName="product_id" (selectionChange)="calculatePrice()">
                   <mat-option *ngFor="let product of filteredProducts" [value]="product.id">
                     {{ product.name }} - {{ formatPrice(product.price) }}
-                    <span *ngIf="product.sku" class="product-sku">({{ product.sku }})</span>
                   </mat-option>
                 </mat-select>
                 <mat-error *ngIf="productGroup.get('product_id')?.hasError('required')">

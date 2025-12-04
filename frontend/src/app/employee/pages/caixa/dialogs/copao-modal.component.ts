@@ -147,8 +147,7 @@ export class CopaoModalComponent implements OnInit {
     }
     const term = this.searchBeverage.toLowerCase();
     return this.doseProducts.filter(product => 
-      product.name.toLowerCase().includes(term) ||
-      product.sku?.toLowerCase().includes(term)
+      product.name.toLowerCase().includes(term)
     );
   }
 
@@ -158,8 +157,7 @@ export class CopaoModalComponent implements OnInit {
     }
     const term = this.searchAccompaniment.toLowerCase();
     return this.accompanimentProducts.filter(product => 
-      product.name.toLowerCase().includes(term) ||
-      product.sku?.toLowerCase().includes(term)
+      product.name.toLowerCase().includes(term)
     );
   }
 
@@ -169,8 +167,7 @@ export class CopaoModalComponent implements OnInit {
     }
     const term = this.searchIce.toLowerCase();
     return this.iceProducts.filter(product => 
-      product.name.toLowerCase().includes(term) ||
-      product.sku?.toLowerCase().includes(term)
+      product.name.toLowerCase().includes(term)
     );
   }
 

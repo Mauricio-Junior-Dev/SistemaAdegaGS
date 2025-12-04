@@ -6,7 +6,6 @@ export interface Combo {
   price: number;
   original_price?: number;
   discount_percentage?: number;
-  sku: string;
   barcode?: string;
   is_active: boolean;
   featured: boolean;
@@ -37,7 +36,6 @@ export interface ComboProduct {
 export interface Product {
   id: number;
   name: string;
-  sku?: string;
   price: number;
   current_stock: number;
 }
@@ -48,7 +46,6 @@ export interface ComboFormData {
   price: number;
   original_price?: number;
   discount_percentage?: number;
-  sku: string;
   barcode?: string;
   is_active: boolean;
   featured: boolean;
@@ -71,7 +68,6 @@ export interface ComboFormDataForBackend {
   price: string;
   original_price?: string;
   discount_percentage?: string;
-  sku: string;
   barcode?: string;
   is_active: boolean;
   featured: boolean;

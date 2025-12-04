@@ -172,8 +172,7 @@ export class CreateManualOrderDialogComponent implements OnInit, OnDestroy {
     }
 
     this.filteredProducts = this.products.filter(product =>
-      product.name.toLowerCase().includes(term.toLowerCase()) ||
-      product.sku?.toLowerCase().includes(term.toLowerCase())
+      product.name.toLowerCase().includes(term.toLowerCase())
     );
   }
 

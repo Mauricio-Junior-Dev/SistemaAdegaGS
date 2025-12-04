@@ -46,10 +46,6 @@
   flex: 1;
 }
 
-.sku-field {
-  flex: 1;
-}
-
 .generate-btn {
   margin-top: 8px;
   height: 56px;
@@ -224,12 +220,6 @@
 .search-field {
   width: 100%;
   max-width: 400px;
-}
-
-.product-sku {
-  color: #666;
-  font-size: 0.9em;
-  font-style: italic;
 }
 
 /* Estilos para validação */
