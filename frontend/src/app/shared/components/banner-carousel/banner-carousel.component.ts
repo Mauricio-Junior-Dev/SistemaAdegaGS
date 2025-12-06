@@ -1,6 +1,7 @@
 import { Component, Input, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
+import { environment } from '../../../../environments/environment';
 
 export interface Banner {
   id: number;
@@ -274,21 +275,31 @@ export class BannerCarouselComponent implements OnInit {
     }
   }
 
-  getImageUrl(imageUrl: string | undefined): string {
+  getImageUrl(imageUrl: string | null | undefined): string {
     if (!imageUrl) return '';
     
+    // Normaliza a URL base da API (remove o /api do final se tiver)
+    // Ex: de 'http://192.168.1.5:8000/api' para 'http://192.168.1.5:8000'
+    const apiBase = environment.apiUrl.replace(/\/api\/?$/, '');
+    
+    // SE for URL absoluta
     if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+      // Se estiver apontando para localhost, força a troca pelo IP atual
+      if (imageUrl.includes('localhost')) {
+        return imageUrl.replace(/http:\/\/localhost:\d+/, apiBase);
+      }
       return imageUrl;
     }
     
+    // Caminhos relativos - usar a base da API
     if (imageUrl.startsWith('/storage/')) {
-      return 'http://localhost:8000' + imageUrl;
+      return apiBase + imageUrl;
     }
     
     if (imageUrl.startsWith('storage/')) {
-      return 'http://localhost:8000/' + imageUrl;
+      return apiBase + '/' + imageUrl;
     }
     
-    return 'http://localhost:8000/storage/' + imageUrl;
+    return apiBase + '/storage/' + imageUrl;
   }
 }

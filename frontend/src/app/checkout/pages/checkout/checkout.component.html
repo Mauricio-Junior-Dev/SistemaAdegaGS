@@ -3,28 +3,28 @@
   <div *ngIf="checkoutState === 'awaiting_payment'" class="pix-payment-container">
     <div class="pix-container">
       <h2>Pague com PIX para Concluir</h2>
-      <p>Seu pedido só será confirmado após o pagamento.</p>
+      <p class="subtitle-text">Seu pedido só será confirmado após o pagamento.</p>
 
-      <p>Escaneie o QR Code abaixo com o app do seu banco:</p>
+      <p class="instruction-text">Escaneie o QR Code abaixo com o app do seu banco:</p>
 
       <img *ngIf="safeQrCodeUrl" [src]="safeQrCodeUrl" alt="QR Code PIX" class="qr-code-image">
 
-      <p>Ou copie o código "Copia e Cola":</p>
-
-      <div class="copy-paste-area">
-        <label>PIX Copia e Cola</label>
-        <textarea readonly [value]="pixCopiaECola || ''" rows="4"></textarea>
-        <button mat-raised-button color="primary" (click)="copiarPix()" [disabled]="!pixCopiaECola">
-          <mat-icon>content_copy</mat-icon>
-          Copiar Código
-        </button>
+      <div class="copia-cola-container">
+        <span class="small-label">Ou use o Copia e Cola:</span>
+        <div class="input-group-compact">
+          <input type="text" [value]="pixCopiaECola || ''" readonly class="pix-input-compact">
+          <button mat-raised-button color="primary" (click)="copiarPix()" [disabled]="!pixCopiaECola" class="btn-copy-compact">
+            <mat-icon>content_copy</mat-icon>
+            <span>Copiar</span>
+          </button>
+        </div>
       </div>
 
-      <p style="font-weight: bold; margin-top: 1.5rem;">
+      <p class="loading-message">
         {{ loadingMessage }}
       </p>
       <mat-progress-bar mode="indeterminate"></mat-progress-bar>
-      <p style="font-size: 0.9em; color: #555; margin-top: 0.5rem;">
+      <p class="warning-text">
         Não feche esta página. Você será redirecionado automaticamente
         assim que o pagamento for aprovado.
       </p>

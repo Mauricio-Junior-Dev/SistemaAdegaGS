@@ -815,6 +815,9 @@ export class CheckoutComponent implements OnInit, OnDestroy {
               this.isProcessingPayment = false;
               this.loading = false;
 
+              // Força a tela a ir para o topo para o usuário ver o QR Code
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+
               this.startPaymentPolling(newlyCreatedOrder.id);
             },
             error: (err: unknown) => {

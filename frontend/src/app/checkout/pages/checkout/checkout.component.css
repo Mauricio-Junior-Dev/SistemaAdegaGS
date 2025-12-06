@@ -10,6 +10,11 @@
   padding-bottom: 100px; /* Espaço para o footer fixo */
 }
 
+/* Quando a tela de PIX está ativa, remove espaçamento superior */
+.checkout-page:has(.pix-payment-container) {
+  padding-top: 0;
+}
+
 .checkout-container {
   max-width: 600px;
   margin: 0 auto;
@@ -678,9 +683,8 @@
 .pix-payment-container {
   display: flex;
   justify-content: center;
-  align-items: center;
-  min-height: 100vh;
-  padding: 1rem;
+  align-items: flex-start;
+  padding: 1rem 1rem 2rem 1rem;
   max-width: 100%;
   margin: 0 auto;
 }
@@ -692,63 +696,112 @@
   text-align: center;
   border: 1px solid #eee;
   border-radius: 12px;
-  padding: 2rem;
+  padding: 1rem 1.25rem;
+  padding-top: 1rem;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   width: 100%;
   max-width: 450px;
   background: white;
+  margin-top: 0;
 }
 
 .pix-container h2 {
-  font-size: 1.5rem;
-  margin-top: 0;
+  font-size: 1.1rem;
+  margin-top: 0 !important;
+  margin-bottom: 0.5rem;
+  padding-top: 0;
   color: var(--text-primary);
   font-weight: 600;
 }
 
-.pix-container p {
-  font-size: 1rem;
+.pix-container .subtitle-text {
+  font-size: 0.85rem;
+  color: #888;
+  margin-bottom: 0.75rem;
+}
+
+.pix-container .instruction-text {
+  font-size: 0.9rem;
   color: var(--text-secondary);
-  margin-bottom: 1.5rem;
+  margin-bottom: 0.75rem;
 }
 
 .qr-code-image {
   width: 100%;
-  max-width: 300px;
+  max-width: 180px;
   height: auto;
   border: 1px solid #ddd;
   border-radius: 4px;
-  margin: 1rem 0;
+  margin: 0.5rem 0;
 }
 
-.copy-paste-area {
-  margin-top: 1.5rem;
+.copia-cola-container {
+  margin-top: 0.75rem;
   width: 100%;
-}
-
-.copy-paste-area label {
-  font-weight: bold;
-  font-size: 0.9rem;
-  display: block;
-  margin-bottom: 0.5rem;
-  color: var(--text-primary);
   text-align: left;
 }
 
-.copy-paste-area textarea {
+.copia-cola-container .small-label {
+  display: block;
+  font-size: 0.8rem;
+  color: #666;
+  margin-bottom: 0.5rem;
+}
+
+.input-group-compact {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
   width: 100%;
-  box-sizing: border-box;
-  padding: 0.75rem;
+}
+
+.pix-input-compact {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
   border: 1px solid #ccc;
   border-radius: 4px;
   font-family: monospace;
-  resize: none;
+  font-size: 0.75rem;
+  background: #f9f9f9;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.btn-copy-compact {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.5rem 0.75rem;
+  white-space: nowrap;
+  min-width: auto;
+  flex-shrink: 0;
+}
+
+.btn-copy-compact mat-icon {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+}
+
+.btn-copy-compact span {
   font-size: 0.85rem;
 }
 
-.copy-paste-area button {
-  width: 100%;
+.pix-container .loading-message {
+  font-weight: bold;
+  font-size: 0.9rem;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  color: var(--text-primary);
+}
+
+.pix-container .warning-text {
+  font-size: 0.8rem;
+  color: #666;
   margin-top: 0.5rem;
+  margin-bottom: 0;
 }
 
 /* ==========================================
@@ -936,5 +989,71 @@
   ::ng-deep .product-image {
     width: 60px !important;
     height: 60px !important;
+  }
+
+  /* Otimizações PIX para mobile */
+  .pix-payment-container {
+    padding: 0.5rem 0.75rem 1.5rem 0.75rem;
+  }
+
+  .pix-container {
+    padding: 0.75rem 1rem;
+    padding-top: 0.75rem;
+    margin-top: 0;
+  }
+
+  .pix-container h2 {
+    font-size: 1rem;
+    margin-top: 0 !important;
+    margin-bottom: 0.4rem;
+    padding-top: 0;
+  }
+
+  .pix-container .subtitle-text {
+    font-size: 0.75rem;
+    margin-bottom: 0.6rem;
+  }
+
+  .pix-container .instruction-text {
+    font-size: 0.8rem;
+    margin-bottom: 0.6rem;
+  }
+
+  .qr-code-image {
+    max-width: 160px;
+    margin: 0.4rem 0;
+  }
+
+  .copia-cola-container {
+    margin-top: 0.6rem;
+  }
+
+  .copia-cola-container .small-label {
+    font-size: 0.75rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .pix-input-compact {
+    font-size: 0.7rem;
+    padding: 0.4rem 0.6rem;
+  }
+
+  .btn-copy-compact {
+    padding: 0.4rem 0.6rem;
+  }
+
+  .btn-copy-compact span {
+    font-size: 0.75rem;
+  }
+
+  .pix-container .loading-message {
+    font-size: 0.85rem;
+    margin-top: 0.75rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .pix-container .warning-text {
+    font-size: 0.75rem;
+    margin-top: 0.4rem;
   }
 }
