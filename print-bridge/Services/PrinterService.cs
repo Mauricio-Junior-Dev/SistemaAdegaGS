@@ -69,6 +69,7 @@ public class PrinterService
 
     /// <summary>
     /// Imprime um pedido completo formatado
+    /// Configurado para imprimir exatamente 2 vias (uma para cozinha/separação e uma para motoboy/cliente)
     /// </summary>
     public bool PrintOrder(OrderDto order)
     {
@@ -83,27 +84,42 @@ public class PrinterService
                 return false;
             }
 
-            // Gerar conteúdo ESC/POS
+            // Gerar conteúdo ESC/POS (uma única vez)
             byte[] printData = GenerateEscPosContent(order);
 
-            // Enviar para impressora - VIA 1
-            _logger.LogInformation($"Enviando via 1/2 para o pedido #{order.OrderNumber}");
-            bool success1 = SendToPrinter(_printerName, printData);
+            // Número de vias configurado: 2 (uma para cozinha/separação e uma para motoboy/cliente)
+            const int numberOfCopies = 2;
+            bool allSuccess = true;
 
-            // Enviar para impressora - VIA 2
-            _logger.LogInformation($"Enviando via 2/2 para o pedido #{order.OrderNumber}");
-            bool success2 = SendToPrinter(_printerName, printData); // Chame de novo com os mesmos dados
-
-            if (success1 && success2)
+            // Imprimir exatamente 2 vias
+            for (int copy = 1; copy <= numberOfCopies; copy++)
             {
-                _logger.LogInformation($"Pedido #{order.OrderNumber} impresso 2x com sucesso");
+                _logger.LogInformation($"Enviando via {copy}/{numberOfCopies} para o pedido #{order.OrderNumber}");
+                bool success = SendToPrinter(_printerName, printData);
+                
+                if (!success)
+                {
+                    _logger.LogError($"Falha ao imprimir via {copy}/{numberOfCopies} do pedido #{order.OrderNumber}");
+                    allSuccess = false;
+                }
+                
+                // Pequeno delay entre vias para evitar problemas de buffer da impressora
+                if (copy < numberOfCopies)
+                {
+                    System.Threading.Thread.Sleep(100); // 100ms entre vias
+                }
+            }
+
+            if (allSuccess)
+            {
+                _logger.LogInformation($"Pedido #{order.OrderNumber} impresso com sucesso ({numberOfCopies} vias)");
             }
             else
             {
-                _logger.LogError($"Falha ao imprimir uma ou ambas as vias do pedido #{order.OrderNumber} (Via1: {success1}, Via2: {success2})");
+                _logger.LogError($"Falha ao imprimir uma ou mais vias do pedido #{order.OrderNumber}");
             }
 
-            return success1 && success2; // Retorna sucesso apenas se AMBAS as vias funcionarem
+            return allSuccess;
         }
         catch (Exception ex)
         {

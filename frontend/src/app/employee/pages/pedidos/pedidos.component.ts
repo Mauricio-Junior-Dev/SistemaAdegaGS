@@ -410,7 +410,8 @@ export class PedidosComponent implements OnInit, OnDestroy {
   }
 
   printOrder(order: Order): void {
-    this.printService.printOrder(order);
+    // Usar printOrderManual para garantir layout idêntico à impressão automática
+    this.printService.printOrderManual(order);
   }
 
   getStatusColor(order: Order): string {

@@ -14,15 +14,13 @@ builder.Host.UseWindowsService();
 // Configurar serviços
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAngularApp", policy =>
+    // Política permissiva para desenvolvimento/local (aceita localhost e IPs de rede)
+    options.AddPolicy("AllowAll", policy =>
     {
-        policy.WithOrigins(
-            "http://localhost:4200",
-            "http://127.0.0.1:4200"
-        )
-        .AllowAnyMethod()
-        .AllowAnyHeader()
-        .AllowCredentials();
+        policy.SetIsOriginAllowed(origin => true) // Aceita qualquer origem (localhost e IPs de rede)
+              .AllowAnyMethod()
+              .AllowAnyHeader()
+              .AllowCredentials();
     });
 });
 
@@ -32,7 +30,7 @@ builder.Services.AddScoped<PrinterService>();
 var app = builder.Build();
 
 // Configurar pipeline
-app.UseCors("AllowAngularApp");
+app.UseCors("AllowAll");
 
 // Endpoint de impressão
 app.MapPost("/print", (OrderDto order, PrinterService printerService, ILogger<Program> logger) =>
@@ -85,10 +83,11 @@ app.MapPost("/print", (OrderDto order, PrinterService printerService, ILogger<Pr
 app.MapGet("/health", () => Results.Ok(new { status = "online", timestamp = DateTime.UtcNow }));
 
 var port = 9000;
-app.Urls.Add($"http://localhost:{port}");
+// Escutar em todas as interfaces de rede (0.0.0.0) para aceitar conexões de IPs locais
+app.Urls.Add($"http://0.0.0.0:{port}");
 
 var logger = app.Services.GetRequiredService<ILogger<Program>>();
-logger.LogInformation($"Print Bridge iniciado e escutando em http://localhost:{port}");
+logger.LogInformation($"Print Bridge iniciado e escutando em http://0.0.0.0:{port} (aceita conexões de qualquer IP da rede local)");
 logger.LogInformation("Pressione Ctrl+C para parar o serviço");
 
 app.Run();

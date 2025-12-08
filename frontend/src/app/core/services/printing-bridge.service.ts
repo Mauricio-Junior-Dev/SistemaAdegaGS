@@ -2,12 +2,13 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
+import { environment } from '../../../environments/environment';
 
 /**
  * Serviço para comunicação com o Print Bridge (serviço C# local)
  * 
  * Este serviço envia trabalhos de impressão para o serviço Print Bridge
- * rodando em http://localhost:9000, que por sua vez envia os dados
+ * rodando na mesma máquina do backend, que por sua vez envia os dados
  * diretamente para a impressora térmica (ESC/POS) de forma automática
  * e silenciosa, sem necessidade de confirmação do usuário.
  */
@@ -17,11 +18,22 @@ import { catchError } from 'rxjs/operators';
 export class PrintingBridgeService {
   /**
    * URL base do Print Bridge (serviço C# local)
-   * Por padrão, escuta em http://localhost:9000
+   * Usa o mesmo IP/host do backend para funcionar em rede local
    */
-  private readonly bridgeUrl = 'http://localhost:9000';
+  private readonly bridgeUrl: string;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient) {
+    // Extrair o host/IP do environment.apiUrl (ex: http://192.168.0.101:8000/api -> http://192.168.0.101:9000)
+    const apiUrl = environment.apiUrl;
+    try {
+      const url = new URL(apiUrl);
+      // Usar o mesmo host do backend, mas na porta 9000 do PrintBridge
+      this.bridgeUrl = `${url.protocol}//${url.hostname}:9000`;
+    } catch {
+      // Fallback para localhost se não conseguir parsear
+      this.bridgeUrl = 'http://localhost:9000';
+    }
+  }
 
   /**
    * Envia um pedido completo para impressão através do Print Bridge

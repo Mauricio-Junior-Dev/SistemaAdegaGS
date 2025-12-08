@@ -60,7 +60,35 @@ export class PrintService {
   }
   /**
    * Imprime um pedido manualmente (quando usuário clica no botão)
+   * Reutiliza a mesma lógica do autoPrintOrder para garantir layout idêntico
+   * Tenta primeiro o Print Bridge, e só usa fallback se falhar
+   * O Print Bridge imprime exatamente 2 vias (uma para cozinha/separação e uma para motoboy/cliente)
+   */
+  printOrderManual(order: Order): void {
+    // Enviar pedido para Print Bridge (mesma lógica do autoPrintOrder)
+    // O Print Bridge já imprime 2 vias internamente, então chamamos apenas uma vez
+    this.printingBridge.printOrder(order).subscribe({
+      next: (response) => {
+        if (!response.success) {
+          console.error(`%c❌ ${response.message}`, 'color: red; font-weight: bold;');
+          // Fallback: tentar método antigo via backend Laravel
+          this.fallbackToBackendPrint(order);
+        } else {
+          console.log(`%c✅ Pedido #${order.order_number} impresso com sucesso (2 vias)`, 'color: green; font-weight: bold;');
+        }
+      },
+      error: (error) => {
+        console.error(`%c❌ Erro ao imprimir via Print Bridge:`, 'color: red; font-weight: bold;', error);
+        // Fallback: tentar método antigo via backend Laravel
+        this.fallbackToBackendPrint(order);
+      }
+    });
+  }
+
+  /**
+   * Método legado - mantido para compatibilidade
    * Usa window.print() para abrir diálogo de impressão
+   * @deprecated Use printOrderManual() para garantir layout idêntico à impressão automática
    */
   printOrder(order: Order, copies: number = 1): void {
     // Para impressão manual, usar método tradicional do navegador
@@ -260,9 +288,10 @@ export class PrintService {
   }
 
   /**
-   * Imprime automaticamente um pedido pendente (2 cópias)
+   * Imprime automaticamente um pedido pendente
    * Usado para impressão automática quando novos pedidos são detectados
    * Agora usa o Print Bridge (serviço C# local) para impressão automática e silenciosa
+   * O Print Bridge imprime exatamente 2 vias (uma para cozinha/separação e uma para motoboy/cliente)
    */
   autoPrintOrder(order: Order): void {
     const config = this.loadConfig();
@@ -271,7 +300,8 @@ export class PrintService {
       return;
     }
     
-    // Enviar pedido completo para Print Bridge (1 via)
+    // Enviar pedido completo para Print Bridge
+    // O Print Bridge já imprime 2 vias internamente, então chamamos apenas uma vez
     this.printingBridge.printOrder(order).subscribe({
       next: (response) => {
         if (!response.success) {
