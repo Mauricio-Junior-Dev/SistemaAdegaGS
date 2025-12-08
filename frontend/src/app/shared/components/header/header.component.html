@@ -74,7 +74,11 @@
       <!-- Botão de Login/Perfil -->
       <ng-container *ngIf="user$ | async as user; else loginButton">
         <button mat-button [matMenuTriggerFor]="profileMenu" class="profile-button">
-          <mat-icon>person</mat-icon>
+          <img *ngIf="user.avatar" 
+               [src]="user.avatar" 
+               [alt]="user.name"
+               class="user-avatar">
+          <mat-icon *ngIf="!user.avatar">person</mat-icon>
           <span>{{ user.name }}</span>
         </button>
         <mat-menu #profileMenu="matMenu">

@@ -1,25 +1,27 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\mauri\\OneDrive\\Área de Trabalho\\GitHub\\adegags\\print-bridge\\PrintBridge.csproj": {}
+    "C:\\dev\\adega\\print-bridge\\PrintBridge.csproj": {}
   },
   "projects": {
-    "C:\\Users\\mauri\\OneDrive\\Área de Trabalho\\GitHub\\adegags\\print-bridge\\PrintBridge.csproj": {
+    "C:\\dev\\adega\\print-bridge\\PrintBridge.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\mauri\\OneDrive\\Área de Trabalho\\GitHub\\adegags\\print-bridge\\PrintBridge.csproj",
+        "projectUniqueName": "C:\\dev\\adega\\print-bridge\\PrintBridge.csproj",
         "projectName": "PrintBridge",
-        "projectPath": "C:\\Users\\mauri\\OneDrive\\Área de Trabalho\\GitHub\\adegags\\print-bridge\\PrintBridge.csproj",
-        "packagesPath": "C:\\Users\\mauri\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\mauri\\OneDrive\\Área de Trabalho\\GitHub\\adegags\\print-bridge\\obj\\",
+        "projectPath": "C:\\dev\\adega\\print-bridge\\PrintBridge.csproj",
+        "packagesPath": "C:\\Users\\pomad\\.nuget\\packages\\",
+        "outputPath": "C:\\dev\\adega\\print-bridge\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
-          "C:\\Users\\mauri\\AppData\\Roaming\\NuGet\\NuGet.Config"
+          "C:\\Users\\pomad\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
           "net10.0"
         ],
         "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {

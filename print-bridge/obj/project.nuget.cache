@@ -1,23 +1,23 @@
 {
   "version": 2,
-  "dgSpecHash": "Zoqcs+wZDIM=",
+  "dgSpecHash": "FaO8WvAZCWs=",
   "success": true,
-  "projectFilePath": "C:\\Users\\mauri\\OneDrive\\Área de Trabalho\\GitHub\\adegags\\print-bridge\\PrintBridge.csproj",
+  "projectFilePath": "C:\\dev\\adega\\print-bridge\\PrintBridge.csproj",
   "expectedPackageFiles": [
-    "C:\\Users\\mauri\\.nuget\\packages\\microsoft.extensions.hosting.windowsservices\\9.0.0\\microsoft.extensions.hosting.windowsservices.9.0.0.nupkg.sha512",
-    "C:\\Users\\mauri\\.nuget\\packages\\microsoft.win32.systemevents\\9.0.0\\microsoft.win32.systemevents.9.0.0.nupkg.sha512",
-    "C:\\Users\\mauri\\.nuget\\packages\\system.drawing.common\\9.0.0\\system.drawing.common.9.0.0.nupkg.sha512",
-    "C:\\Users\\mauri\\.nuget\\packages\\system.serviceprocess.servicecontroller\\9.0.0\\system.serviceprocess.servicecontroller.9.0.0.nupkg.sha512",
-    "C:\\Users\\mauri\\.nuget\\packages\\system.text.encoding.codepages\\9.0.0\\system.text.encoding.codepages.9.0.0.nupkg.sha512"
+    "C:\\Users\\pomad\\.nuget\\packages\\microsoft.extensions.hosting.windowsservices\\9.0.0\\microsoft.extensions.hosting.windowsservices.9.0.0.nupkg.sha512",
+    "C:\\Users\\pomad\\.nuget\\packages\\microsoft.win32.systemevents\\9.0.0\\microsoft.win32.systemevents.9.0.0.nupkg.sha512",
+    "C:\\Users\\pomad\\.nuget\\packages\\system.drawing.common\\9.0.0\\system.drawing.common.9.0.0.nupkg.sha512",
+    "C:\\Users\\pomad\\.nuget\\packages\\system.serviceprocess.servicecontroller\\9.0.0\\system.serviceprocess.servicecontroller.9.0.0.nupkg.sha512",
+    "C:\\Users\\pomad\\.nuget\\packages\\system.text.encoding.codepages\\9.0.0\\system.text.encoding.codepages.9.0.0.nupkg.sha512"
   ],
   "logs": [
     {
       "code": "NU1510",
       "level": "Warning",
-      "message": "PackageReference System.Text.Encoding.CodePages não será podado. Considere remover este pacote das dependências, pois\u00A0ele provavelmente é desnecessário.",
-      "projectPath": "C:\\Users\\mauri\\OneDrive\\Área de Trabalho\\GitHub\\adegags\\print-bridge\\PrintBridge.csproj",
+      "message": "PackageReference System.Text.Encoding.CodePages will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.",
+      "projectPath": "C:\\dev\\adega\\print-bridge\\PrintBridge.csproj",
       "warningLevel": 1,
-      "filePath": "C:\\Users\\mauri\\OneDrive\\Área de Trabalho\\GitHub\\adegags\\print-bridge\\PrintBridge.csproj",
+      "filePath": "C:\\dev\\adega\\print-bridge\\PrintBridge.csproj",
       "libraryId": "System.Text.Encoding.CodePages",
       "targetGraphs": [
         "net10.0"

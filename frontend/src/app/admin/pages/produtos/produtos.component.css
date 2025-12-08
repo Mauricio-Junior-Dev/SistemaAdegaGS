@@ -32,13 +32,19 @@
 
 .filters-container {
   display: flex !important;
-  flex-wrap: wrap !important;
-  gap: 12px !important;
-  align-items: center !important;
+  flex-direction: column !important;
+  gap: 16px !important;
   padding: 0 !important;
 }
 
-.filters-container mat-form-field {
+.filters-main {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 12px !important;
+  align-items: center !important;
+}
+
+.filters-main mat-form-field {
   flex: 0 1 auto;
   margin: 0 !important;
 }
@@ -48,10 +54,76 @@
   min-width: 200px;
 }
 
+.filters-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .filter-toggles {
   display: flex;
-  gap: 8px;
+  gap: 12px;
   align-items: center;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.clear-filters-btn {
+  flex-shrink: 0;
+}
+
+/* Estilo para chips de filtro - Outline quando desmarcado, Sólido quando marcado */
+:host ::ng-deep .filter-toggles mat-chip-listbox {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+:host ::ng-deep .filter-toggles .mat-mdc-chip-option {
+  border: 1px solid rgba(0, 0, 0, 0.12) !important;
+  background-color: transparent !important;
+  color: rgba(0, 0, 0, 0.87) !important;
+  transition: all 0.2s ease;
+  margin: 0 !important;
+}
+
+:host ::ng-deep .filter-toggles .mat-mdc-chip-option:hover:not(.mdc-evolution-chip--selected) {
+  background-color: rgba(0, 0, 0, 0.04) !important;
+  border-color: rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Chip selecionado - estilo sólido */
+:host ::ng-deep .filter-toggles .mat-mdc-chip-option.mdc-evolution-chip--selected {
+  background-color: var(--primary, #673ab7) !important;
+  border-color: var(--primary, #673ab7) !important;
+  color: white !important;
+}
+
+:host ::ng-deep .filter-toggles .mat-mdc-chip-option.mdc-evolution-chip--selected:hover {
+  background-color: var(--primary-dark, #512da8) !important;
+  border-color: var(--primary-dark, #512da8) !important;
+}
+
+/* Chip de estoque baixo - cor de aviso */
+:host ::ng-deep .filter-toggles .mat-mdc-chip-option[color="warn"] {
+  border-color: rgba(244, 67, 54, 0.5) !important;
+}
+
+:host ::ng-deep .filter-toggles .mat-mdc-chip-option[color="warn"]:hover:not(.mdc-evolution-chip--selected) {
+  background-color: rgba(244, 67, 54, 0.08) !important;
+  border-color: rgba(244, 67, 54, 0.7) !important;
+}
+
+:host ::ng-deep .filter-toggles .mat-mdc-chip-option[color="warn"].mdc-evolution-chip--selected {
+  background-color: #f44336 !important;
+  border-color: #f44336 !important;
+  color: white !important;
+}
+
+:host ::ng-deep .filter-toggles .mat-mdc-chip-option[color="warn"].mdc-evolution-chip--selected:hover {
+  background-color: #d32f2f !important;
+  border-color: #d32f2f !important;
 }
 
 /* Loading State */

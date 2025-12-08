@@ -96,7 +96,7 @@ import { environment } from '../../../../../environments/environment';
             <h3>Configuração de Pack (Caixa/Fardo)</h3>
             <p class="pack-warning">
               <mat-icon>info</mat-icon>
-              Use esta opção apenas para Caixas/Fardos. Para Doses, use o cadastro de produto normal.
+              Use esta opção apenas para Caixas/Fardos.
             </p>
             
             <mat-slide-toggle formControlName="is_pack" color="primary">
@@ -114,24 +114,24 @@ import { environment } from '../../../../../environments/environment';
                     </mat-option>
                   </mat-select>
                   <mat-error *ngIf="productForm.get('parent_product_id')?.hasError('required')">
-                    Produto pai é obrigatório para Packs
+                    Produto pai é obrigatório para Caixa/Fardo
                   </mat-error>
                 </mat-form-field>
 
                 <mat-form-field appearance="outline">
-                  <mat-label>Multiplicador de Estoque</mat-label>
+                  <mat-label>Quantidade por Caixa/Fardo</mat-label>
                   <input matInput 
                          type="number" 
                          formControlName="stock_multiplier" 
                          required
                          min="2"
                          [disabled]="!productForm.get('is_pack')?.value">
-                  <mat-hint>Quantas unidades do produto pai equivalem a 1 Pack</mat-hint>
+                  <mat-hint>Quantas unidades do produto pai equivalem a 1 Caixa/Fardo</mat-hint>
                   <mat-error *ngIf="productForm.get('stock_multiplier')?.hasError('required')">
-                    Multiplicador é obrigatório
+                    Quantidade por Caixa/Fardo é obrigatória
                   </mat-error>
                   <mat-error *ngIf="productForm.get('stock_multiplier')?.hasError('min')">
-                    Multiplicador deve ser maior que 1
+                    Quantidade por Caixa/Fardo deve ser maior que 1
                   </mat-error>
                 </mat-form-field>
               </div>
@@ -254,25 +254,65 @@ import { environment } from '../../../../../environments/environment';
 
           <!-- Status -->
           <div class="form-row status-row">
-            <mat-slide-toggle formControlName="is_active" color="primary">
-              Produto Ativo
-            </mat-slide-toggle>
+            <div class="toggle-wrapper">
+              <mat-slide-toggle formControlName="is_active" color="primary">
+                Produto Ativo
+              </mat-slide-toggle>
+              <mat-icon 
+                matTooltip="Se desligado, o produto some de todo o sistema (Site e Caixa). Use para itens fora de linha."
+                matTooltipPosition="right"
+                class="info-icon">
+                help_outline
+              </mat-icon>
+            </div>
             
-            <mat-slide-toggle formControlName="visible_online" color="primary">
-              Visível no Site/App
-            </mat-slide-toggle>
+            <div class="toggle-wrapper">
+              <mat-slide-toggle formControlName="visible_online" color="primary">
+                Visível no Site/App
+              </mat-slide-toggle>
+              <mat-icon 
+                matTooltip="Se desligado, o produto fica oculto no site (Ecommerce), mas continua disponível para venda no Caixa (Balcão)."
+                matTooltipPosition="right"
+                class="info-icon">
+                help_outline
+              </mat-icon>
+            </div>
             
-            <mat-slide-toggle formControlName="featured" color="accent">
-              Produto em Destaque
-            </mat-slide-toggle>
+            <div class="toggle-wrapper">
+              <mat-slide-toggle formControlName="featured" color="accent">
+                Produto em Destaque
+              </mat-slide-toggle>
+              <mat-icon 
+                matTooltip="Exibe o produto na seção principal 'Destaques' da página inicial."
+                matTooltipPosition="right"
+                class="info-icon">
+                help_outline
+              </mat-icon>
+            </div>
             
-            <mat-slide-toggle formControlName="offers" color="warn">
-              Produto em Oferta
-            </mat-slide-toggle>
+            <div class="toggle-wrapper">
+              <mat-slide-toggle formControlName="offers" color="warn">
+                Produto em Oferta
+              </mat-slide-toggle>
+              <mat-icon 
+                matTooltip="Adiciona uma etiqueta de promoção e exibe na seção de ofertas especiais."
+                matTooltipPosition="right"
+                class="info-icon">
+                help_outline
+              </mat-icon>
+            </div>
             
-            <mat-slide-toggle formControlName="popular" color="primary">
-              Produto Popular
-            </mat-slide-toggle>
+            <div class="toggle-wrapper">
+              <mat-slide-toggle formControlName="popular" color="primary">
+                Exibir como Sugestão no Checkout
+              </mat-slide-toggle>
+              <mat-icon 
+                matTooltip="Estes produtos aparecerão na lista 'Não esqueceu de nada?' na hora de finalizar a compra."
+                matTooltipPosition="right"
+                class="info-icon">
+                help_outline
+              </mat-icon>
+            </div>
           </div>
         </div>
       </mat-dialog-content>
@@ -316,6 +356,31 @@ import { environment } from '../../../../../environments/environment';
     .status-row {
       margin-top: 8px;
       background-color: transparent !important;
+    }
+
+    .toggle-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex: 1;
+    }
+
+    .toggle-wrapper mat-slide-toggle {
+      flex: 1;
+    }
+
+    .info-icon {
+      color: #999;
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+      cursor: help;
+      flex-shrink: 0;
+      margin-left: 4px;
+    }
+
+    .info-icon:hover {
+      color: var(--primary, #673ab7);
     }
 
     /* Remover qualquer fundo amarelo dos toggles/checkboxes */

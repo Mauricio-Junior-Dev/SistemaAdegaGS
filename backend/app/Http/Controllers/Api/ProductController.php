@@ -64,6 +64,10 @@ class ProductController extends Controller
 
     /**
      * Get product suggestions based on cart items
+     * 
+     * IMPORTANTE: Esta query filtra apenas pelos produtos do carrinho DO USUÁRIO ATUAL.
+     * Os $cartIds são enviados pelo frontend e representam apenas os produtos no carrinho
+     * do usuário que está fazendo a requisição. Não há filtro global que afete outros usuários.
      */
     public function suggestions(Request $request)
     {
@@ -77,16 +81,18 @@ class ProductController extends Controller
         $limit = $request->get('limit', 6);
 
         // Buscar produtos do carrinho para obter suas categorias
+        // NOTA: $cartIds contém apenas os IDs dos produtos no carrinho DO USUÁRIO ATUAL
         $cartProducts = Product::whereIn('id', $cartIds)->get();
         $cartCategories = $cartProducts->pluck('category_id')->unique()->filter();
 
         // Buscar produtos populares primeiro
+        // whereNotIn('id', $cartIds) exclui apenas produtos do carrinho DO USUÁRIO ATUAL
         $suggestions = Product::with('category')
             ->where('is_active', true)
             ->where('visible_online', true)
             ->where('current_stock', '>', 0)
             ->where('popular', true) // Priorizar produtos populares
-            ->whereNotIn('id', $cartIds) // Excluir produtos já no carrinho
+            ->whereNotIn('id', $cartIds) // Excluir produtos já no carrinho DO USUÁRIO ATUAL
             ->orderBy('price', 'asc') // Dentro dos populares, priorizar menor preço
             ->limit($limit)
             ->get();

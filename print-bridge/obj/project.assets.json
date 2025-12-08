@@ -298,24 +298,26 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\mauri\\.nuget\\packages\\": {}
+    "C:\\Users\\pomad\\.nuget\\packages\\": {}
   },
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\mauri\\OneDrive\\Área de Trabalho\\GitHub\\adegags\\print-bridge\\PrintBridge.csproj",
+      "projectUniqueName": "C:\\dev\\adega\\print-bridge\\PrintBridge.csproj",
       "projectName": "PrintBridge",
-      "projectPath": "C:\\Users\\mauri\\OneDrive\\Área de Trabalho\\GitHub\\adegags\\print-bridge\\PrintBridge.csproj",
-      "packagesPath": "C:\\Users\\mauri\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\mauri\\OneDrive\\Área de Trabalho\\GitHub\\adegags\\print-bridge\\obj\\",
+      "projectPath": "C:\\dev\\adega\\print-bridge\\PrintBridge.csproj",
+      "packagesPath": "C:\\Users\\pomad\\.nuget\\packages\\",
+      "outputPath": "C:\\dev\\adega\\print-bridge\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
-        "C:\\Users\\mauri\\AppData\\Roaming\\NuGet\\NuGet.Config"
+        "C:\\Users\\pomad\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
       "originalTargetFrameworks": [
         "net10.0"
       ],
       "sources": {
+        "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
         "https://api.nuget.org/v3/index.json": {}
       },
       "frameworks": {
@@ -795,7 +797,7 @@
       "code": "NU1510",
       "level": "Warning",
       "warningLevel": 1,
-      "message": "PackageReference System.Text.Encoding.CodePages não será podado. Considere remover este pacote das dependências, pois ele provavelmente é desnecessário.",
+      "message": "PackageReference System.Text.Encoding.CodePages will not be pruned. Consider removing this package from your dependencies, as it is likely unnecessary.",
       "libraryId": "System.Text.Encoding.CodePages",
       "targetGraphs": [
         "net10.0"

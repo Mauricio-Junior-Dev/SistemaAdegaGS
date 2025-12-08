@@ -14,33 +14,78 @@ class ProductController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = Product::with(['category']);
+        // Ordenação
+        $sortBy = $request->get('sort_by', 'name');
+        $sortOrder = $request->get('sort_order', 'asc');
+        
+        // Garantir que a direção é válida (asc ou desc)
+        if (!in_array(strtolower($sortOrder), ['asc', 'desc'])) {
+            $sortOrder = 'asc';
+        }
+        
+        // Se ordenar por categoria, precisa fazer join antes de aplicar filtros
+        $needsJoin = ($sortBy === 'category');
+        
+        if ($needsJoin) {
+            $query = Product::join('categories', 'products.category_id', '=', 'categories.id')
+                           ->select('products.*');
+        } else {
+            $query = Product::query();
+        }
 
         // Filtros
         if ($request->has('search') && $request->search) {
             $query->where(function($q) use ($request) {
-                $q->where('name', 'like', '%' . $request->search . '%')
-                  ->orWhere('barcode', 'like', '%' . $request->search . '%');
+                $q->where('products.name', 'like', '%' . $request->search . '%')
+                  ->orWhere('products.barcode', 'like', '%' . $request->search . '%');
             });
         }
 
         if ($request->has('category_id')) {
-            $query->where('category_id', $request->category_id);
+            $query->where('products.category_id', $request->category_id);
         }
 
         if ($request->has('is_active')) {
             $isActive = filter_var($request->is_active, FILTER_VALIDATE_BOOLEAN);
-            $query->where('is_active', $isActive);
+            $query->where('products.is_active', $isActive);
         }
 
         if ($request->has('low_stock') && $request->low_stock) {
-            $query->whereColumn('current_stock', '<=', 'min_stock');
+            $query->whereColumn('products.current_stock', '<=', 'products.min_stock');
         }
 
-        // Ordenação
-        $sortBy = $request->get('sort_by', 'name');
-        $sortOrder = $request->get('sort_order', 'asc');
-        $query->orderBy($sortBy, $sortOrder);
+        if ($request->boolean('featured')) {
+            $query->where('products.featured', true);
+        }
+
+        if ($request->boolean('offers')) {
+            $query->where('products.offers', true);
+        }
+
+        if ($request->boolean('is_pack')) {
+            $query->whereNotNull('products.parent_product_id');
+        }
+
+        if ($request->boolean('visible_online')) {
+            $query->where('products.visible_online', true);
+        }
+
+        // Aplicar ordenação
+        if ($sortBy === 'category') {
+            $query->orderBy('categories.name', $sortOrder);
+        } else {
+            // Validação de segurança: só permite ordenar por colunas válidas
+            $allowedSortColumns = ['name', 'price', 'current_stock', 'is_active', 'created_at', 'updated_at'];
+            if (in_array($sortBy, $allowedSortColumns)) {
+                $query->orderBy('products.' . $sortBy, $sortOrder);
+            } else {
+                // Fallback para ordenação padrão se coluna inválida
+                $query->orderBy('products.name', 'asc');
+            }
+        }
+
+        // Carregar relacionamento de categoria (sempre necessário para exibição)
+        $query->with(['category']);
 
         // Paginação
         $perPage = $request->get('per_page', 10);

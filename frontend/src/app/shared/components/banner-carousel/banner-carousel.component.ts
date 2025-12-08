@@ -1,4 +1,4 @@
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, Input, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { environment } from '../../../../environments/environment';
@@ -18,7 +18,7 @@ export interface Banner {
   imports: [CommonModule, MatIconModule],
   template: `
     <div class="banner-carousel" *ngIf="banners.length > 0">
-      <div class="carousel-container">
+      <div class="carousel-container" (touchstart)="onTouchStart($event)" (touchend)="onTouchEnd($event)">
         <div class="carousel-track" [style.transform]="'translateX(-' + (currentSlide * 100) + '%)'">
           <div *ngFor="let banner of banners; let i = index" 
                class="carousel-slide carousel-item" 
@@ -203,16 +203,7 @@ export interface Banner {
       }
 
       .carousel-arrow {
-        width: 40px;
-        height: 40px;
-      }
-
-      .carousel-prev {
-        left: 10px;
-      }
-
-      .carousel-next {
-        right: 10px;
+        display: none;
       }
 
       .carousel-dots {
@@ -233,13 +224,16 @@ export interface Banner {
     }
   `]
 })
-export class BannerCarouselComponent implements OnInit {
+export class BannerCarouselComponent implements OnInit, OnDestroy {
   @Input() banners: Banner[] = [];
   @Input() autoPlay: boolean = true;
   @Input() autoPlayInterval: number = 5000;
 
   currentSlide = 0;
   private autoPlayTimer?: number;
+  private touchStartX = 0;
+  private touchEndX = 0;
+  private readonly swipeThreshold = 50;
 
   ngOnInit(): void {
     if (this.autoPlay && this.banners.length > 1) {
@@ -273,6 +267,34 @@ export class BannerCarouselComponent implements OnInit {
     if (this.autoPlayTimer) {
       clearInterval(this.autoPlayTimer);
     }
+  }
+
+  onTouchStart(event: TouchEvent): void {
+    this.touchStartX = event.changedTouches[0].screenX;
+  }
+
+  onTouchEnd(event: TouchEvent): void {
+    this.touchEndX = event.changedTouches[0].screenX;
+    this.handleSwipe();
+  }
+
+  private handleSwipe(): void {
+    const diff = this.touchStartX - this.touchEndX;
+    
+    // Verifica se o movimento foi significativo (threshold)
+    if (Math.abs(diff) > this.swipeThreshold) {
+      if (diff > 0) {
+        // Arrastou para a esquerda -> próximo slide
+        this.nextSlide();
+      } else {
+        // Arrastou para a direita -> slide anterior
+        this.previousSlide();
+      }
+    }
+    
+    // Reset das posições
+    this.touchStartX = 0;
+    this.touchEndX = 0;
   }
 
   getImageUrl(imageUrl: string | null | undefined): string {

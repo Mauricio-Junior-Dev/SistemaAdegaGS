@@ -164,6 +164,15 @@
   color: #1A1A1A !important;
 }
 
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid white;
+  margin-right: 8px;
+}
+
 .mat-mdc-menu-item {
   display: flex;
   align-items: center;

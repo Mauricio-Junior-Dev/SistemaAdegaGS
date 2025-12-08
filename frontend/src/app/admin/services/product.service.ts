@@ -79,6 +79,10 @@ export class ProductService {
     category_id?: number;
     is_active?: boolean;
     low_stock?: boolean;
+    featured?: boolean;
+    offers?: boolean;
+    is_pack?: boolean;
+    visible_online?: boolean;
     sort_by?: string;
     sort_order?: 'asc' | 'desc';
   } = {}): Observable<ProductResponse> {

@@ -13,39 +13,86 @@
   <mat-card class="filters-card">
     <mat-card-content>
       <div class="filters-container">
+        <div class="filters-main">
           <mat-form-field appearance="outline" class="search-field">
-          <mat-label>Buscar produtos</mat-label>
-          <input matInput
-                 [(ngModel)]="searchTerm"
-                 (keyup)="onSearch($event)"
-                 placeholder="Nome ou código de barras">
-          <mat-icon matSuffix>search</mat-icon>
-        </mat-form-field>
+            <mat-label>Buscar produtos</mat-label>
+            <input matInput
+                   [(ngModel)]="searchTerm"
+                   (keyup)="onSearch($event)"
+                   placeholder="Nome ou código de barras">
+            <mat-icon matSuffix>search</mat-icon>
+          </mat-form-field>
 
-        <mat-form-field appearance="outline">
-          <mat-label>Categoria</mat-label>
-          <mat-select [(ngModel)]="selectedCategory" (selectionChange)="onCategoryChange()">
-            <mat-option [value]="null">Todas</mat-option>
-            <mat-option [value]="category.id" *ngFor="let category of categories">
-              {{category.name}}
-            </mat-option>
-          </mat-select>
-        </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Categoria</mat-label>
+            <mat-select [(ngModel)]="selectedCategory" (selectionChange)="onCategoryChange()">
+              <mat-option [value]="null">Todas</mat-option>
+              <mat-option [value]="category.id" *ngFor="let category of categories">
+                {{category.name}}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
 
-        <div class="filter-toggles">
-          <mat-chip-listbox>
-            <mat-chip-option
-              [selected]="showInactive"
-              (selectionChange)="toggleFilters('inactive')">
-              Mostrar Inativos
-            </mat-chip-option>
-            <mat-chip-option
-              [selected]="showLowStock"
-              (selectionChange)="toggleFilters('lowStock')"
-              color="warn">
-              Estoque Baixo
-            </mat-chip-option>
-          </mat-chip-listbox>
+        <div class="filters-actions">
+          <div class="filter-toggles">
+            <mat-chip-listbox>
+              <mat-chip-option
+                [selected]="showInactive"
+                (selectionChange)="toggleFilters('inactive')"
+                matTooltip="Inclui produtos desativados na listagem."
+                matTooltipPosition="below">
+                Inativos
+              </mat-chip-option>
+              <mat-chip-option
+                [selected]="showLowStock"
+                (selectionChange)="toggleFilters('lowStock')"
+                color="warn"
+                matTooltip="Exibe apenas produtos com estoque abaixo do mínimo."
+                matTooltipPosition="below">
+                Estoque Baixo
+              </mat-chip-option>
+              <mat-chip-option
+                [selected]="filterFeatured"
+                (selectionChange)="onFilterChange('featured', $event)"
+                matTooltip="Exibe apenas produtos em destaque na página inicial."
+                matTooltipPosition="below">
+                Destaques
+              </mat-chip-option>
+              <mat-chip-option
+                [selected]="filterOffers"
+                (selectionChange)="onFilterChange('offers', $event)"
+                matTooltip="Exibe apenas produtos em oferta/promoção."
+                matTooltipPosition="below">
+                Em Oferta
+              </mat-chip-option>
+              <mat-chip-option
+                [selected]="filterIsPack"
+                (selectionChange)="onFilterChange('is_pack', $event)"
+                matTooltip="Exibe apenas produtos vendidos em pack/fardo."
+                matTooltipPosition="below">
+                Caixas / Fardos
+              </mat-chip-option>
+              <mat-chip-option
+                [selected]="filterVisibleOnline"
+                (selectionChange)="onFilterChange('visible_online', $event)"
+                matTooltip="Exibe apenas produtos que aparecem no ecommerce."
+                matTooltipPosition="below">
+                Visíveis no Site
+              </mat-chip-option>
+            </mat-chip-listbox>
+          </div>
+          
+          <button 
+            *ngIf="hasActiveFilters()"
+            mat-icon-button
+            color="primary"
+            (click)="clearFilters()"
+            matTooltip="Limpar todos os filtros"
+            matTooltipPosition="below"
+            class="clear-filters-btn">
+            <mat-icon>filter_alt_off</mat-icon>
+          </button>
         </div>
       </div>
     </mat-card-content>
@@ -76,7 +123,7 @@
 
         <!-- Nome -->
         <ng-container matColumnDef="name">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>Nome</th>
+          <th mat-header-cell *matHeaderCellDef mat-sort-header="name">Nome</th>
           <td mat-cell *matCellDef="let product">
             <div class="product-name">
               {{product.name}}
@@ -86,19 +133,19 @@
 
         <!-- Categoria -->
         <ng-container matColumnDef="category">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>Categoria</th>
+          <th mat-header-cell *matHeaderCellDef mat-sort-header="category">Categoria</th>
           <td mat-cell *matCellDef="let product">{{product.category?.name}}</td>
         </ng-container>
 
         <!-- Preço -->
         <ng-container matColumnDef="price">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>Preço</th>
+          <th mat-header-cell *matHeaderCellDef mat-sort-header="price">Preço</th>
           <td mat-cell *matCellDef="let product">{{formatCurrency(product.price)}}</td>
         </ng-container>
 
         <!-- Estoque -->
         <ng-container matColumnDef="current_stock">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>Estoque</th>
+          <th mat-header-cell *matHeaderCellDef mat-sort-header="current_stock">Estoque</th>
           <td mat-cell *matCellDef="let product">
             <span [style.color]="getStockColor(product.current_stock, product.min_stock)">
               {{product.current_stock}}
@@ -108,7 +155,7 @@
 
         <!-- Status -->
         <ng-container matColumnDef="status">
-          <th mat-header-cell *matHeaderCellDef>Status</th>
+          <th mat-header-cell *matHeaderCellDef mat-sort-header="is_active">Status</th>
           <td mat-cell *matCellDef="let product">
             <mat-chip [color]="product.is_active ? 'primary' : 'warn'" selected>
               {{product.is_active ? 'Ativo' : 'Inativo'}}

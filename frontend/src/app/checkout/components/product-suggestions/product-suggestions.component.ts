@@ -4,12 +4,12 @@ import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { Observable, Subject, takeUntil } from 'rxjs';
 import { Product } from '../../../core/models/product.model';
 import { CartItem } from '../../../core/models/cart.model';
 import { ProductService } from '../../../core/services/product.service';
 import { CartService } from '../../../core/services/cart.service';
+import { ToastrService } from 'ngx-toastr';
 import { environment } from '../../../../environments/environment';
 
 @Component({
@@ -22,8 +22,7 @@ import { environment } from '../../../../environments/environment';
     MatCardModule,
     MatButtonModule,
     MatIconModule,
-    MatProgressSpinnerModule,
-    MatSnackBarModule
+    MatProgressSpinnerModule
   ]
 })
 export class ProductSuggestionsComponent implements OnInit, OnDestroy {
@@ -36,7 +35,7 @@ export class ProductSuggestionsComponent implements OnInit, OnDestroy {
   constructor(
     private productService: ProductService,
     private cartService: CartService,
-    private snackBar: MatSnackBar
+    private toastr: ToastrService
   ) {}
 
   ngOnInit(): void {
@@ -78,81 +77,30 @@ export class ProductSuggestionsComponent implements OnInit, OnDestroy {
   }
 
   addToCart(product: Product): void {
-    this.cartService.addItem(product);
+    const currentQuantity = this.getCurrentQuantity(product);
+    this.cartService.addItem(product, 1);
     
-    // Animação de confirmação
-    this.showAddAnimation(product);
-    
-    // Snackbar de confirmação
-    this.snackBar.open(`${product.name} adicionado ao carrinho!`, 'Fechar', {
-      duration: 2000,
-      horizontalPosition: 'center',
-      verticalPosition: 'top'
-    });
+    // Mostrar notificação apenas quando a quantidade for de 0 para 1 (primeira adição)
+    if (currentQuantity === 0) {
+      const productName = product.name;
+      const isFeminine = productName.toLowerCase().endsWith('a') || 
+                         productName.toLowerCase().endsWith('ão') ||
+                         productName.toLowerCase().endsWith('ade');
+      const message = isFeminine ? `${productName} adicionada!` : `${productName} adicionado!`;
+      
+      this.toastr.success(message, '', {
+        timeOut: 1500,
+        positionClass: 'toast-bottom-center',
+        progressBar: false
+      });
+    }
   }
 
-  private showAddAnimation(product: Product): void {
-    // Criar elemento de animação
-    const animationElement = document.createElement('div');
-    animationElement.className = 'add-animation';
-    animationElement.innerHTML = `
-      <div class="animation-content">
-        <mat-icon>check_circle</mat-icon>
-        <span>Adicionado!</span>
-      </div>
-    `;
-    
-    // Adicionar estilos inline
-    animationElement.style.cssText = `
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: #4caf50;
-      color: white;
-      padding: 12px 24px;
-      border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-      z-index: 9999;
-      font-size: 14px;
-      font-weight: 500;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      animation: addToCartAnimation 0.6s ease-out forwards;
-    `;
-    
-    // Adicionar CSS da animação
-    if (!document.getElementById('add-animation-styles')) {
-      const style = document.createElement('style');
-      style.id = 'add-animation-styles';
-      style.textContent = `
-        @keyframes addToCartAnimation {
-          0% {
-            opacity: 0;
-            transform: translate(-50%, -50%) scale(0.8);
-          }
-          50% {
-            opacity: 1;
-            transform: translate(-50%, -50%) scale(1.1);
-          }
-          100% {
-            opacity: 0;
-            transform: translate(-50%, -50%) scale(1);
-          }
-        }
-      `;
-      document.head.appendChild(style);
-    }
-    
-    document.body.appendChild(animationElement);
-    
-    // Remover após animação
-    setTimeout(() => {
-      if (animationElement.parentNode) {
-        animationElement.parentNode.removeChild(animationElement);
-      }
-    }, 600);
+  private getCurrentQuantity(product: Product): number {
+    const cartState = this.cartService.getCartState();
+    const items = cartState?.items || [];
+    const existingItem = items.find(item => item.id === product.id);
+    return existingItem ? existingItem.quantity : 0;
   }
 
   getImageUrl(product: Product): string {

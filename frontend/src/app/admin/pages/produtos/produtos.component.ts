@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ViewChild } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild, AfterViewInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatTableModule, MatTable } from '@angular/material/table';
@@ -51,7 +51,7 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
   templateUrl: './produtos.component.html',
   styleUrls: ['./produtos.component.css']
 })
-export class ProdutosComponent implements OnInit, OnDestroy {
+export class ProdutosComponent implements OnInit, AfterViewInit, OnDestroy {
   displayedColumns = ['image', 'name', 'category', 'price', 'current_stock', 'status', 'actions'];
   products: Product[] = [];
   totalItems = 0;
@@ -62,7 +62,18 @@ export class ProdutosComponent implements OnInit, OnDestroy {
   selectedCategory: number | null = null;
   showInactive = false;
   showLowStock = false;
+  filterFeatured = false;
+  filterOffers = false;
+  filterIsPack = false;
+  filterVisibleOnline = false;
   categories: Category[] = [];
+  
+  // Estado de ordenação manual (para garantir que funciona corretamente)
+  currentSortColumn: string = '';
+  currentSortDirection: 'asc' | 'desc' | '' = '';
+  
+  // Flag para evitar loops durante limpeza de filtros
+  private isClearingFilters = false;
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
@@ -75,7 +86,8 @@ export class ProdutosComponent implements OnInit, OnDestroy {
     private productService: ProductService,
     private categoryService: CategoryService,
     private dialog: MatDialog,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private cdr: ChangeDetectorRef
   ) {
     // Configurar busca com debounce
     this.searchSubject.pipe(
@@ -105,6 +117,14 @@ export class ProdutosComponent implements OnInit, OnDestroy {
     this.loadProducts();
   }
 
+  ngAfterViewInit(): void {
+    // Garantir que o MatSort está vinculado corretamente
+    if (this.sort) {
+      // O MatSort já está vinculado via ViewChild
+      // Não precisamos fazer nada adicional, mas garantimos que está disponível
+    }
+  }
+
   loadCategories(): void {
     this.categoryService.getAllCategories()
       .pipe(takeUntil(this.destroy$))
@@ -127,16 +147,47 @@ export class ProdutosComponent implements OnInit, OnDestroy {
   loadProducts(): void {
     this.loading = true;
 
-    const params = {
+    // Construir parâmetros dinamicamente - só enviar se for true
+    const params: any = {
       page: this.currentPage + 1,
-      per_page: this.pageSize,
-      search: this.searchTerm || undefined,
-      category_id: this.selectedCategory || undefined,
-      is_active: this.showInactive ? false : true,
-      low_stock: this.showLowStock || undefined,
-      sort_by: this.sort?.active,
-      sort_order: this.sort?.direction || undefined
+      per_page: this.pageSize
     };
+
+    // Busca e categoria
+    if (this.searchTerm) {
+      params.search = this.searchTerm;
+    }
+    if (this.selectedCategory) {
+      params.category_id = this.selectedCategory;
+    }
+
+    // Status ativo/inativo
+    if (!this.showInactive) {
+      params.is_active = true;
+    }
+
+    // Filtros booleanos - só enviar se for true
+    if (this.showLowStock) {
+      params.low_stock = true;
+    }
+    if (this.filterFeatured) {
+      params.featured = true;
+    }
+    if (this.filterOffers) {
+      params.offers = true;
+    }
+    if (this.filterIsPack) {
+      params.is_pack = true;
+    }
+    if (this.filterVisibleOnline) {
+      params.visible_online = true;
+    }
+
+    // Ordenação - usar o estado manual que controlamos
+    if (this.currentSortColumn && this.currentSortDirection) {
+      params.sort_by = this.currentSortColumn;
+      params.sort_order = this.currentSortDirection;
+    }
 
     this.productService.getProducts(params)
       .pipe(takeUntil(this.destroy$))
@@ -166,15 +217,55 @@ export class ProdutosComponent implements OnInit, OnDestroy {
   }
 
   onSortChange(sort: Sort): void {
+    // Lógica de alternância manual
+    if (sort.active === this.currentSortColumn) {
+      // Mesma coluna - alternar direção
+      if (this.currentSortDirection === 'asc') {
+        this.currentSortDirection = 'desc';
+      } else if (this.currentSortDirection === 'desc') {
+        // Terceiro clique - limpar ordenação
+        this.currentSortColumn = '';
+        this.currentSortDirection = '';
+      } else {
+        // Primeiro clique nesta coluna
+        this.currentSortColumn = sort.active;
+        this.currentSortDirection = 'asc';
+      }
+    } else {
+      // Nova coluna - começar com 'asc'
+      this.currentSortColumn = sort.active;
+      this.currentSortDirection = sort.direction || 'asc';
+    }
+    
+    // Sincronizar com o MatSort
+    if (this.sort) {
+      this.sort.active = this.currentSortColumn;
+      this.sort.direction = this.currentSortDirection;
+    }
+    
+    // Resetar página ao mudar ordenação
+    this.currentPage = 0;
+    
+    // Carregar produtos com nova ordenação
     this.loadProducts();
   }
 
   onCategoryChange(): void {
+    // Ignorar se estiver limpando filtros
+    if (this.isClearingFilters) {
+      return;
+    }
+    
     this.currentPage = 0;
     this.loadProducts();
   }
 
   toggleFilters(filter: 'inactive' | 'lowStock'): void {
+    // Ignorar se estiver limpando filtros
+    if (this.isClearingFilters) {
+      return;
+    }
+    
     if (filter === 'inactive') {
       this.showInactive = !this.showInactive;
     } else {
@@ -182,6 +273,80 @@ export class ProdutosComponent implements OnInit, OnDestroy {
     }
     this.currentPage = 0;
     this.loadProducts();
+  }
+
+  onFilterChange(filterType: 'featured' | 'offers' | 'is_pack' | 'visible_online', event: any): void {
+    // Ignorar se estiver limpando filtros
+    if (this.isClearingFilters) {
+      return;
+    }
+    
+    const isSelected = event.selected;
+    
+    switch (filterType) {
+      case 'featured':
+        this.filterFeatured = isSelected;
+        break;
+      case 'offers':
+        this.filterOffers = isSelected;
+        break;
+      case 'is_pack':
+        this.filterIsPack = isSelected;
+        break;
+      case 'visible_online':
+        this.filterVisibleOnline = isSelected;
+        break;
+    }
+    
+    this.currentPage = 0;
+    this.loadProducts();
+  }
+
+  hasActiveFilters(): boolean {
+    return this.showInactive ||
+           this.showLowStock ||
+           this.filterFeatured ||
+           this.filterOffers ||
+           this.filterIsPack ||
+           this.filterVisibleOnline ||
+           !!this.searchTerm ||
+           !!this.selectedCategory;
+  }
+
+  clearFilters(): void {
+    // Ativar flag para evitar que event listeners disparem durante o reset
+    this.isClearingFilters = true;
+    
+    // Reset em lote - todas as variáveis de uma vez
+    this.searchTerm = '';
+    this.selectedCategory = null;
+    this.showInactive = false;
+    this.showLowStock = false;
+    this.filterFeatured = false;
+    this.filterOffers = false;
+    this.filterIsPack = false;
+    this.filterVisibleOnline = false;
+    this.currentPage = 0;
+    
+    // Limpar ordenação também
+    this.currentSortColumn = '';
+    this.currentSortDirection = '';
+    if (this.sort) {
+      this.sort.active = '';
+      this.sort.direction = '';
+    }
+    
+    // Aguardar um tick para garantir que todas as mudanças foram processadas
+    // e os event listeners não serão disparados
+    setTimeout(() => {
+      this.isClearingFilters = false;
+      
+      // Forçar detecção de mudanças para atualizar a UI
+      this.cdr.detectChanges();
+      
+      // Chamar loadProducts() apenas uma vez no final
+      this.loadProducts();
+    }, 0);
   }
 
   openProductDialog(product?: Product): void {
