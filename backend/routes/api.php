@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Auth;
 
 // Rotas públicas
 Route::post('/register', [AuthController::class, 'register']);
-Route::post('/login', [AuthController::class, 'login']);
+Route::post('/login', [AuthController::class, 'login'])->middleware(['throttle:login']);
 Route::post('/auth/social', [SocialAuthController::class, 'socialAuth']);
 Route::get('/products', [ProductController::class, 'index']);
 Route::get('/products/suggestions', [ProductController::class, 'suggestions']);
