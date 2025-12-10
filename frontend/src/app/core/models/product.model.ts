@@ -27,6 +27,8 @@ export interface Product {
     low_stock?: boolean;
     image_url?: string;
     updated_at?: string;
+    discount_percentage?: number;
+    has_discount?: boolean;
 }
 
 export interface Category {

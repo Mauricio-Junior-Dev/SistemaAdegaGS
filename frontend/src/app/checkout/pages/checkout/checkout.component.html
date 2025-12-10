@@ -284,7 +284,7 @@
             <!-- Campo de Troco (Dinheiro) -->
             <div class="change-field-expandable" *ngIf="paymentForm.get('method')?.value === 'cash'">
               <mat-form-field class="full-width">
-                <mat-label>Valor recebido</mat-label>
+                <mat-label>Valor a ser pago</mat-label>
                 <input id="received-amount-input" matInput formControlName="received_amount" type="number" step="0.01" min="0" placeholder="0.00">
                 <mat-hint>Informe o valor que você vai usar para pagar</mat-hint>
               </mat-form-field>

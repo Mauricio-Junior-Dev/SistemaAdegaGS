@@ -150,38 +150,65 @@ import { environment } from '../../../../../environments/environment';
           </div>
 
           <!-- Preço e Estoque -->
+          <div class="price-section">
+            <div class="form-row">
+              <mat-form-field appearance="outline">
+                <mat-label>Preço de Venda (Final)</mat-label>
+                <input matInput 
+                       type="number" 
+                       formControlName="price" 
+                       required
+                       min="0"
+                       step="0.01">
+                <span matPrefix>R$&nbsp;</span>
+                <mat-hint>Valor que o cliente pagará</mat-hint>
+                <mat-error *ngIf="productForm.get('price')?.hasError('required')">
+                  Preço é obrigatório
+                </mat-error>
+                <mat-error *ngIf="productForm.get('price')?.hasError('min')">
+                  Preço deve ser maior que zero
+                </mat-error>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Preço Original / Tabela</mat-label>
+                <input matInput 
+                       type="number" 
+                       formControlName="original_price" 
+                       min="0"
+                       step="0.01"
+                       placeholder="Ex: De R$ 100,00">
+                <span matPrefix>R$&nbsp;</span>
+                <mat-hint>Preço antes do desconto (opcional)</mat-hint>
+                <mat-error *ngIf="productForm.get('original_price')?.hasError('min')">
+                  Preço original deve ser maior que zero
+                </mat-error>
+                <mat-error *ngIf="productForm.get('original_price')?.hasError('mustBeGreaterThanPrice')">
+                  O preço original deve ser maior que o preço de venda
+                </mat-error>
+              </mat-form-field>
+            </div>
+
+            <!-- Feedback Visual de Desconto -->
+            <div class="discount-feedback" *ngIf="discountInfo.show">
+              <div class="feedback-success" *ngIf="discountInfo.isValid">
+                <mat-icon>check_circle</mat-icon>
+                <span>
+                  <strong>Desconto de {{ discountInfo.percentage }}% aplicado!</strong>
+                  O cliente verá: de <del>R$ {{ discountInfo.originalPrice | number:'1.2-2' }}</del> por R$ {{ discountInfo.finalPrice | number:'1.2-2' }}
+                </span>
+              </div>
+              <div class="feedback-error" *ngIf="!discountInfo.isValid">
+                <mat-icon>error</mat-icon>
+                <span>
+                  <strong>Erro:</strong> O preço original deve ser maior que o preço de venda
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Estoque -->
           <div class="form-row">
-            <mat-form-field appearance="outline">
-              <mat-label>Preço de Venda (R$)</mat-label>
-              <input matInput 
-                     type="number" 
-                     formControlName="price" 
-                     required
-                     min="0"
-                     step="0.01">
-              <span matPrefix>R$&nbsp;</span>
-              <mat-error *ngIf="productForm.get('price')?.hasError('required')">
-                Preço é obrigatório
-              </mat-error>
-              <mat-error *ngIf="productForm.get('price')?.hasError('min')">
-                Preço deve ser maior que zero
-              </mat-error>
-            </mat-form-field>
-
-            <mat-form-field appearance="outline">
-              <mat-label>Preço "De:" (Apenas para Ofertas)</mat-label>
-              <input matInput 
-                     type="number" 
-                     formControlName="original_price" 
-                     min="0"
-                     step="0.01">
-              <span matPrefix>R$&nbsp;</span>
-              <mat-hint>Preço original antes do desconto (opcional)</mat-hint>
-              <mat-error *ngIf="productForm.get('original_price')?.hasError('min')">
-                Preço original deve ser maior que zero
-              </mat-error>
-            </mat-form-field>
-
             <mat-form-field *ngIf="!productForm.get('is_pack')?.value" appearance="outline">
               <mat-label>Quantidade em Estoque</mat-label>
               <input matInput 
@@ -550,6 +577,53 @@ import { environment } from '../../../../../environments/environment';
       border-radius: 4px;
     }
 
+    .price-section {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .discount-feedback {
+      margin-top: 8px;
+      padding: 12px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+    }
+
+    .feedback-success {
+      background-color: #e8f5e9;
+      color: #2e7d32;
+      border-left: 4px solid #4caf50;
+    }
+
+    .feedback-success mat-icon {
+      color: #4caf50;
+    }
+
+    .feedback-success del {
+      color: #666;
+      margin: 0 4px;
+    }
+
+    .feedback-error {
+      background-color: #ffebee;
+      color: #c62828;
+      border-left: 4px solid #f44336;
+    }
+
+    .feedback-error mat-icon {
+      color: #f44336;
+    }
+
+    .discount-feedback mat-icon {
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+    }
+
     @media (max-width: 600px) {
       .form-row {
         flex-direction: column;
@@ -630,6 +704,7 @@ export class ProductFormDialogComponent implements OnInit {
     this.loadParentProducts();
     this.setupValidators();
     this.setupPackValidators();
+    this.setupPriceValidation();
     
     // Garantir que os validators de Pack estejam corretos na inicialização
     const isPackControl = this.productForm.get('is_pack');
@@ -778,6 +853,49 @@ export class ProductFormDialogComponent implements OnInit {
         }
       });
     }
+  }
+
+  private setupPriceValidation(): void {
+    const priceControl = this.productForm.get('price');
+    const originalPriceControl = this.productForm.get('original_price');
+
+    if (priceControl && originalPriceControl) {
+      // Validação customizada: original_price deve ser maior que price quando preenchido
+      const validatePriceRelation = () => {
+        const price = parseFloat(priceControl.value);
+        const originalPrice = parseFloat(originalPriceControl.value);
+
+        if (originalPrice && !isNaN(originalPrice) && !isNaN(price) && originalPrice <= price) {
+          originalPriceControl.setErrors({ mustBeGreaterThanPrice: true });
+        } else if (originalPriceControl.hasError('mustBeGreaterThanPrice')) {
+          originalPriceControl.updateValueAndValidity({ emitEvent: false });
+        }
+      };
+
+      // Validar quando qualquer um dos preços mudar
+      priceControl.valueChanges.subscribe(() => validatePriceRelation());
+      originalPriceControl.valueChanges.subscribe(() => validatePriceRelation());
+    }
+  }
+
+  get discountInfo(): { show: boolean; isValid: boolean; percentage: number; originalPrice: number; finalPrice: number } {
+    const price = parseFloat(this.productForm.get('price')?.value);
+    const originalPrice = parseFloat(this.productForm.get('original_price')?.value);
+
+    if (!originalPrice || isNaN(originalPrice) || isNaN(price) || price <= 0) {
+      return { show: false, isValid: false, percentage: 0, originalPrice: 0, finalPrice: 0 };
+    }
+
+    const isValid = originalPrice > price;
+    const percentage = isValid ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0;
+
+    return {
+      show: true,
+      isValid,
+      percentage,
+      originalPrice,
+      finalPrice: price
+    };
   }
 
   onImageSelected(event: Event): void {

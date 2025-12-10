@@ -108,18 +108,11 @@ export class ProductCardComponent {
   }
 
   hasOffer(product: Product): boolean {
-    // Verifica se há um preço original maior que o preço atual
-    const originalPrice = (product as any).original_price;
-    return originalPrice && originalPrice > product.price;
+    // Usa a propriedade has_discount que vem do backend
+    return product.has_discount ?? false;
   }
 
   getOriginalPrice(product: Product): number {
-    return (product as any).original_price || product.price;
-  }
-
-  getDiscountPercentage(): number {
-    const originalPrice = (this.product as any).original_price;
-    if (!originalPrice || originalPrice <= this.product.price) return 0;
-    return Math.round(((originalPrice - this.product.price) / originalPrice) * 100);
+    return product.original_price || product.price;
   }
 }

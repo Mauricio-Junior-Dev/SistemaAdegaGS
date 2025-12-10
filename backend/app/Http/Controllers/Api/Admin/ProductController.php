@@ -112,7 +112,7 @@ class ProductController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'required|string',
             'price' => 'required|numeric|min:0',
-            'original_price' => 'nullable|numeric|min:0',
+            'original_price' => 'nullable|numeric|min:0|gt:price',
             'cost_price' => 'nullable|numeric|min:0',
             'current_stock' => 'required|integer|min:0',
             'min_stock' => 'required|integer|min:0',
@@ -132,7 +132,8 @@ class ProductController extends Controller
             'image.image' => 'O arquivo deve ser uma imagem válida.',
             'image.max' => 'A imagem não pode ser maior que 10MB.',
             'image.mimes' => 'A imagem deve ser do tipo: jpg, jpeg, png, gif ou webp.',
-            'image.uploaded' => 'Falha no upload da imagem. O arquivo pode ser muito grande.'
+            'image.uploaded' => 'Falha no upload da imagem. O arquivo pode ser muito grande.',
+            'original_price.gt' => 'O preço original deve ser maior que o preço de venda.'
         ]);
 
         // Gerar slug a partir do nome
@@ -233,7 +234,7 @@ class ProductController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'required|string',
             'price' => 'required|numeric|min:0',
-            'original_price' => 'nullable|numeric|min:0',
+            'original_price' => 'nullable|numeric|min:0|gt:price',
             'cost_price' => 'nullable|numeric|min:0',
             'current_stock' => 'required|integer|min:0',
             'min_stock' => 'required|integer|min:0',
@@ -254,7 +255,8 @@ class ProductController extends Controller
             'image.image' => 'O arquivo deve ser uma imagem válida.',
             'image.max' => 'A imagem não pode ser maior que 10MB.',
             'image.mimes' => 'A imagem deve ser do tipo: jpg, jpeg, png, gif ou webp.',
-            'image.uploaded' => 'Falha no upload da imagem. O arquivo pode ser muito grande.'
+            'image.uploaded' => 'Falha no upload da imagem. O arquivo pode ser muito grande.',
+            'original_price.gt' => 'O preço original deve ser maior que o preço de venda.'
         ]);
 
         $oldStock = $product->current_stock;
