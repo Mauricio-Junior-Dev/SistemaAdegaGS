@@ -4,26 +4,13 @@ import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 
-/**
- * Serviço para comunicação com o Print Bridge (serviço C# local)
- * 
- * Este serviço envia trabalhos de impressão para o serviço Print Bridge
- * rodando na mesma máquina do backend, que por sua vez envia os dados
- * diretamente para a impressora térmica (ESC/POS) de forma automática
- * e silenciosa, sem necessidade de confirmação do usuário.
- */
 @Injectable({
   providedIn: 'root'
 })
 export class PrintingBridgeService {
-  /**
-   * URL base do Print Bridge (serviço C# local)
-   * Usa o mesmo IP/host do backend para funcionar em rede local
-   */
   private readonly bridgeUrl: string;
 
   constructor(private http: HttpClient) {
-    // Extrair o host/IP do environment.apiUrl (ex: http://192.168.0.101:8000/api -> http://192.168.0.101:9000)
     const apiUrl = environment.apiUrl;
     try {
       const url = new URL(apiUrl);
