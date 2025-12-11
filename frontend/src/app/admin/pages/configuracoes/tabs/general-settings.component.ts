@@ -15,6 +15,7 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { SystemSettings, SettingsService } from '../../../services/settings.service';
 import { BannerService, Banner } from '../../../../core/services/banner.service';
 import { BannerDialogComponent } from '../../../../shared/components/banner-dialog/banner-dialog.component';
+import { environment } from '../../../../../environments/environment';
 
 @Component({
   selector: 'app-general-settings',
@@ -576,8 +577,9 @@ export class GeneralSettingsComponent implements OnInit {
     }
     
     // Se é um caminho relativo, adiciona a URL do backend
+    const baseUrl = environment.apiUrl.replace(/\/api$/, '');
     if (logoUrl.startsWith('/storage/')) {
-      return 'http://localhost:8000' + logoUrl;
+      return baseUrl + logoUrl;
     }
     
     return logoUrl;
@@ -592,8 +594,9 @@ export class GeneralSettingsComponent implements OnInit {
     }
     
     // Se é um caminho relativo, adiciona a URL do backend
+    const baseUrl = environment.apiUrl.replace(/\/api$/, '');
     if (faviconUrl.startsWith('/storage/')) {
-      return 'http://localhost:8000' + faviconUrl;
+      return baseUrl + faviconUrl;
     }
     
     return faviconUrl;
@@ -625,17 +628,18 @@ export class GeneralSettingsComponent implements OnInit {
     }
     
     // Se é um caminho relativo, adiciona a URL do backend
+    const baseUrl = environment.apiUrl.replace(/\/api$/, '');
     if (imageUrl.startsWith('/storage/')) {
-      return 'http://localhost:8000' + imageUrl;
+      return baseUrl + imageUrl;
     }
     
     // Se começa com storage/, adiciona a URL base
     if (imageUrl.startsWith('storage/')) {
-      return 'http://localhost:8000/' + imageUrl;
+      return baseUrl + '/' + imageUrl;
     }
     
     // Se não tem prefixo, adiciona storage/
-    return 'http://localhost:8000/storage/' + imageUrl;
+    return baseUrl + '/storage/' + imageUrl;
   }
 
   addBanner(): void {
