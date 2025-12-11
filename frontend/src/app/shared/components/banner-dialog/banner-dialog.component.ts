@@ -10,6 +10,7 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { Banner, CreateBannerRequest, UpdateBannerRequest } from '../../../core/services/banner.service';
+import { environment } from '../../../../environments/environment';
 
 @Component({
   selector: 'app-banner-dialog',
@@ -303,15 +304,17 @@ export class BannerDialogComponent implements OnInit {
       return imageUrl;
     }
     
+    const baseUrl = environment.apiUrl.replace(/\/api$/, '');
+    
     if (imageUrl.startsWith('/storage/')) {
-      return 'http://localhost:8000' + imageUrl;
+      return baseUrl + imageUrl;
     }
     
     if (imageUrl.startsWith('storage/')) {
-      return 'http://localhost:8000/' + imageUrl;
+      return baseUrl + '/' + imageUrl;
     }
     
-    return 'http://localhost:8000/storage/' + imageUrl;
+    return baseUrl + '/storage/' + imageUrl;
   }
 
   saveBanner(): void {
