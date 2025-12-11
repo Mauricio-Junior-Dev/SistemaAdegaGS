@@ -56,7 +56,7 @@ class Product extends Model
         'stock_multiplier' => 'integer'
     ];
 
-    protected $appends = ['low_stock'];
+    protected $appends = ['low_stock', 'discount_percentage', 'has_discount'];
 
     public function category()
     {
@@ -114,6 +114,26 @@ class Product extends Model
         $currentStock = $this->current_stock;
         $minStock = $this->min_stock;
         return $currentStock <= $minStock;
+    }
+
+    /**
+     * Calcula a porcentagem de desconto
+     * Retorna 0 se não houver desconto válido
+     */
+    public function getDiscountPercentageAttribute(): int
+    {
+        if (!$this->original_price || $this->original_price <= $this->price) {
+            return 0;
+        }
+        return (int) round((($this->original_price - $this->price) / $this->original_price) * 100);
+    }
+
+    /**
+     * Verifica se o produto tem desconto válido
+     */
+    public function getHasDiscountAttribute(): bool
+    {
+        return $this->original_price !== null && $this->original_price > $this->price;
     }
 
     public function updateStock(int $quantity, string $type, ?string $description = null, ?float $unitCost = null): void
