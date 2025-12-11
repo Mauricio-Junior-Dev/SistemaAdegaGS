@@ -49,10 +49,7 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
     MatTooltipModule,
     MatProgressSpinnerModule,
     MatTreeModule,
-    DragDropModule,
-    CategoryFormDialogComponent,
-    CategoryStatsDialogComponent,
-    ConfirmDialogComponent
+    DragDropModule
   ] as const,
   templateUrl: './categorias.component.html',
   styleUrls: ['./categorias.component.css']

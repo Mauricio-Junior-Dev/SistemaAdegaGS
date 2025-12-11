@@ -8,7 +8,6 @@ import { Product, Category } from '../../../core/models/product.model';
 import { Combo } from '../../../core/models/combo.model';
 import { BannerCarouselComponent, Banner } from '../../../shared/components/banner-carousel/banner-carousel.component';
 import { BannerService } from '../../../core/services/banner.service';
-import { ComboCardComponent } from '../../../shared/components/combo-card/combo-card.component';
 import { ProductCardComponent } from '../../../shared/components/product-card/product-card.component';
 import { environment } from '../../../../environments/environment';
 
@@ -17,7 +16,7 @@ import { environment } from '../../../../environments/environment';
   templateUrl: './home.component.html',
   styleUrls: ['./home.component.css'],
   standalone: true,
-  imports: [CommonModule, RouterModule, BannerCarouselComponent, ComboCardComponent, ProductCardComponent]
+  imports: [CommonModule, RouterModule, BannerCarouselComponent, ProductCardComponent]
 })
 export class HomeComponent implements OnInit {
   categories: Category[] = [];
