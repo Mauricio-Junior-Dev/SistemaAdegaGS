@@ -58,6 +58,27 @@ class UserController extends Controller
 
     public function store(Request $request): JsonResponse
     {
+        // Converter is_active de string para booleano antes da validação
+        // (necessário porque FormData envia tudo como string)
+        if ($request->has('is_active')) {
+            $isActive = $request->input('is_active');
+            if (!is_bool($isActive)) {
+                // Converter strings comuns para booleano
+                if (is_string($isActive)) {
+                    $isActive = strtolower(trim($isActive));
+                    $isActive = in_array($isActive, ['true', '1', 'on', 'yes', 'y'], true);
+                } elseif (is_numeric($isActive)) {
+                    $isActive = (bool) $isActive;
+                } else {
+                    $isActive = filter_var($isActive, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? true;
+                }
+                $request->merge(['is_active' => $isActive]);
+            }
+        } else {
+            // Se não foi enviado, definir como true (padrão)
+            $request->merge(['is_active' => true]);
+        }
+
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',

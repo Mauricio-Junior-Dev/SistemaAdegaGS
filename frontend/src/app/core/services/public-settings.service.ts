@@ -47,7 +47,8 @@ export class PublicSettingsService {
     
     // Se é um caminho relativo, adiciona a URL do backend
     if (logoUrl.startsWith('/storage/')) {
-      return 'http://localhost:8000' + logoUrl;
+      const baseUrl = environment.apiUrl.replace('/api', '');
+      return baseUrl + logoUrl;
     }
     
     return logoUrl;
@@ -63,7 +64,8 @@ export class PublicSettingsService {
     
     // Se é um caminho relativo, adiciona a URL do backend
     if (faviconUrl.startsWith('/storage/')) {
-      return 'http://localhost:8000' + faviconUrl;
+      const baseUrl = environment.apiUrl.replace('/api', '');
+      return baseUrl + faviconUrl;
     }
     
     return faviconUrl;
