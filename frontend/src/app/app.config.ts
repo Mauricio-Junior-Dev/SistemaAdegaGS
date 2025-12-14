@@ -1,6 +1,6 @@
 import { ApplicationConfig, LOCALE_ID } from '@angular/core';
 import { provideRouter, withInMemoryScrolling } from '@angular/router';
-import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { provideHttpClient, withInterceptors, withXsrfConfiguration } from '@angular/common/http';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { registerLocaleData } from '@angular/common';
 import localePt from '@angular/common/locales/pt';
@@ -21,6 +21,10 @@ export const appConfig: ApplicationConfig = {
       })
     ),
     provideHttpClient(
+      withXsrfConfiguration({
+        cookieName: 'XSRF-TOKEN',
+        headerName: 'X-XSRF-TOKEN'
+      }),
       withInterceptors([authInterceptor])
     ),
     provideAnimations(),

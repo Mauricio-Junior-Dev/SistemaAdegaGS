@@ -2,24 +2,16 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
-import { environment } from '../../../environments/environment';
 
 @Injectable({
   providedIn: 'root'
 })
 export class PrintingBridgeService {
-  private readonly bridgeUrl: string;
+  // URL hardcoded para o Print Bridge que roda localmente na máquina do cliente
+  private readonly bridgeUrl: string = 'http://localhost:9000';
 
   constructor(private http: HttpClient) {
-    const apiUrl = environment.apiUrl;
-    try {
-      const url = new URL(apiUrl);
-      // Usar o mesmo host do backend, mas na porta 9000 do PrintBridge
-      this.bridgeUrl = `${url.protocol}//${url.hostname}:9000`;
-    } catch {
-      // Fallback para localhost se não conseguir parsear
-      this.bridgeUrl = 'http://localhost:9000';
-    }
+    // Print Bridge sempre roda em localhost:9000 na máquina do cliente
   }
 
   /**

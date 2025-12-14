@@ -3,6 +3,7 @@ using System.Text;
 using PrintBridge.DTOs;
 using PrintBridge.Helpers;
 using System.Globalization;
+using Microsoft.Extensions.Configuration;
 
 namespace PrintBridge.Services;
 
@@ -22,9 +23,10 @@ public class PrinterService
     // Encoding para impressora térmica (IBM860 para caracteres acentuados, com fallback para Windows-1252)
     private static Encoding? _printerEncoding;
 
-    public PrinterService(ILogger<PrinterService> logger)
+    public PrinterService(IConfiguration configuration, ILogger<PrinterService> logger)
     {
-        _printerName = "POS-80"; // Nome da impressora configurado
+        // Ler nome da impressora do appsettings.json, com fallback para "POS-80"
+        _printerName = configuration["Printer:Name"] ?? "POS-80";
         _logger = logger;
         InitializeEncoding();
     }
