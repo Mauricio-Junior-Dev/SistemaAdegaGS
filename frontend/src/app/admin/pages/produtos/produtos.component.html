@@ -13,87 +13,88 @@
   <mat-card class="filters-card">
     <mat-card-content>
       <div class="filters-container">
-        <div class="filters-main">
-          <mat-form-field appearance="outline" class="search-field">
-            <mat-label>Buscar produtos</mat-label>
-            <input matInput
-                   [(ngModel)]="searchTerm"
-                   (keyup)="onSearch($event)"
-                   placeholder="Nome ou código de barras">
-            <mat-icon matSuffix>search</mat-icon>
-          </mat-form-field>
+        <form [formGroup]="filterForm">
+          <div class="filters-main">
+            <mat-form-field appearance="outline" class="search-field">
+              <mat-label>Buscar produtos</mat-label>
+              <input matInput
+                     formControlName="searchTerm"
+                     placeholder="Nome ou código de barras">
+              <mat-icon matSuffix>search</mat-icon>
+            </mat-form-field>
 
-          <mat-form-field appearance="outline">
-            <mat-label>Categoria</mat-label>
-            <mat-select [(ngModel)]="selectedCategory" (selectionChange)="onCategoryChange()">
-              <mat-option [value]="null">Todas</mat-option>
-              <mat-option [value]="category.id" *ngFor="let category of categories">
-                {{category.name}}
-              </mat-option>
-            </mat-select>
-          </mat-form-field>
-        </div>
-
-        <div class="filters-actions">
-          <div class="filter-toggles">
-            <mat-chip-listbox>
-              <mat-chip-option
-                [selected]="showInactive"
-                (selectionChange)="toggleFilters('inactive')"
-                matTooltip="Inclui produtos desativados na listagem."
-                matTooltipPosition="below">
-                Inativos
-              </mat-chip-option>
-              <mat-chip-option
-                [selected]="showLowStock"
-                (selectionChange)="toggleFilters('lowStock')"
-                color="warn"
-                matTooltip="Exibe apenas produtos com estoque abaixo do mínimo."
-                matTooltipPosition="below">
-                Estoque Baixo
-              </mat-chip-option>
-              <mat-chip-option
-                [selected]="filterFeatured"
-                (selectionChange)="onFilterChange('featured', $event)"
-                matTooltip="Exibe apenas produtos em destaque na página inicial."
-                matTooltipPosition="below">
-                Destaques
-              </mat-chip-option>
-              <mat-chip-option
-                [selected]="filterOffers"
-                (selectionChange)="onFilterChange('offers', $event)"
-                matTooltip="Exibe apenas produtos em oferta/promoção."
-                matTooltipPosition="below">
-                Em Oferta
-              </mat-chip-option>
-              <mat-chip-option
-                [selected]="filterIsPack"
-                (selectionChange)="onFilterChange('is_pack', $event)"
-                matTooltip="Exibe apenas produtos vendidos em pack/fardo."
-                matTooltipPosition="below">
-                Caixas / Fardos
-              </mat-chip-option>
-              <mat-chip-option
-                [selected]="filterVisibleOnline"
-                (selectionChange)="onFilterChange('visible_online', $event)"
-                matTooltip="Exibe apenas produtos que aparecem no ecommerce."
-                matTooltipPosition="below">
-                Visíveis no Site
-              </mat-chip-option>
-            </mat-chip-listbox>
+            <mat-form-field appearance="outline">
+              <mat-label>Categoria</mat-label>
+              <mat-select formControlName="category_id">
+                <mat-option [value]="null">Todas</mat-option>
+                <mat-option [value]="category.id" *ngFor="let category of categories">
+                  {{category.name}}
+                </mat-option>
+              </mat-select>
+            </mat-form-field>
           </div>
-          
-          <button 
-            *ngIf="hasActiveFilters()"
-            mat-icon-button
-            color="primary"
-            (click)="clearFilters()"
-            matTooltip="Limpar todos os filtros"
-            matTooltipPosition="below"
-            class="clear-filters-btn">
-            <mat-icon>filter_alt_off</mat-icon>
-          </button>
-        </div>
+
+          <div class="filters-actions">
+            <div class="filter-toggles">
+              <mat-chip-listbox>
+                <mat-chip-option
+                  [selected]="filterForm.get('showInactive')?.value"
+                  (selectionChange)="filterForm.patchValue({ showInactive: $event.selected })"
+                  matTooltip="Inclui produtos desativados na listagem."
+                  matTooltipPosition="below">
+                  Inativos
+                </mat-chip-option>
+                <mat-chip-option
+                  [selected]="filterForm.get('low_stock')?.value"
+                  (selectionChange)="filterForm.patchValue({ low_stock: $event.selected })"
+                  color="warn"
+                  matTooltip="Exibe apenas produtos com estoque abaixo do mínimo."
+                  matTooltipPosition="below">
+                  Estoque Baixo
+                </mat-chip-option>
+                <mat-chip-option
+                  [selected]="filterForm.get('featured')?.value"
+                  (selectionChange)="filterForm.patchValue({ featured: $event.selected })"
+                  matTooltip="Exibe apenas produtos em destaque na página inicial."
+                  matTooltipPosition="below">
+                  Destaques
+                </mat-chip-option>
+                <mat-chip-option
+                  [selected]="filterForm.get('offers')?.value"
+                  (selectionChange)="filterForm.patchValue({ offers: $event.selected })"
+                  matTooltip="Exibe apenas produtos em oferta/promoção."
+                  matTooltipPosition="below">
+                  Em Oferta
+                </mat-chip-option>
+                <mat-chip-option
+                  [selected]="filterForm.get('is_pack')?.value"
+                  (selectionChange)="filterForm.patchValue({ is_pack: $event.selected })"
+                  matTooltip="Exibe apenas produtos vendidos em pack/fardo."
+                  matTooltipPosition="below">
+                  Caixas / Fardos
+                </mat-chip-option>
+                <mat-chip-option
+                  [selected]="filterForm.get('visible_online')?.value"
+                  (selectionChange)="filterForm.patchValue({ visible_online: $event.selected })"
+                  matTooltip="Exibe apenas produtos que aparecem no ecommerce."
+                  matTooltipPosition="below">
+                  Visíveis no Site
+                </mat-chip-option>
+              </mat-chip-listbox>
+            </div>
+            
+            <button 
+              *ngIf="hasActiveFilters()"
+              mat-icon-button
+              color="primary"
+              (click)="clearFilters()"
+              matTooltip="Limpar todos os filtros"
+              matTooltipPosition="below"
+              class="clear-filters-btn">
+              <mat-icon>filter_alt_off</mat-icon>
+            </button>
+          </div>
+        </form>
       </div>
     </mat-card-content>
   </mat-card>
