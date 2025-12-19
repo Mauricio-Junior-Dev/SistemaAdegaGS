@@ -1,6 +1,6 @@
-import { Component, OnInit, OnDestroy, ViewChild, AfterViewInit } from '@angular/core';
+import { Component, OnInit, OnDestroy, AfterViewInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup } from '@angular/forms';
+import { ReactiveFormsModule, FormBuilder, FormGroup } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatTableModule, MatTable } from '@angular/material/table';
 import { MatCardModule } from '@angular/material/card';
@@ -9,6 +9,7 @@ import { MatSortModule, MatSort, Sort } from '@angular/material/sort';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatButtonModule } from '@angular/material/button';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatIconModule } from '@angular/material/icon';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
@@ -17,7 +18,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { Subject, debounceTime, distinctUntilChanged, takeUntil, skip } from 'rxjs';
+import { Subject, debounceTime, distinctUntilChanged, takeUntil, switchMap, startWith, combineLatest } from 'rxjs';
 
 import { ProductService, Product, ProductResponse } from '../../services/product.service';
 import { CategoryService, Category } from '../../services/category.service';
@@ -26,13 +27,14 @@ import { ProductFormDialogComponent } from './dialogs/product-form-dialog.compon
 import { ProductImportDialogComponent } from './dialogs/product-import-dialog.component';
 import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialog/confirm-dialog.component';
 
+type StatusFilter = 'all' | 'active' | 'inactive';
+
 @Component({
   selector: 'app-produtos',
   standalone: true,
   imports: [
     MatCardModule,
     CommonModule,
-    FormsModule,
     ReactiveFormsModule,
     MatTableModule,
     MatPaginatorModule,
@@ -40,6 +42,7 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
     MatInputModule,
     MatFormFieldModule,
     MatButtonModule,
+    MatButtonToggleModule,
     MatIconModule,
     MatMenuModule,
     MatDialogModule,
@@ -50,7 +53,7 @@ import { ConfirmDialogComponent } from '../../../shared/components/confirm-dialo
     MatProgressSpinnerModule
   ],
   templateUrl: './produtos.component.html',
-  styleUrls: ['./produtos.component.css']
+  styleUrls: ['./produtos.component.scss']
 })
 export class ProdutosComponent implements OnInit, AfterViewInit, OnDestroy {
   displayedColumns = ['image', 'name', 'category', 'price', 'current_stock', 'status', 'actions'];
@@ -58,22 +61,21 @@ export class ProdutosComponent implements OnInit, AfterViewInit, OnDestroy {
   totalItems = 0;
   pageSize = 10;
   currentPage = 0;
-  loading = true;
+  loading = false;
   categories: Category[] = [];
   
-  // Formulário central com todos os filtros
+  // Formulário único com todos os filtros
   filterForm!: FormGroup;
   
-  // Estado de ordenação (mantido separado do form para controle do MatSort)
-  currentSortColumn: string = '';
-  currentSortDirection: 'asc' | 'desc' | '' = '';
+  // Estado de ordenação e paginação
+  sortColumn: string = '';
+  sortDirection: 'asc' | 'desc' | '' = '';
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
   @ViewChild(MatTable) table!: MatTable<Product>;
 
   private destroy$ = new Subject<void>();
-  private isLoading = false;
 
   constructor(
     private productService: ProductService,
@@ -86,9 +88,9 @@ export class ProdutosComponent implements OnInit, AfterViewInit, OnDestroy {
   ) {
     // Criar formulário com todos os filtros
     this.filterForm = this.fb.group({
-      searchTerm: [''],
+      search: [''],
       category_id: [null],
-      showInactive: [false],
+      status: ['active'], // 'all' | 'active' | 'inactive'
       low_stock: [false],
       featured: [false],
       offers: [false],
@@ -97,67 +99,75 @@ export class ProdutosComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
-  getImageUrl(product: Product): string {
-    const imageUrl = product.image_url;
-    if (!imageUrl) return 'assets/images/no-image.png';
-    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) return `${imageUrl}?v=${encodeURIComponent(product.updated_at)}`;
-    if (imageUrl.startsWith('/storage/') || imageUrl.startsWith('storage/')) {
-      const base = environment.apiUrl.replace(/\/api$/, '');
-      const path = imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
-      return `${base}${path}?v=${encodeURIComponent(product.updated_at)}`;
-    }
-    return `${imageUrl}?v=${encodeURIComponent(product.updated_at)}`;
-  }
-
   ngOnInit(): void {
     this.loadCategories();
-    
-    // FLUXO UNIDIRECIONAL: URL → Form → URL → loadProducts
-    
-    // 1. Ler queryParams da URL e preencher o form
+
+    // 1. Carregar estado inicial da URL
     this.route.queryParams.pipe(
-      takeUntil(this.destroy$)
-    ).subscribe(params => {
-      // Parsear filtros da URL
-      const filterState = this.parseQueryParams(params);
-      
-      // Atualizar form sem disparar valueChanges
-      this.filterForm.patchValue(filterState, { emitEvent: false });
-      
-      // Atualizar ordenação e paginação
-      this.currentSortColumn = params['sort_by'] || '';
-      this.currentSortDirection = (params['sort_order'] as 'asc' | 'desc' | '') || '';
-      this.currentPage = parseInt(params['page'] || '1', 10) - 1;
-      
-      // Carregar produtos baseado nos parâmetros da URL
-      this.loadProducts();
+      takeUntil(this.destroy$),
+      startWith(this.route.snapshot.queryParams)
+    ).subscribe(queryParams => {
+      if (queryParams && Object.keys(queryParams).length > 0) {
+        const formState = this.parseQueryParams(queryParams);
+        this.filterForm.patchValue(formState, { emitEvent: false });
+        
+        this.sortColumn = queryParams['sort_by'] || '';
+        this.sortDirection = (queryParams['sort_order'] as 'asc' | 'desc' | '') || '';
+        this.currentPage = parseInt(queryParams['page'] || '1', 10) - 1;
+        this.pageSize = parseInt(queryParams['per_page'] || '10', 10);
+      }
     });
 
-    // 2. Form valueChanges → Atualizar URL (com debounce)
-    this.filterForm.valueChanges.pipe(
+    // 2. Pipeline único: form changes -> switchMap -> load products
+    // Separar busca (com debounce) dos outros filtros (instantâneos)
+    const searchChanges$ = this.filterForm.get('search')!.valueChanges.pipe(
       debounceTime(500),
-      distinctUntilChanged((prev, curr) => {
-        // Comparação profunda para evitar requisições desnecessárias
-        return JSON.stringify(prev) === JSON.stringify(curr);
-      }),
-      skip(1), // Pular o primeiro valor (valor inicial)
-      takeUntil(this.destroy$)
-    ).subscribe(() => {
-      // Resetar página ao mudar qualquer filtro
-      this.currentPage = 0;
-      this.updateUrl();
-    });
+      distinctUntilChanged(),
+      startWith(this.filterForm.get('search')!.value)
+    );
 
-    // 3. Quando URL mudar (via router.navigate), route.queryParams dispara novamente
-    // Isso garante que loadProducts seja chamado
+    const otherFilters$ = combineLatest([
+      this.filterForm.get('category_id')!.valueChanges.pipe(startWith(this.filterForm.get('category_id')!.value)),
+      this.filterForm.get('status')!.valueChanges.pipe(startWith(this.filterForm.get('status')!.value)),
+      this.filterForm.get('low_stock')!.valueChanges.pipe(startWith(this.filterForm.get('low_stock')!.value)),
+      this.filterForm.get('featured')!.valueChanges.pipe(startWith(this.filterForm.get('featured')!.value)),
+      this.filterForm.get('offers')!.valueChanges.pipe(startWith(this.filterForm.get('offers')!.value)),
+      this.filterForm.get('is_pack')!.valueChanges.pipe(startWith(this.filterForm.get('is_pack')!.value)),
+      this.filterForm.get('visible_online')!.valueChanges.pipe(startWith(this.filterForm.get('visible_online')!.value))
+    ]);
+
+    combineLatest([searchChanges$, otherFilters$]).pipe(
+      takeUntil(this.destroy$),
+      switchMap(() => {
+        const params = this.buildApiParams();
+        this.updateUrl(params);
+        this.loading = true;
+        return this.productService.getProducts(params);
+      })
+    ).subscribe({
+      next: (response: ProductResponse) => {
+        this.products = response.data || [];
+        this.totalItems = response.total || 0;
+        this.loading = false;
+      },
+      error: (error) => {
+        console.error('Erro ao carregar produtos:', error);
+        this.loading = false;
+        this.snackBar.open('Erro ao carregar produtos', 'Fechar', { duration: 3000 });
+      }
+    });
   }
 
   ngAfterViewInit(): void {
-    // Garantir que o MatSort está vinculado corretamente
-    if (this.sort) {
-      // O MatSort já está vinculado via ViewChild
-      // Não precisamos fazer nada adicional, mas garantimos que está disponível
+    if (this.sort && this.sortColumn) {
+      this.sort.active = this.sortColumn;
+      this.sort.direction = this.sortDirection;
     }
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   loadCategories(): void {
@@ -174,160 +184,48 @@ export class ProdutosComponent implements OnInit, AfterViewInit, OnDestroy {
       });
   }
 
-  ngOnDestroy(): void {
-    this.destroy$.next();
-    this.destroy$.complete();
-  }
-
-  loadProducts(): void {
-    // Evitar requisições simultâneas
-    if (this.isLoading) {
-      return;
-    }
-
-    this.isLoading = true;
-    this.loading = true;
-
-    // Construir parâmetros a partir do form e estado atual
-    const formValue = this.filterForm.value;
-    const params: any = {
-      page: this.currentPage + 1,
-      per_page: this.pageSize
-    };
-
-    // Busca
-    if (formValue.searchTerm) {
-      params.search = formValue.searchTerm;
-    }
-
-    // Categoria
-    if (formValue.category_id) {
-      params.category_id = formValue.category_id;
-    }
-
-    // Status ativo/inativo (inverso de showInactive)
-    if (!formValue.showInactive) {
-      params.is_active = true;
-    }
-
-    // Filtros booleanos - só enviar se for true
-    if (formValue.low_stock) {
-      params.low_stock = true;
-    }
-    if (formValue.featured) {
-      params.featured = true;
-    }
-    if (formValue.offers) {
-      params.offers = true;
-    }
-    if (formValue.is_pack) {
-      params.is_pack = true;
-    }
-    if (formValue.visible_online) {
-      params.visible_online = true;
-    }
-
-    // Ordenação
-    if (this.currentSortColumn && this.currentSortDirection) {
-      params.sort_by = this.currentSortColumn;
-      params.sort_order = this.currentSortDirection;
-    }
-
-    this.productService.getProducts(params)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (response: ProductResponse) => {
-          this.products = response.data || [];
-          this.totalItems = response.total || 0;
-          this.loading = false;
-          this.isLoading = false;
-          
-          // Se totalItems mudou para 0 e estamos em página > 0, resetar
-          if (this.totalItems === 0 && this.currentPage > 0) {
-            this.currentPage = 0;
-            // Não recarregar aqui para evitar loop
-          }
-        },
-        error: (error) => {
-          console.error('Erro ao carregar produtos:', error);
-          
-          // Não disparar nova requisição em caso de erro
-          this.loading = false;
-          this.isLoading = false;
-          
-          if (error.status !== 429) {
-            this.snackBar.open('Erro ao carregar produtos', 'Fechar', { duration: 3000 });
-          } else {
-            this.snackBar.open('Muitas requisições. Aguarde um momento...', 'Fechar', { duration: 3000 });
-          }
-        }
-      });
-  }
-
   onPageChange(event: PageEvent): void {
-    if (this.isLoading) {
-      return;
-    }
-
     this.pageSize = event.pageSize;
     this.currentPage = event.pageIndex;
-    this.updateUrl();
+    this.filterForm.updateValueAndValidity({ emitEvent: true });
   }
 
   onSortChange(sort: Sort): void {
-    if (this.isLoading) {
-      return;
-    }
-
-    // Lógica de alternância manual
-    if (sort.active === this.currentSortColumn) {
-      // Mesma coluna - alternar direção
-      if (this.currentSortDirection === 'asc') {
-        this.currentSortDirection = 'desc';
-      } else if (this.currentSortDirection === 'desc') {
-        // Terceiro clique - limpar ordenação
-        this.currentSortColumn = '';
-        this.currentSortDirection = '';
+    if (sort.active === this.sortColumn) {
+      if (this.sortDirection === 'asc') {
+        this.sortDirection = 'desc';
+      } else if (this.sortDirection === 'desc') {
+        this.sortColumn = '';
+        this.sortDirection = '';
       } else {
-        // Primeiro clique nesta coluna
-        this.currentSortColumn = sort.active;
-        this.currentSortDirection = 'asc';
+        this.sortDirection = 'asc';
       }
     } else {
-      // Nova coluna - começar com 'asc'
-      this.currentSortColumn = sort.active;
-      this.currentSortDirection = sort.direction || 'asc';
+      this.sortColumn = sort.active;
+      this.sortDirection = sort.direction || 'asc';
     }
     
-    // Sincronizar com o MatSort
-    if (this.sort) {
-      this.sort.active = this.currentSortColumn;
-      this.sort.direction = this.currentSortDirection;
-    }
-    
-    // Resetar página ao mudar ordenação
     this.currentPage = 0;
-    this.updateUrl();
+    this.filterForm.updateValueAndValidity({ emitEvent: true });
   }
 
   hasActiveFilters(): boolean {
-    const formValue = this.filterForm.value;
-    return formValue.showInactive ||
-           formValue.low_stock ||
-           formValue.featured ||
-           formValue.offers ||
-           formValue.is_pack ||
-           formValue.visible_online ||
-           !!formValue.searchTerm ||
-           !!formValue.category_id;
+    const value = this.filterForm.value;
+    return !!value.search ||
+           !!value.category_id ||
+           value.status !== 'active' ||
+           value.low_stock ||
+           value.featured ||
+           value.offers ||
+           value.is_pack ||
+           value.visible_online;
   }
 
   clearFilters(): void {
-    // Resetar form
     this.filterForm.reset({
-      searchTerm: '',
+      search: '',
       category_id: null,
-      showInactive: false,
+      status: 'active',
       low_stock: false,
       featured: false,
       offers: false,
@@ -335,28 +233,23 @@ export class ProdutosComponent implements OnInit, AfterViewInit, OnDestroy {
       visible_online: false
     });
     
-    // Resetar ordenação
-    this.currentSortColumn = '';
-    this.currentSortDirection = '';
+    this.sortColumn = '';
+    this.sortDirection = '';
+    this.currentPage = 0;
+    
     if (this.sort) {
       this.sort.active = '';
       this.sort.direction = '';
     }
-    
-    // Resetar página
-    this.currentPage = 0;
-    
-    // Atualizar URL (que disparará loadProducts via route.queryParams)
-    this.updateUrl();
   }
 
-  // Métodos auxiliares para sincronização URL ↔ Form
+  // Métodos auxiliares
 
   private parseQueryParams(params: any): any {
     return {
-      searchTerm: params['search'] || '',
+      search: params['search'] || '',
       category_id: params['category_id'] ? parseInt(params['category_id'], 10) : null,
-      showInactive: params['show_inactive'] === 'true' || params['show_inactive'] === true,
+      status: (params['status'] === 'inactive' || params['status'] === 'all') ? params['status'] : 'active',
       low_stock: params['low_stock'] === 'true' || params['low_stock'] === true,
       featured: params['featured'] === 'true' || params['featured'] === true,
       offers: params['offers'] === 'true' || params['offers'] === true,
@@ -365,51 +258,138 @@ export class ProdutosComponent implements OnInit, AfterViewInit, OnDestroy {
     };
   }
 
-  private updateUrl(): void {
+  private buildApiParams(): any {
     const formValue = this.filterForm.value;
-    const queryParams: any = {
+    const params: any = {
       page: this.currentPage + 1,
       per_page: this.pageSize
     };
 
-    // Adicionar apenas parâmetros não-vazios
-    if (formValue.searchTerm) {
-      queryParams.search = formValue.searchTerm;
-    }
-    if (formValue.category_id) {
-      queryParams.category_id = formValue.category_id;
-    }
-    if (formValue.showInactive) {
-      queryParams.show_inactive = 'true';
-    }
-    if (formValue.low_stock) {
-      queryParams.low_stock = 'true';
-    }
-    if (formValue.featured) {
-      queryParams.featured = 'true';
-    }
-    if (formValue.offers) {
-      queryParams.offers = 'true';
-    }
-    if (formValue.is_pack) {
-      queryParams.is_pack = 'true';
-    }
-    if (formValue.visible_online) {
-      queryParams.visible_online = 'true';
-    }
-    if (this.currentSortColumn && this.currentSortDirection) {
-      queryParams.sort_by = this.currentSortColumn;
-      queryParams.sort_order = this.currentSortDirection;
+    if (formValue.search?.trim()) {
+      params.search = formValue.search.trim();
     }
 
-    // Navegar atualizando query params (merge preserva outros params)
+    if (formValue.category_id) {
+      params.category_id = formValue.category_id;
+    }
+
+    // Status: converter para is_active boolean ou não enviar
+    if (formValue.status === 'active') {
+      params.is_active = true;
+    } else if (formValue.status === 'inactive') {
+      params.is_active = false;
+    }
+    // Se status === 'all', não enviar is_active
+
+    if (formValue.low_stock) {
+      params.low_stock = true;
+    }
+
+    if (formValue.featured) {
+      params.featured = true;
+    }
+
+    if (formValue.offers) {
+      params.offers = true;
+    }
+
+    if (formValue.is_pack) {
+      params.is_pack = true;
+    }
+
+    if (formValue.visible_online) {
+      params.visible_online = true;
+    }
+
+    if (this.sortColumn && this.sortDirection) {
+      params.sort_by = this.sortColumn;
+      params.sort_order = this.sortDirection;
+    }
+
+    return params;
+  }
+
+  private updateUrl(params: any): void {
+    const formValue = this.filterForm.value;
+    const queryParams: any = {};
+
+    if (params.search) {
+      queryParams.search = params.search;
+    }
+
+    if (params.category_id) {
+      queryParams.category_id = params.category_id;
+    }
+
+    // Status: sempre incluir
+    queryParams.status = formValue.status;
+
+    if (params.low_stock) {
+      queryParams.low_stock = 'true';
+    }
+
+    if (params.featured) {
+      queryParams.featured = 'true';
+    }
+
+    if (params.offers) {
+      queryParams.offers = 'true';
+    }
+
+    if (params.is_pack) {
+      queryParams.is_pack = 'true';
+    }
+
+    if (params.visible_online) {
+      queryParams.visible_online = 'true';
+    }
+
+    if (params.sort_by) {
+      queryParams.sort_by = params.sort_by;
+      queryParams.sort_order = params.sort_order;
+    }
+
+    queryParams.page = params.page;
+    queryParams.per_page = params.per_page;
+
     this.router.navigate([], {
       relativeTo: this.route,
       queryParams,
-      queryParamsHandling: 'merge',
-      replaceUrl: true // Não adicionar ao histórico para cada mudança
+      queryParamsHandling: 'replace',
+      replaceUrl: true
     });
   }
+
+  // Métodos de UI
+
+  getImageUrl(product: Product): string {
+    const imageUrl = product.image_url;
+    if (!imageUrl) return 'assets/images/no-image.png';
+    if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+      return `${imageUrl}?v=${encodeURIComponent(product.updated_at)}`;
+    }
+    if (imageUrl.startsWith('/storage/') || imageUrl.startsWith('storage/')) {
+      const base = environment.apiUrl.replace(/\/api$/, '');
+      const path = imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
+      return `${base}${path}?v=${encodeURIComponent(product.updated_at)}`;
+    }
+    return `${imageUrl}?v=${encodeURIComponent(product.updated_at)}`;
+  }
+
+  formatCurrency(value: number): string {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value);
+  }
+
+  getStockColor(quantity: number, minQuantity: number): string {
+    if (quantity === 0) return '#f44336';
+    if (quantity <= minQuantity) return '#ff9800';
+    return '#4caf50';
+  }
+
+  // Métodos de ações
 
   openProductDialog(product?: Product): void {
     const dialogRef = this.dialog.open(ProductFormDialogComponent, {
@@ -419,7 +399,7 @@ export class ProdutosComponent implements OnInit, AfterViewInit, OnDestroy {
 
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
-        this.loadProducts();
+        this.filterForm.updateValueAndValidity({ emitEvent: true });
         this.snackBar.open(
           product ? 'Produto atualizado com sucesso' : 'Produto criado com sucesso',
           'Fechar',
@@ -446,28 +426,20 @@ export class ProdutosComponent implements OnInit, AfterViewInit, OnDestroy {
           .pipe(takeUntil(this.destroy$))
           .subscribe({
             next: () => {
-              this.loadProducts();
+              this.filterForm.updateValueAndValidity({ emitEvent: true });
               this.snackBar.open('Produto excluído com sucesso', 'Fechar', { duration: 3000 });
             },
             error: (error) => {
               console.error('Erro ao excluir produto:', error);
-              
               let errorMessage = 'Erro ao excluir produto';
               
-              if (error.error && error.error.error) {
+              if (error.error?.error) {
                 errorMessage = error.error.error;
               } else if (error.status === 400) {
                 errorMessage = 'Não é possível excluir produto com pedidos associados';
-              } else if (error.status === 403) {
-                errorMessage = 'Acesso não autorizado';
-              } else if (error.status === 404) {
-                errorMessage = 'Produto não encontrado';
               }
               
-              this.snackBar.open(errorMessage, 'Fechar', { 
-                duration: 5000,
-                panelClass: ['error-snackbar']
-              });
+              this.snackBar.open(errorMessage, 'Fechar', { duration: 5000 });
             }
           });
       }
@@ -479,7 +451,7 @@ export class ProdutosComponent implements OnInit, AfterViewInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: () => {
-          this.loadProducts();
+          this.filterForm.updateValueAndValidity({ emitEvent: true });
           this.snackBar.open(
             `Produto ${product.is_active ? 'desativado' : 'ativado'} com sucesso`,
             'Fechar',
@@ -500,7 +472,7 @@ export class ProdutosComponent implements OnInit, AfterViewInit, OnDestroy {
 
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
-        this.loadProducts();
+        this.filterForm.updateValueAndValidity({ emitEvent: true });
       }
     });
   }
@@ -522,18 +494,5 @@ export class ProdutosComponent implements OnInit, AfterViewInit, OnDestroy {
           this.snackBar.open('Erro ao exportar produtos', 'Fechar', { duration: 3000 });
         }
       });
-  }
-
-  formatCurrency(value: number): string {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value);
-  }
-
-  getStockColor(quantity: number, minQuantity: number): string {
-    if (quantity === 0) return '#f44336'; // Vermelho
-    if (quantity <= minQuantity) return '#ff9800'; // Laranja
-    return '#4caf50'; // Verde
   }
 }

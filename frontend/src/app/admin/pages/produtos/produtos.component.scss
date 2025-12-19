@@ -1,0 +1,251 @@
+.produtos-container {
+  padding: 24px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.produtos-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+
+  h1 {
+    margin: 0;
+    font-size: 28px;
+    font-weight: 500;
+    color: rgba(0, 0, 0, 0.87);
+  }
+}
+
+// Barra de Filtros
+.filters-card {
+  margin-bottom: 24px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+  .filters-row-top {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    margin-bottom: 20px;
+
+    .search-field {
+      flex: 1;
+      min-width: 300px;
+    }
+
+    .category-field {
+      min-width: 200px;
+    }
+
+    .clear-filters-btn {
+      margin-top: 8px;
+      height: 40px;
+    }
+  }
+
+  .filters-row-bottom {
+    display: flex;
+    gap: 32px;
+    align-items: center;
+    flex-wrap: wrap;
+    padding-top: 16px;
+    border-top: 1px solid rgba(0, 0, 0, 0.12);
+
+    .status-group,
+    .flags-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+
+      .filter-label {
+        font-size: 14px;
+        font-weight: 500;
+        color: rgba(0, 0, 0, 0.6);
+        white-space: nowrap;
+      }
+    }
+
+    .flags-group {
+      flex: 1;
+    }
+  }
+}
+
+// Chips de Flags - Estilo Stroked quando não selecionado
+.flags-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+
+  .flag-chip {
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    background: transparent;
+    transition: all 0.2s ease;
+
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+      margin-right: 4px;
+    }
+
+    // Quando não selecionado (stroked)
+    &:not(.mat-mdc-chip-selected) {
+      color: rgba(0, 0, 0, 0.6);
+      border-color: rgba(0, 0, 0, 0.12);
+      background: transparent;
+
+      mat-icon {
+        color: rgba(0, 0, 0, 0.4);
+      }
+    }
+
+    // Quando selecionado - cores semânticas
+    &.mat-mdc-chip-selected {
+      border: none;
+      font-weight: 500;
+
+      &.flag-chip-warn {
+        background-color: #f44336;
+        color: white;
+
+        mat-icon {
+          color: white;
+        }
+      }
+
+      &.flag-chip-accent {
+        background-color: #9c27b0;
+        color: white;
+
+        mat-icon {
+          color: white;
+        }
+      }
+
+      &.flag-chip-primary {
+        background-color: #2196f3;
+        color: white;
+
+        mat-icon {
+          color: white;
+        }
+      }
+
+      &.flag-chip-info {
+        background-color: #00bcd4;
+        color: white;
+
+        mat-icon {
+          color: white;
+        }
+      }
+
+      &.flag-chip-success {
+        background-color: #4caf50;
+        color: white;
+
+        mat-icon {
+          color: white;
+        }
+      }
+    }
+  }
+}
+
+// Mat Button Toggle Group
+mat-button-toggle-group {
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 4px;
+  overflow: hidden;
+
+  mat-button-toggle {
+    border-right: 1px solid rgba(0, 0, 0, 0.12);
+
+    &:last-child {
+      border-right: none;
+    }
+  }
+}
+
+// Tabela
+.table-card {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+  table {
+    width: 100%;
+
+    .product-image {
+      img {
+        border-radius: 4px;
+        object-fit: cover;
+      }
+    }
+
+    .product-name {
+      font-weight: 500;
+      color: rgba(0, 0, 0, 0.87);
+    }
+  }
+}
+
+// Loading State
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 24px;
+  gap: 16px;
+
+  p {
+    color: rgba(0, 0, 0, 0.6);
+    margin: 0;
+  }
+}
+
+// Empty State
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 64px 24px;
+  gap: 16px;
+  color: rgba(0, 0, 0, 0.4);
+
+  mat-icon {
+    font-size: 64px;
+    width: 64px;
+    height: 64px;
+    opacity: 0.5;
+  }
+
+  p {
+    margin: 0;
+    font-size: 16px;
+  }
+}
+
+// Responsive
+@media (max-width: 768px) {
+  .filters-row-top {
+    flex-direction: column;
+
+    .search-field,
+    .category-field {
+      width: 100%;
+    }
+  }
+
+  .filters-row-bottom {
+    flex-direction: column;
+    align-items: flex-start;
+
+    .flags-group {
+      width: 100%;
+    }
+  }
+}
+

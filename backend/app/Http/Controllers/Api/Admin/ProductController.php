@@ -14,81 +14,102 @@ class ProductController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
+        // Eager loading otimizado
+        $query = Product::with(['category:id,name,slug']);
+
+        // Busca por nome ou código de barras
+        $query->when($request->filled('search'), function ($q) use ($request) {
+            $search = $request->input('search');
+            $q->where(function ($subQuery) use ($search) {
+                $subQuery->where('name', 'like', "%{$search}%")
+                         ->orWhere('barcode', 'like', "%{$search}%");
+            });
+        });
+
+        // Filtro por categoria
+        $query->when($request->filled('category_id'), function ($q) use ($request) {
+            $q->where('category_id', $request->input('category_id'));
+        });
+
+        // Filtro status: 'active' | 'inactive' | 'all'
+        // Se vier 'status' como string, usar ele; senão, verificar is_active (compatibilidade)
+        if ($request->has('status')) {
+            $status = $request->input('status');
+            if ($status === 'active') {
+                $query->where('is_active', true);
+            } elseif ($status === 'inactive') {
+                $query->where('is_active', false);
+            }
+            // Se status === 'all', não filtra is_active
+        } elseif ($request->has('is_active')) {
+            // Compatibilidade: se vier is_active (boolean), usar ele
+            $isActive = filter_var($request->input('is_active'), FILTER_VALIDATE_BOOLEAN);
+            $query->where('is_active', $isActive);
+        } else {
+            // Padrão: mostrar apenas produtos ativos
+            $query->where('is_active', true);
+        }
+
+        // Filtro estoque baixo
+        $query->when($request->has('low_stock'), function ($q) use ($request) {
+            $lowStock = filter_var($request->input('low_stock'), FILTER_VALIDATE_BOOLEAN);
+            if ($lowStock) {
+                $q->whereColumn('current_stock', '<=', 'min_stock');
+            }
+        });
+
+        // Filtro featured
+        $query->when($request->has('featured'), function ($q) use ($request) {
+            $featured = filter_var($request->input('featured'), FILTER_VALIDATE_BOOLEAN);
+            if ($featured) {
+                $q->where('featured', true);
+            }
+        });
+
+        // Filtro offers
+        $query->when($request->has('offers'), function ($q) use ($request) {
+            $offers = filter_var($request->input('offers'), FILTER_VALIDATE_BOOLEAN);
+            if ($offers) {
+                $q->where('offers', true);
+            }
+        });
+
+        // Filtro is_pack
+        $query->when($request->has('is_pack'), function ($q) use ($request) {
+            $isPack = filter_var($request->input('is_pack'), FILTER_VALIDATE_BOOLEAN);
+            if ($isPack) {
+                $q->whereNotNull('parent_product_id');
+            }
+        });
+
+        // Filtro visible_online
+        $query->when($request->has('visible_online'), function ($q) use ($request) {
+            $visibleOnline = filter_var($request->input('visible_online'), FILTER_VALIDATE_BOOLEAN);
+            if ($visibleOnline) {
+                $q->where('visible_online', true);
+            }
+        });
+
         // Ordenação
         $sortBy = $request->get('sort_by', 'name');
-        $sortOrder = $request->get('sort_order', 'asc');
-        
-        // Garantir que a direção é válida (asc ou desc)
-        if (!in_array(strtolower($sortOrder), ['asc', 'desc'])) {
-            $sortOrder = 'asc';
-        }
-        
-        // Se ordenar por categoria, precisa fazer join antes de aplicar filtros
-        $needsJoin = ($sortBy === 'category');
-        
-        if ($needsJoin) {
-            $query = Product::join('categories', 'products.category_id', '=', 'categories.id')
-                           ->select('products.*');
-        } else {
-            $query = Product::query();
-        }
+        $sortOrder = strtolower($request->get('sort_order', 'asc'));
+        $sortOrder = in_array($sortOrder, ['asc', 'desc']) ? $sortOrder : 'asc';
 
-        // Filtros
-        if ($request->has('search') && $request->search) {
-            $query->where(function($q) use ($request) {
-                $q->where('products.name', 'like', '%' . $request->search . '%')
-                  ->orWhere('products.barcode', 'like', '%' . $request->search . '%');
-            });
-        }
-
-        if ($request->has('category_id')) {
-            $query->where('products.category_id', $request->category_id);
-        }
-
-        if ($request->has('is_active')) {
-            $isActive = filter_var($request->is_active, FILTER_VALIDATE_BOOLEAN);
-            $query->where('products.is_active', $isActive);
-        }
-
-        if ($request->has('low_stock') && $request->low_stock) {
-            $query->whereColumn('products.current_stock', '<=', 'products.min_stock');
-        }
-
-        if ($request->boolean('featured')) {
-            $query->where('products.featured', true);
-        }
-
-        if ($request->boolean('offers')) {
-            $query->where('products.offers', true);
-        }
-
-        if ($request->boolean('is_pack')) {
-            $query->whereNotNull('products.parent_product_id');
-        }
-
-        if ($request->boolean('visible_online')) {
-            $query->where('products.visible_online', true);
-        }
-
-        // Aplicar ordenação
         if ($sortBy === 'category') {
-            $query->orderBy('categories.name', $sortOrder);
+            $query->join('categories', 'products.category_id', '=', 'categories.id')
+                  ->select('products.*')
+                  ->orderBy('categories.name', $sortOrder);
         } else {
-            // Validação de segurança: só permite ordenar por colunas válidas
             $allowedSortColumns = ['name', 'price', 'current_stock', 'is_active', 'created_at', 'updated_at'];
             if (in_array($sortBy, $allowedSortColumns)) {
-                $query->orderBy('products.' . $sortBy, $sortOrder);
+                $query->orderBy($sortBy, $sortOrder);
             } else {
-                // Fallback para ordenação padrão se coluna inválida
-                $query->orderBy('products.name', 'asc');
+                $query->orderBy('name', 'asc');
             }
         }
 
-        // Carregar relacionamento de categoria (sempre necessário para exibição)
-        $query->with(['category']);
-
         // Paginação
-        $perPage = $request->get('per_page', 10);
+        $perPage = min($request->get('per_page', 10), 100);
         $products = $query->paginate($perPage);
 
         return response()->json([
