@@ -160,35 +160,135 @@
   color: var(--primary-dark) !important;
 }
 
+/* Botão de Perfil - Design Moderno */
 .profile-button {
-  color: #1A1A1A !important;
+  color: var(--text-primary) !important;
+  padding: 0.5rem 0.75rem !important;
+  border-radius: 8px !important;
+  transition: background-color 0.2s ease;
+  min-width: auto !important;
 }
 
-.user-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid white;
-  margin-right: 8px;
+.profile-button:hover {
+  background-color: rgba(0, 0, 0, 0.04) !important;
 }
 
-.mat-mdc-menu-item {
+.profile-button-content {
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
 
-.mat-mdc-menu-item .mat-icon {
-  margin-right: 8px;
+/* Container do Avatar */
+.user-avatar-container {
+  position: relative;
+  flex-shrink: 0;
 }
 
-::ng-deep .mat-mdc-menu-content {
-  padding: 0 !important;
+.user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #e0e0e0;
+  display: block;
 }
 
-::ng-deep .mat-mdc-menu-item {
+.user-avatar-placeholder {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #f5f5f5;
+  border: 2px solid #e0e0e0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #666666;
+}
+
+.user-avatar-placeholder mat-icon {
+  font-size: 24px;
+  width: 24px;
+  height: 24px;
+}
+
+/* Texto de Saudação */
+.profile-greeting {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+/* Ícone de Seta */
+.profile-arrow-icon {
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+  color: var(--text-secondary);
+  transition: transform 0.2s ease;
+  flex-shrink: 0;
+}
+
+/* Rotacionar seta quando menu está aberto */
+.profile-button[aria-expanded="true"] .profile-arrow-icon {
+  transform: rotate(180deg);
+}
+
+/* Menu de Perfil */
+.profile-menu {
+  min-width: 200px;
+}
+
+::ng-deep .profile-menu .mat-mdc-menu-content {
+  padding: 8px 0 !important;
+}
+
+::ng-deep .profile-menu .mat-mdc-menu-item {
   height: 48px !important;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px !important;
+}
+
+::ng-deep .profile-menu .mat-mdc-menu-item .mat-icon {
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+  color: var(--text-secondary);
+  margin: 0 !important;
+}
+
+::ng-deep .profile-menu .mat-mdc-menu-item span {
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+::ng-deep .profile-menu .mat-mdc-menu-item:hover {
+  background-color: rgba(0, 0, 0, 0.04);
+}
+
+/* Item de Logout com cor diferente */
+.logout-menu-item {
+  color: #d32f2f !important;
+}
+
+::ng-deep .logout-menu-item .mat-icon {
+  color: #d32f2f !important;
+}
+
+::ng-deep .logout-menu-item span {
+  color: #d32f2f !important;
+}
+
+::ng-deep .logout-menu-item:hover {
+  background-color: rgba(211, 47, 47, 0.08) !important;
+}
+
+/* Divider no menu */
+::ng-deep .profile-menu .mat-divider {
+  margin: 8px 0 !important;
 }
 
 /* Menu Mobile */
@@ -215,7 +315,31 @@
     display: none !important;
   }
 
-  .profile-button span,
+  /* No mobile, mostrar apenas avatar e ícone */
+  .profile-button-content {
+    gap: 0.25rem;
+  }
+
+  .profile-greeting {
+    display: none;
+  }
+
+  .profile-arrow-icon {
+    display: none;
+  }
+
+  .user-avatar,
+  .user-avatar-placeholder {
+    width: 32px;
+    height: 32px;
+  }
+
+  .user-avatar-placeholder mat-icon {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+  }
+
   .login-button span {
     display: none;
   }

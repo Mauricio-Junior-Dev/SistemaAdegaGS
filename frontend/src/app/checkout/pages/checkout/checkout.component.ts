@@ -887,6 +887,69 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Incrementa a quantidade do item
+   */
+  increment(item: CartItem): void {
+    this.updateQuantity(item, 1);
+  }
+
+  /**
+   * Decrementa a quantidade do item
+   */
+  decrement(item: CartItem): void {
+    this.updateQuantity(item, -1);
+  }
+
+  /**
+   * Atualiza a quantidade do item no carrinho
+   */
+  updateQuantity(item: CartItem, change: number): void {
+    const newQuantity = item.quantity + change;
+    if (newQuantity > 0) {
+      // Validar estoque antes de aumentar (apenas para produtos, não combos)
+      if (change > 0 && item.product && !item.isCombo) {
+        if (newQuantity > item.product.current_stock) {
+          return; // O CartService já mostrará o toastr
+        }
+      }
+      this.cartService.updateQuantity(item.id, newQuantity);
+    } else {
+      this.removeItem(item);
+    }
+  }
+
+  /**
+   * Remove o item do carrinho
+   */
+  async removeItem(item: CartItem): Promise<void> {
+    this.cartService.removeItem(item.id);
+    
+    // Verificar se o carrinho ficou vazio após remover
+    try {
+      const items = await firstValueFrom(this.cartItems$);
+      if (!items || items.length === 0) {
+        // Se o carrinho ficou vazio, redirecionar para a página inicial ou mostrar mensagem
+        this.toastr.info('Seu carrinho está vazio. Redirecionando...', 'Carrinho Vazio');
+        setTimeout(() => {
+          this.router.navigate(['/']);
+        }, 2000);
+      }
+    } catch (error) {
+      console.error('Erro ao verificar carrinho:', error);
+    }
+  }
+
+  /**
+   * Verifica se pode aumentar a quantidade do item
+   */
+  canIncreaseQuantity(item: CartItem): boolean {
+    if (item.isCombo || !item.product) {
+      return true; // Combos não têm limite de estoque
+    }
+    return item.quantity < item.product.current_stock;
+  }
+
+  /**
    * Copia o código PIX para a área de transferência
    */
   public copiarPix(): void {

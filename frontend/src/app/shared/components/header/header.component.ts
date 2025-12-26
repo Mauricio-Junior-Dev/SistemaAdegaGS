@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
+import { MatDividerModule } from '@angular/material/divider';
 import { CartService } from '../../../core/services/cart.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { OrderPollingService } from '../../../core/services/order-polling.service';
@@ -26,7 +27,8 @@ import { Subscription } from 'rxjs';
     FormsModule,
     MatMenuModule,
     MatIconModule,
-    MatButtonModule
+    MatButtonModule,
+    MatDividerModule
   ]
 })
 export class HeaderComponent implements OnInit, OnDestroy {
@@ -93,6 +95,18 @@ export class HeaderComponent implements OnInit, OnDestroy {
 
   openCart(): void {
     this.cartService.toggleCart();
+  }
+
+  /**
+   * Obtém o primeiro nome do usuário
+   * Ex: 'Mauricio De Araujo' -> 'Mauricio'
+   */
+  getFirstName(fullName: string | null | undefined): string {
+    if (!fullName) {
+      return 'Usuário';
+    }
+    const nameParts = fullName.trim().split(/\s+/);
+    return nameParts[0] || 'Usuário';
   }
 
   logout(): void {

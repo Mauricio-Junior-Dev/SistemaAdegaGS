@@ -543,6 +543,7 @@
   gap: 12px;
   padding: 12px 0;
   border-bottom: 1px solid #f0f0f0;
+  align-items: flex-start;
 }
 
 .cart-item-summary:last-child {
@@ -588,6 +589,102 @@
   font-weight: 600;
   color: var(--text-primary);
   white-space: nowrap;
+  align-self: center;
+}
+
+/* Controles de Quantidade no Resumo */
+.item-controls-summary {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  margin-left: auto;
+  margin-right: 8px;
+}
+
+.quantity-controls-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f5f5f5;
+  border-radius: 20px;
+  padding: 4px;
+}
+
+.qty-btn-summary {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  padding: 0;
+  color: var(--primary);
+  transition: all 0.2s;
+}
+
+.qty-btn-summary:hover:not(:disabled) {
+  background-color: var(--primary);
+  color: #000;
+}
+
+.qty-btn-summary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.qty-btn-summary mat-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+}
+
+.quantity-summary {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-primary);
+  min-width: 24px;
+  text-align: center;
+}
+
+.remove-button-summary {
+  color: #ef4444;
+  padding: 4px;
+  transition: all 0.2s;
+}
+
+.remove-button-summary:hover {
+  background-color: #fee2e2;
+  color: #ef4444;
+}
+
+.remove-button-summary mat-icon {
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+}
+
+/* Estado Vazio no Resumo */
+.empty-cart-summary {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.empty-cart-summary mat-icon {
+  font-size: 48px;
+  width: 48px;
+  height: 48px;
+  color: #ddd;
+  margin-bottom: 12px;
+}
+
+.empty-cart-summary p {
+  font-size: 14px;
+  margin: 0;
+  color: var(--text-secondary);
 }
 
 .order-totals-summary {
@@ -978,6 +1075,45 @@
     font-size: 13px;
     min-width: 120px;
     height: 44px;
+  }
+
+  /* Ajustes para controles de quantidade no mobile */
+  .item-controls-summary {
+    margin-right: 4px;
+  }
+
+  .qty-btn-summary {
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+  }
+
+  .qty-btn-summary mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+  }
+
+  .quantity-summary {
+    font-size: 13px;
+  }
+
+  .remove-button-summary mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+
+  .cart-item-summary {
+    flex-wrap: wrap;
+  }
+
+  .item-total-summary {
+    width: 100%;
+    text-align: right;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid #f0f0f0;
   }
 
   ::ng-deep .suggestion-card {

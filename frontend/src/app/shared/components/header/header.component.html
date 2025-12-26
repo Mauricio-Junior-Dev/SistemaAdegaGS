@@ -74,19 +74,34 @@
       <!-- Botão de Login/Perfil -->
       <ng-container *ngIf="user$ | async as user; else loginButton">
         <button mat-button [matMenuTriggerFor]="profileMenu" class="profile-button">
-          <img *ngIf="user.avatar" 
-               [src]="user.avatar" 
-               [alt]="user.name"
-               class="user-avatar">
-          <mat-icon *ngIf="!user.avatar">person</mat-icon>
-          <span>{{ user.name }}</span>
+          <div class="profile-button-content">
+            <!-- Avatar ou Iniciais -->
+            <div class="user-avatar-container">
+              <img *ngIf="user.avatar" 
+                   [src]="user.avatar" 
+                   [alt]="user.name"
+                   class="user-avatar">
+              <div *ngIf="!user.avatar" class="user-avatar-placeholder">
+                <mat-icon>person</mat-icon>
+              </div>
+            </div>
+            <!-- Texto "Olá, [Primeiro Nome]" -->
+            <span class="profile-greeting">Olá, {{ getFirstName(user.name) }}</span>
+            <!-- Ícone de Seta -->
+            <mat-icon class="profile-arrow-icon">keyboard_arrow_down</mat-icon>
+          </div>
         </button>
-        <mat-menu #profileMenu="matMenu">
+        <mat-menu #profileMenu="matMenu" class="profile-menu">
           <button mat-menu-item routerLink="/perfil">
             <mat-icon>account_circle</mat-icon>
-            <span>Meu Perfil</span>
+            <span>Minha Conta</span>
           </button>
-          <button mat-menu-item (click)="logout()">
+          <button mat-menu-item routerLink="/pedidos">
+            <mat-icon>shopping_bag</mat-icon>
+            <span>Meus Pedidos</span>
+          </button>
+          <mat-divider></mat-divider>
+          <button mat-menu-item (click)="logout()" class="logout-menu-item">
             <mat-icon>exit_to_app</mat-icon>
             <span>Sair</span>
           </button>

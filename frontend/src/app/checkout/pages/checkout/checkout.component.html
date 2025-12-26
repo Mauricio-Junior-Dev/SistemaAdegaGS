@@ -315,23 +315,57 @@
           </button>
 
           <div class="summary-content" *ngIf="showOrderSummary">
-            <div class="cart-items-summary">
-              <div *ngFor="let item of cartItems$ | async" class="cart-item-summary">
+            <ng-container *ngIf="cartItems$ | async as items">
+              <!-- Estado Vazio -->
+              <div *ngIf="items.length === 0" class="empty-cart-summary">
+                <mat-icon>shopping_cart</mat-icon>
+                <p>Seu carrinho está vazio</p>
+              </div>
+
+              <!-- Lista de Itens -->
+              <div *ngIf="items.length > 0" class="cart-items-summary">
+                <div *ngFor="let item of items" class="cart-item-summary">
                 <div class="item-image-small">
                   <img [src]="getImageUrl(item)" [alt]="getItemName(item)">
                 </div>
                 <div class="item-details-summary">
                   <h4 class="item-name-summary">{{ getItemName(item) }}</h4>
                   <div class="item-info-summary">
-                    <span class="item-quantity-summary">{{ item.quantity }}x</span>
                     <span class="item-price-summary">R$ {{ (item.price * 1) | number:'1.2-2' }}</span>
                   </div>
+                </div>
+                <div class="item-controls-summary">
+                  <!-- Controles de Quantidade -->
+                  <div class="quantity-controls-summary">
+                    <button mat-icon-button 
+                            class="qty-btn-summary minus" 
+                            (click)="decrement(item)" 
+                            aria-label="Diminuir quantidade">
+                      <mat-icon>remove</mat-icon>
+                    </button>
+                    <span class="quantity-summary">{{ item.quantity }}</span>
+                    <button mat-icon-button 
+                            class="qty-btn-summary plus" 
+                            (click)="increment(item)"
+                            [disabled]="!canIncreaseQuantity(item)"
+                            aria-label="Aumentar quantidade">
+                      <mat-icon>add</mat-icon>
+                    </button>
+                  </div>
+                  <!-- Botão Remover -->
+                  <button mat-icon-button 
+                          class="remove-button-summary" 
+                          (click)="removeItem(item)" 
+                          aria-label="Remover item">
+                    <mat-icon>delete</mat-icon>
+                  </button>
                 </div>
                 <div class="item-total-summary">
                   R$ {{ ((item.price * 1) * (item.quantity * 1)) | number:'1.2-2' }}
                 </div>
               </div>
-            </div>
+              </div>
+            </ng-container>
 
             <div class="order-totals-summary">
               <div class="total-row-summary">
