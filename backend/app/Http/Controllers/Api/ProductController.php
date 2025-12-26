@@ -4,154 +4,454 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Product;
+use App\Models\Category;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class ProductController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Product::with('category')
-            ->where('is_active', true)
-            ->where('visible_online', true);
+        // 1. Inicia a query carregando relacionamentos essenciais para o card de produto
+        $query = Product::with(['category'])
+            ->where('is_active', true); // TRAVA DE SEGURANÇA: O site NUNCA vê inativos
 
-        // Filtrar por categoria
-        if ($request->has('category_id')) {
-            $query->where('category_id', $request->category_id);
-        }
-
-        // Filtrar produtos em destaque
-        if ($request->boolean('featured')) {
-            $query->where('featured', true);
-        }
-
-        // Filtrar produtos populares
-        if ($request->boolean('popular')) {
-            $query->where('popular', true);
-        }
-
-        // Filtrar produtos em oferta
-        if ($request->boolean('offers')) {
-            $query->where('offers', true);
-        }
-
-        // Busca por nome ou descrição
-        if ($request->has('search')) {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%");
+        // 2. Filtro de Busca (Input do Header do site)
+        $query->when($request->filled('search'), function ($q) use ($request) {
+            $search = $request->input('search');
+            $q->where(function ($sub) use ($search) {
+                $sub->where('name', 'like', "%{$search}%")
+                    ->orWhere('code', 'like', "%{$search}%");
             });
+        });
+
+        // 3. Filtro de Categoria
+        $query->when($request->filled('category_id'), function ($q) use ($request) {
+            $q->where('category_id', $request->input('category_id'));
+        });
+
+        // 4. Filtro: Populares (Geralmente usado na Home)
+        // Se a request tiver ?popular=true
+        $query->when(filter_var($request->input('popular'), FILTER_VALIDATE_BOOLEAN), function ($q) {
+            // Se você tiver uma coluna 'views', use: $q->orderBy('views', 'desc');
+            // Se não, random é um bom fallback para "Vitrine"
+            $q->inRandomOrder(); 
+        });
+
+        // 5. Filtro: Destaques (Featured)
+        // Se a request tiver ?featured=true
+        $query->when(filter_var($request->input('featured'), FILTER_VALIDATE_BOOLEAN), function ($q) {
+            $q->where('featured', true);
+        });
+
+        // 6. Ordenação Padrão (Mais recentes primeiro)
+        if (!$request->has('popular')) {
+            $query->latest();
         }
 
-        // Ordenação
-        $sortField = $request->get('sort_by', 'created_at');
-        $sortOrder = $request->get('sort_order', 'desc');
-        $query->orderBy($sortField, $sortOrder);
-
-        // Paginação
-        $perPage = $request->get('per_page', 12);
-        return $query->paginate($perPage);
+        // Retorna paginado (Site geralmente usa 12, 16 ou 24 itens)
+        return response()->json($query->paginate($request->input('per_page', 12)));
     }
 
     public function show($id)
     {
-        $product = Product::with('category')
-            ->where('is_active', true)
-            ->where('visible_online', true)
+        $product = Product::with(['category']) // Carrega relacionamentos
+            ->where('is_active', true) // Garante que não acessa inativo por link direto
             ->findOrFail($id);
+
         return response()->json($product);
     }
 
-    /**
-     * Get product suggestions based on cart items
-     * 
-     * IMPORTANTE: Esta query filtra apenas pelos produtos do carrinho DO USUÁRIO ATUAL.
-     * Os $cartIds são enviados pelo frontend e representam apenas os produtos no carrinho
-     * do usuário que está fazendo a requisição. Não há filtro global que afete outros usuários.
-     */
-    public function suggestions(Request $request)
+    public function store(Request $request): JsonResponse
     {
         $request->validate([
-            'cart_ids' => 'required|array',
-            'cart_ids.*' => 'integer|exists:products,id',
-            'limit' => 'integer|min:1|max:8'
+            'name' => 'required|string|max:255',
+            'description' => 'required|string',
+            'price' => 'required|numeric|min:0',
+            'original_price' => 'nullable|numeric|min:0|gt:price',
+            'cost_price' => 'nullable|numeric|min:0',
+            'current_stock' => 'required|integer|min:0',
+            'min_stock' => 'required|integer|min:0',
+            'doses_por_garrafa' => 'required|integer|min:1',
+            'can_sell_by_dose' => 'boolean',
+            'dose_price' => 'nullable|numeric|min:0',
+            'barcode' => 'nullable|string|unique:products,barcode',
+            'category_id' => 'required|exists:categories,id',
+            'parent_product_id' => 'nullable|exists:products,id',
+            'stock_multiplier' => 'nullable|integer|min:1',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:10240',
+            'is_active' => 'boolean',
+            'featured' => 'boolean',
+            'offers' => 'boolean',
+            'popular' => 'boolean'
+        ], [
+            'image.image' => 'O arquivo deve ser uma imagem válida.',
+            'image.max' => 'A imagem não pode ser maior que 10MB.',
+            'image.mimes' => 'A imagem deve ser do tipo: jpg, jpeg, png, gif ou webp.',
+            'image.uploaded' => 'Falha no upload da imagem. O arquivo pode ser muito grande.',
+            'original_price.gt' => 'O preço original deve ser maior que o preço de venda.'
         ]);
 
-        $cartIds = $request->cart_ids;
-        $limit = $request->get('limit', 6);
+        // Gerar slug a partir do nome
+        $baseSlug = Str::slug($request->name);
+        $slug = $baseSlug;
+        $counter = 1;
+        
+        // Garantir unicidade do slug
+        while (Product::where('slug', $slug)->exists()) {
+            $slug = $baseSlug . '-' . $counter;
+            $counter++;
+        }
 
-        // Buscar produtos do carrinho para obter suas categorias
-        // NOTA: $cartIds contém apenas os IDs dos produtos no carrinho DO USUÁRIO ATUAL
-        $cartProducts = Product::whereIn('id', $cartIds)->get();
-        $cartCategories = $cartProducts->pluck('category_id')->unique()->filter();
+        // Validação adicional: se parent_product_id está presente, stock_multiplier deve ser > 1
+        if ($request->has('parent_product_id') && $request->parent_product_id) {
+            if (!$request->has('stock_multiplier') || $request->stock_multiplier < 2) {
+                return response()->json([
+                    'error' => 'Para produtos Pack, o multiplicador de estoque deve ser maior que 1'
+                ], 422);
+            }
+            // Para Packs, garantir que current_stock seja 0 (estoque é gerenciado pelo produto pai)
+            $request->merge(['current_stock' => 0]);
+        }
 
-        // Buscar produtos populares primeiro
-        // whereNotIn('id', $cartIds) exclui apenas produtos do carrinho DO USUÁRIO ATUAL
-        $suggestions = Product::with('category')
-            ->where('is_active', true)
-            ->where('visible_online', true)
-            ->where('current_stock', '>', 0)
-            ->where('popular', true) // Priorizar produtos populares
-            ->whereNotIn('id', $cartIds) // Excluir produtos já no carrinho DO USUÁRIO ATUAL
-            ->orderBy('price', 'asc') // Dentro dos populares, priorizar menor preço
-            ->limit($limit)
-            ->get();
+        $product = new Product();
+        $product->name = $request->name;
+        $product->slug = $slug;
+        $product->description = $request->description;
+        $product->price = $request->price;
+        $product->original_price = $request->original_price;
+        $product->cost_price = $request->input('cost_price', 0);
+        $product->current_stock = $request->current_stock;
+        $product->min_stock = $request->min_stock;
+        $product->doses_por_garrafa = $request->doses_por_garrafa;
+        $product->can_sell_by_dose = $request->boolean('can_sell_by_dose', false);
+        $product->dose_price = $request->dose_price;
+        $product->barcode = $request->barcode;
+        $product->category_id = $request->category_id;
+        $product->parent_product_id = $request->parent_product_id;
+        $product->stock_multiplier = $request->input('stock_multiplier', 1);
+        $product->is_active = $request->boolean('is_active', true);
+        $product->visible_online = $request->boolean('visible_online', true);
+        $product->featured = $request->boolean('featured', false);
+        $product->offers = $request->boolean('offers', false);
+        $product->popular = $request->boolean('popular', false);
 
-        // Se não encontrou produtos populares suficientes, buscar produtos da mesma categoria
-        if ($suggestions->count() < $limit) {
-            $categorySuggestions = Product::with('category')
-                ->where('is_active', true)
-                ->where('visible_online', true)
-                ->where('current_stock', '>', 0)
-                ->whereNotIn('id', $cartIds)
-                ->whereNotIn('id', $suggestions->pluck('id'))
-                ->where(function($query) use ($cartCategories) {
-                    // Buscar produtos da mesma categoria
-                    if ($cartCategories->isNotEmpty()) {
-                        $query->whereIn('category_id', $cartCategories);
+        if ($request->hasFile('image')) {
+            $file = $request->file('image');
+            $originalName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+            $extension = $file->getClientOriginalExtension();
+            
+            // Sanitiza: "Novos Planos.png" vira "novos-planos-1764184408.png"
+            $safeName = Str::slug($originalName) . '-' . time() . '.' . $extension;
+            
+            // Salva com o nome seguro
+            $path = $file->storeAs('products', $safeName, 'public');
+            $product->image_url = Storage::disk('public')->url($path);
+        }
+
+        // LÓGICA DE PACK: Se for um Pack, estoque sempre é 0 (gerenciado pelo produto pai)
+        if ($product->isPack()) {
+            // Pack não tem estoque próprio, sempre 0
+            $product->current_stock = 0;
+            
+            // Nota: Estoque inicial de Packs não é aplicado automaticamente no produto pai
+            // O admin deve gerenciar o estoque diretamente no produto pai
+        }
+
+        $product->save();
+
+        // Criar movimento de estoque inicial (apenas para produtos normais, não Packs)
+        if (!$product->isPack()) {
+            $product->stockMovements()->create([
+                'user_id' => auth()->id(),
+                'type' => 'entrada',
+                'quantity' => $request->current_stock,
+                'description' => 'Estoque inicial'
+            ]);
+        }
+
+        return response()->json($product, 201);
+    }
+
+    public function update(Request $request, Product $product): JsonResponse
+    {
+        // Log temporário para debug
+        \Log::info('Product Update Request:', [
+            'method' => $request->method(),
+            'url' => $request->fullUrl(),
+            'all_data' => $request->all(),
+            'has_name' => $request->has('name'),
+            'name_value' => $request->input('name'),
+            'content_type' => $request->header('Content-Type'),
+            'files' => $request->allFiles()
+        ]);
+
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'required|string',
+            'price' => 'required|numeric|min:0',
+            'original_price' => 'nullable|numeric|min:0|gt:price',
+            'cost_price' => 'nullable|numeric|min:0',
+            'current_stock' => 'required|integer|min:0',
+            'min_stock' => 'required|integer|min:0',
+            'doses_por_garrafa' => 'required|integer|min:1',
+            'can_sell_by_dose' => 'boolean',
+            'dose_price' => 'nullable|numeric|min:0',
+            'barcode' => 'nullable|string|unique:products,barcode,' . $product->id,
+            'category_id' => 'required|exists:categories,id',
+            'parent_product_id' => 'nullable|exists:products,id',
+            'stock_multiplier' => 'nullable|integer|min:1',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:10240',
+            'is_active' => 'boolean',
+            'visible_online' => 'boolean',
+            'featured' => 'boolean',
+            'offers' => 'boolean',
+            'popular' => 'boolean'
+        ], [
+            'image.image' => 'O arquivo deve ser uma imagem válida.',
+            'image.max' => 'A imagem não pode ser maior que 10MB.',
+            'image.mimes' => 'A imagem deve ser do tipo: jpg, jpeg, png, gif ou webp.',
+            'image.uploaded' => 'Falha no upload da imagem. O arquivo pode ser muito grande.',
+            'original_price.gt' => 'O preço original deve ser maior que o preço de venda.'
+        ]);
+
+        $oldStock = $product->current_stock;
+        $newStock = $request->current_stock;
+
+        // Atualizar slug se o nome mudou
+        if ($product->name !== $request->name) {
+            $baseSlug = Str::slug($request->name);
+            $slug = $baseSlug;
+            $counter = 1;
+            
+            // Garantir unicidade do slug (excluindo o produto atual)
+            while (Product::where('slug', $slug)->where('id', '!=', $product->id)->exists()) {
+                $slug = $baseSlug . '-' . $counter;
+                $counter++;
+            }
+            $product->slug = $slug;
+        }
+
+        // Validação adicional: se parent_product_id está presente, stock_multiplier deve ser > 1
+        if ($request->has('parent_product_id') && $request->parent_product_id) {
+            if (!$request->has('stock_multiplier') || $request->stock_multiplier < 2) {
+                return response()->json([
+                    'error' => 'Para produtos Pack, o multiplicador de estoque deve ser maior que 1'
+                ], 422);
+            }
+        }
+
+        $product->name = $request->name;
+        $product->description = $request->description;
+        $product->price = $request->price;
+        $product->original_price = $request->original_price;
+        $product->cost_price = $request->input('cost_price', $product->cost_price ?? 0);
+        $product->current_stock = $newStock;
+        $product->min_stock = $request->min_stock;
+        $product->doses_por_garrafa = $request->doses_por_garrafa;
+        $product->can_sell_by_dose = $request->boolean('can_sell_by_dose', false);
+        $product->dose_price = $request->dose_price;
+        $product->barcode = $request->barcode;
+        $product->category_id = $request->category_id;
+        $product->parent_product_id = $request->parent_product_id;
+        $product->stock_multiplier = $request->input('stock_multiplier', $product->stock_multiplier ?? 1);
+        $product->is_active = $request->boolean('is_active', true);
+        $product->visible_online = $request->boolean('visible_online', true);
+        $product->featured = $request->boolean('featured', false);
+        $product->offers = $request->boolean('offers', false);
+        $product->popular = $request->boolean('popular', false);
+
+        if ($request->hasFile('image')) {
+            // Deletar imagem anterior se existir
+            if ($product->image_url) {
+                Storage::disk('public')->delete(str_replace('/storage/', '', $product->image_url));
+            }
+
+            $file = $request->file('image');
+            $originalName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+            $extension = $file->getClientOriginalExtension();
+            
+            // Sanitiza: "Novos Planos.png" vira "novos-planos-1764184408.png"
+            $safeName = Str::slug($originalName) . '-' . time() . '.' . $extension;
+            
+            // Salva com o nome seguro
+            $path = $file->storeAs('products', $safeName, 'public');
+            $product->image_url = Storage::disk('public')->url($path);
+        }
+
+        // LÓGICA DE PACK: Se for um Pack, interceptar e aplicar no produto pai
+        if ($product->isPack()) {
+            $parentProduct = $product->getParentProduct();
+            if (!$parentProduct) {
+                return response()->json([
+                    'error' => 'Produto pai não encontrado para o Pack'
+                ], 400);
+            }
+
+            // Se o estoque mudou, aplicar a diferença no produto pai multiplicado pelo multiplier
+            if ($oldStock != $newStock) {
+                $difference = $newStock - $oldStock;
+                $unidadesPai = abs($difference) * $product->stock_multiplier;
+                $type = $difference > 0 ? 'entrada' : 'saida';
+
+                if ($type === 'entrada') {
+                    $parentProduct->increment('current_stock', $unidadesPai);
+                } else {
+                    // Verificar se há estoque suficiente no pai
+                    if ($parentProduct->current_stock < $unidadesPai) {
+                        return response()->json([
+                            'error' => "Estoque insuficiente no produto pai. Tentativa de remover {$unidadesPai} unidades, mas há apenas {$parentProduct->current_stock} disponíveis."
+                        ], 400);
                     }
-                })
-                ->orderBy('price', 'asc')
-                ->limit($limit - $suggestions->count())
-                ->get();
+                    $parentProduct->decrement('current_stock', $unidadesPai);
+                }
+                $parentProduct->save();
 
-            $suggestions = $suggestions->merge($categorySuggestions);
+                // Registrar movimentação no produto pai
+                $parentProduct->stockMovements()->create([
+                    'type' => $type,
+                    'quantity' => $unidadesPai,
+                    'description' => "Ajuste de estoque Pack ({$product->name}): {$difference} pack(s) x {$product->stock_multiplier} = {$unidadesPai} unidades",
+                    'user_id' => auth()->id()
+                ]);
+            }
+
+            // Pack não tem estoque próprio, manter como 0 ou valor simbólico
+            $product->current_stock = 0;
         }
 
-        // Se ainda não tem produtos suficientes, buscar produtos de baixo valor
-        if ($suggestions->count() < $limit) {
-            $lowValueSuggestions = Product::with('category')
-                ->where('is_active', true)
-                ->where('visible_online', true)
-                ->where('current_stock', '>', 0)
-                ->whereNotIn('id', $cartIds)
-                ->whereNotIn('id', $suggestions->pluck('id'))
-                ->where('price', '<=', 50) // Produtos de baixo valor (snacks, drinks, etc.)
-                ->orderBy('price', 'asc')
-                ->limit($limit - $suggestions->count())
-                ->get();
+        $product->save();
 
-            $suggestions = $suggestions->merge($lowValueSuggestions);
+        // Criar movimento de estoque se a quantidade mudou (apenas para produtos normais, não Packs)
+        if (!$product->isPack() && $oldStock != $newStock) {
+            $difference = $newStock - $oldStock;
+            $type = $difference > 0 ? 'entrada' : 'saida';
+            $description = $difference > 0 ? 'Ajuste de estoque (entrada)' : 'Ajuste de estoque (saída)';
+
+            $product->stockMovements()->create([
+                'type' => $type,
+                'quantity' => abs($difference),
+                'description' => $description,
+                'user_id' => auth()->id()
+            ]);
         }
 
-        // Se ainda não tem produtos suficientes, buscar qualquer produto disponível
-        if ($suggestions->count() < $limit) {
-            $finalSuggestions = Product::with('category')
-                ->where('is_active', true)
-                ->where('visible_online', true)
-                ->where('current_stock', '>', 0)
-                ->whereNotIn('id', $cartIds)
-                ->whereNotIn('id', $suggestions->pluck('id'))
-                ->orderBy('price', 'asc')
-                ->limit($limit - $suggestions->count())
-                ->get();
+        return response()->json($product);
+    }
 
-            $suggestions = $suggestions->merge($finalSuggestions);
+    public function destroy(Product $product): JsonResponse
+    {
+        // Verificar se o produto tem pedidos
+        if ($product->orderItems()->count() > 0) {
+            return response()->json(['error' => 'Não é possível excluir produto com pedidos'], 400);
         }
 
-        return response()->json([
-            'suggestions' => $suggestions,
-            'total' => $suggestions->count()
+        // Deletar imagem se existir
+        if ($product->image_url) {
+            Storage::disk('public')->delete(str_replace('/storage/', '', $product->image_url));
+        }
+
+        // Deletar movimentos de estoque
+        $product->stockMovements()->delete();
+
+        $product->delete();
+
+        return response()->json(null, 204);
+    }
+
+    public function toggleStatus(Product $product): JsonResponse
+    {
+        $product->is_active = !$product->is_active;
+        $product->save();
+
+        return response()->json($product);
+    }
+
+    public function uploadImage(Request $request, Product $product): JsonResponse
+    {
+        $request->validate([
+            'image' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:10240'
+        ], [
+            'image.required' => 'Por favor, selecione uma imagem.',
+            'image.image' => 'O arquivo deve ser uma imagem válida.',
+            'image.max' => 'A imagem não pode ser maior que 10MB.',
+            'image.mimes' => 'A imagem deve ser do tipo: jpg, jpeg, png, gif ou webp.',
+            'image.uploaded' => 'Falha no upload da imagem. O arquivo pode ser muito grande.'
         ]);
+
+        // Deletar imagem anterior se existir
+        if ($product->image_url) {
+            Storage::disk('public')->delete(str_replace('/storage/', '', $product->image_url));
+        }
+
+        $file = $request->file('image');
+        $originalName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+        $extension = $file->getClientOriginalExtension();
+        
+        // Sanitiza: "Novos Planos.png" vira "novos-planos-1764184408.png"
+        $safeName = Str::slug($originalName) . '-' . time() . '.' . $extension;
+        
+        // Salva com o nome seguro
+        $path = $file->storeAs('products', $safeName, 'public');
+        $product->image_url = Storage::disk('public')->url($path);
+        $product->save();
+
+        return response()->json($product);
+    }
+
+    public function deleteImage(Product $product): JsonResponse
+    {
+        if ($product->image_url) {
+            Storage::disk('public')->delete(str_replace('/storage/', '', $product->image_url));
+            $product->image_url = null;
+            $product->save();
+        }
+
+        return response()->json($product);
+    }
+
+    public function validateBarcode(Request $request): JsonResponse
+    {
+        $request->validate([
+            'barcode' => 'required|string',
+            'exclude_id' => 'nullable|integer'
+        ]);
+
+        $query = Product::where('barcode', $request->barcode);
+        
+        if ($request->has('exclude_id')) {
+            $query->where('id', '!=', $request->exclude_id);
+        }
+
+        $exists = $query->exists();
+
+        return response()->json(['valid' => !$exists]);
+    }
+
+    public function import(Request $request): JsonResponse
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:csv,xlsx,xls'
+        ]);
+
+        // Implementar lógica de importação
+        // Por enquanto, retornar sucesso
+        return response()->json([
+            'imported' => 0,
+            'errors' => ['Funcionalidade de importação será implementada']
+        ]);
+    }
+
+    public function export(Request $request): JsonResponse
+    {
+        $request->validate([
+            'format' => 'required|in:csv,xlsx'
+        ]);
+
+        // Implementar lógica de exportação
+        // Por enquanto, retornar erro
+        return response()->json(['error' => 'Funcionalidade de exportação será implementada'], 501);
     }
 }
