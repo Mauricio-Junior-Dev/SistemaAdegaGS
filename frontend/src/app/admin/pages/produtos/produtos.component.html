@@ -24,7 +24,7 @@
 
           <mat-form-field appearance="outline" class="category-field">
             <mat-label>Categoria</mat-label>
-            <mat-select formControlName="category_id">
+            <mat-select formControlName="category_id" (selectionChange)="onCategoryChange($event.value)">
               <mat-option [value]="null">Todas as categorias</mat-option>
               <mat-option [value]="category.id" *ngFor="let category of categories">
                 {{category.name}}

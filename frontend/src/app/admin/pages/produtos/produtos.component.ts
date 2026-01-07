@@ -289,6 +289,13 @@ export class ProdutosComponent implements OnInit, AfterViewInit, OnDestroy {
     this.manualTrigger$.next();
   }
 
+  onCategoryChange(categoryId: number | null): void {
+    this.currentPage = 0;
+    this.filterForm.patchValue({ category_id: categoryId }, { emitEvent: true });
+    // Disparar trigger manual para garantir que o pipeline reaja imediatamente
+    this.manualTrigger$.next();
+  }
+
   onChipChange(fieldName: 'low_stock' | 'featured' | 'offers' | 'is_pack' | 'visible_online', selected: boolean): void {
     this.currentPage = 0;
     this.filterForm.patchValue({ [fieldName]: selected }, { emitEvent: true });
