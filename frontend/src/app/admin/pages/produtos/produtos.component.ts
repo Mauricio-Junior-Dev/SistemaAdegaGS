@@ -18,7 +18,7 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { Subject, debounceTime, distinctUntilChanged, takeUntil, switchMap, startWith, combineLatest, skip } from 'rxjs';
+import { Subject, debounceTime, distinctUntilChanged, takeUntil, switchMap, startWith, combineLatest, merge, of } from 'rxjs';
 
 import { ProductService, Product, ProductResponse } from '../../services/product.service';
 import { CategoryService, Category } from '../../services/category.service';
@@ -76,8 +76,8 @@ export class ProdutosComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild(MatTable) table!: MatTable<Product>;
 
   private destroy$ = new Subject<void>();
-  // Flag para evitar loop entre URL e Formulário
-  private isUpdatingFromUrl = false;
+  private isInitialLoad = true;
+  private manualTrigger$ = new Subject<void>();
 
   constructor(
     private productService: ProductService,
@@ -92,7 +92,7 @@ export class ProdutosComponent implements OnInit, AfterViewInit, OnDestroy {
     this.filterForm = this.fb.group({
       search: [''],
       category_id: [null],
-      status: ['active'], // 'all' | 'active' | 'inactive'
+      status: ['active'],
       low_stock: [false],
       featured: [false],
       offers: [false],
@@ -103,66 +103,112 @@ export class ProdutosComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnInit(): void {
     this.loadCategories();
+    this.initializeFromUrl();
+    this.setupFiltersPipeline();
+  }
 
-    // 1. Carregar estado inicial da URL
-    // Usar skip(1) para ignorar o primeiro valor (snapshot) e só reagir a mudanças reais
-    this.route.queryParams.pipe(
-      takeUntil(this.destroy$),
-      skip(1) // Ignorar o snapshot inicial, só reagir a mudanças de navegação externa
-    ).subscribe(queryParams => {
-      // Só atualizar se não estivermos atualizando a URL nós mesmos
-      if (!this.isUpdatingFromUrl && queryParams && Object.keys(queryParams).length > 0) {
-        const formState = this.parseQueryParams(queryParams);
-        this.filterForm.patchValue(formState, { emitEvent: false });
-        
-        this.sortColumn = queryParams['sort_by'] || '';
-        this.sortDirection = (queryParams['sort_order'] as 'asc' | 'desc' | '') || '';
-        this.currentPage = parseInt(queryParams['page'] || '1', 10) - 1;
-        this.pageSize = parseInt(queryParams['per_page'] || '10', 10);
-        
-        // Disparar busca manualmente após carregar da URL
-        this.loadProducts();
-      }
-    });
+  ngAfterViewInit(): void {
+    if (this.sort && this.sortColumn) {
+      this.sort.active = this.sortColumn;
+      this.sort.direction = this.sortDirection;
+    }
+  }
 
-    // Carregar estado inicial do snapshot (apenas na inicialização)
-    const initialParams = this.route.snapshot.queryParams;
-    if (initialParams && Object.keys(initialParams).length > 0) {
-      const formState = this.parseQueryParams(initialParams);
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  // ========== INICIALIZAÇÃO ==========
+
+  private initializeFromUrl(): void {
+    const params = this.route.snapshot.queryParams;
+    
+    if (params && Object.keys(params).length > 0) {
+      // Carregar estado da URL
+      const formState = this.parseQueryParams(params);
       this.filterForm.patchValue(formState, { emitEvent: false });
       
-      this.sortColumn = initialParams['sort_by'] || '';
-      this.sortDirection = (initialParams['sort_order'] as 'asc' | 'desc' | '') || '';
-      this.currentPage = parseInt(initialParams['page'] || '1', 10) - 1;
-      this.pageSize = parseInt(initialParams['per_page'] || '10', 10);
+      this.sortColumn = params['sort_by'] || '';
+      this.sortDirection = (params['sort_order'] as 'asc' | 'desc' | '') || '';
+      this.currentPage = parseInt(params['page'] || '1', 10) - 1;
+      this.pageSize = parseInt(params['per_page'] || '10', 10);
     }
+  }
 
-    // 2. Pipeline único: form changes -> switchMap -> load products
-    // Este pipeline será disparado automaticamente pelo startWith() dos observables
-    // Separar busca (com debounce) dos outros filtros (instantâneos)
-    const searchChanges$ = this.filterForm.get('search')!.valueChanges.pipe(
+  // ========== PIPELINE DE FILTROS ==========
+
+  private setupFiltersPipeline(): void {
+    // Busca com debounce
+    const search$ = this.filterForm.get('search')!.valueChanges.pipe(
       debounceTime(500),
       distinctUntilChanged(),
       startWith(this.filterForm.get('search')!.value)
     );
 
+    // Outros filtros (sem debounce) - usar merge para garantir que dispare
+    const category$ = merge(
+      this.filterForm.get('category_id')!.valueChanges,
+      of(this.filterForm.get('category_id')!.value)
+    );
+    
+    const status$ = merge(
+      this.filterForm.get('status')!.valueChanges,
+      of(this.filterForm.get('status')!.value)
+    );
+    
+    const lowStock$ = merge(
+      this.filterForm.get('low_stock')!.valueChanges,
+      of(this.filterForm.get('low_stock')!.value)
+    );
+    
+    const featured$ = merge(
+      this.filterForm.get('featured')!.valueChanges,
+      of(this.filterForm.get('featured')!.value)
+    );
+    
+    const offers$ = merge(
+      this.filterForm.get('offers')!.valueChanges,
+      of(this.filterForm.get('offers')!.value)
+    );
+    
+    const isPack$ = merge(
+      this.filterForm.get('is_pack')!.valueChanges,
+      of(this.filterForm.get('is_pack')!.value)
+    );
+    
+    const visibleOnline$ = merge(
+      this.filterForm.get('visible_online')!.valueChanges,
+      of(this.filterForm.get('visible_online')!.value)
+    );
+
+    // Combinar todos os filtros
     const otherFilters$ = combineLatest([
-      this.filterForm.get('category_id')!.valueChanges.pipe(startWith(this.filterForm.get('category_id')!.value)),
-      this.filterForm.get('status')!.valueChanges.pipe(startWith(this.filterForm.get('status')!.value)),
-      this.filterForm.get('low_stock')!.valueChanges.pipe(startWith(this.filterForm.get('low_stock')!.value)),
-      this.filterForm.get('featured')!.valueChanges.pipe(startWith(this.filterForm.get('featured')!.value)),
-      this.filterForm.get('offers')!.valueChanges.pipe(startWith(this.filterForm.get('offers')!.value)),
-      this.filterForm.get('is_pack')!.valueChanges.pipe(startWith(this.filterForm.get('is_pack')!.value)),
-      this.filterForm.get('visible_online')!.valueChanges.pipe(startWith(this.filterForm.get('visible_online')!.value))
+      category$,
+      status$,
+      lowStock$,
+      featured$,
+      offers$,
+      isPack$,
+      visibleOnline$
     ]);
 
-    combineLatest([searchChanges$, otherFilters$]).pipe(
+    // Combinar busca e outros filtros, incluindo trigger manual
+    combineLatest([
+      search$,
+      otherFilters$,
+      merge(this.manualTrigger$, of(null)) // Trigger manual para forçar atualização
+    ]).pipe(
       takeUntil(this.destroy$),
       switchMap(() => {
-        const params = this.buildApiParams();
-        this.updateUrl(params);
-        this.loading = true;
-        return this.productService.getProducts(params);
+        // Na primeira carga, não atualizar URL (já vem da URL)
+        if (this.isInitialLoad) {
+          this.isInitialLoad = false;
+        } else {
+          this.currentPage = 0; // Resetar página ao mudar filtros
+        }
+        
+        return this.fetchProducts();
       })
     ).subscribe({
       next: (response: ProductResponse) => {
@@ -178,37 +224,32 @@ export class ProdutosComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
-  ngAfterViewInit(): void {
-    if (this.sort && this.sortColumn) {
-      this.sort.active = this.sortColumn;
-      this.sort.direction = this.sortDirection;
-    }
+  // ========== BUSCA DE PRODUTOS ==========
+
+  private fetchProducts() {
+    const params = this.buildApiParams();
+    this.updateUrl(params);
+    this.loading = true;
+    return this.productService.getProducts(params);
   }
 
-  ngOnDestroy(): void {
-    this.destroy$.next();
-    this.destroy$.complete();
-  }
-
-  loadCategories(): void {
-    this.categoryService.getAllCategories()
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (categories) => {
-          this.categories = categories;
-        },
-        error: (error) => {
-          console.error('Erro ao carregar categorias:', error);
-          this.snackBar.open('Erro ao carregar categorias', 'Fechar', { duration: 3000 });
-        }
-      });
-  }
+  // ========== HANDLERS DE UI ==========
 
   onPageChange(event: PageEvent): void {
     this.pageSize = event.pageSize;
     this.currentPage = event.pageIndex;
-    // Não precisa de updateValueAndValidity, apenas disparar busca manualmente
-    this.loadProducts();
+    this.fetchProducts().subscribe({
+      next: (response: ProductResponse) => {
+        this.products = response.data || [];
+        this.totalItems = response.total || 0;
+        this.loading = false;
+      },
+      error: (error) => {
+        console.error('Erro ao carregar produtos:', error);
+        this.loading = false;
+        this.snackBar.open('Erro ao carregar produtos', 'Fechar', { duration: 3000 });
+      }
+    });
   }
 
   onSortChange(sort: Sort): void {
@@ -227,23 +268,54 @@ export class ProdutosComponent implements OnInit, AfterViewInit, OnDestroy {
     }
     
     this.currentPage = 0;
-    // Não precisa de updateValueAndValidity, apenas disparar busca manualmente
-    this.loadProducts();
+    this.fetchProducts().subscribe({
+      next: (response: ProductResponse) => {
+        this.products = response.data || [];
+        this.totalItems = response.total || 0;
+        this.loading = false;
+      },
+      error: (error) => {
+        console.error('Erro ao carregar produtos:', error);
+        this.loading = false;
+        this.snackBar.open('Erro ao carregar produtos', 'Fechar', { duration: 3000 });
+      }
+    });
   }
 
-  // Método simples para mudança de status
-  // O evento do mat-button-toggle-group emite um objeto com a propriedade 'value'
   onStatusChange(event: { value: StatusFilter }): void {
-    const newStatus = event.value;
-    this.filterForm.patchValue({ status: newStatus }, { emitEvent: true });
     this.currentPage = 0;
+    this.filterForm.patchValue({ status: event.value }, { emitEvent: true });
+    // Disparar trigger manual para garantir que o pipeline reaja imediatamente
+    this.manualTrigger$.next();
   }
 
-  // Método simples para mudança de chips
-  // Cada chip atualiza seu campo correspondente no formulário
   onChipChange(fieldName: 'low_stock' | 'featured' | 'offers' | 'is_pack' | 'visible_online', selected: boolean): void {
-    this.filterForm.patchValue({ [fieldName]: selected }, { emitEvent: true });
     this.currentPage = 0;
+    this.filterForm.patchValue({ [fieldName]: selected }, { emitEvent: true });
+    // Disparar trigger manual para garantir que o pipeline reaja imediatamente
+    this.manualTrigger$.next();
+  }
+
+  clearFilters(): void {
+    this.filterForm.reset({
+      search: '',
+      category_id: null,
+      status: 'active',
+      low_stock: false,
+      featured: false,
+      offers: false,
+      is_pack: false,
+      visible_online: false
+    }, { emitEvent: true });
+    
+    this.sortColumn = '';
+    this.sortDirection = '';
+    this.currentPage = 0;
+    
+    if (this.sort) {
+      this.sort.active = '';
+      this.sort.direction = '';
+    }
   }
 
   hasActiveFilters(): boolean {
@@ -258,33 +330,7 @@ export class ProdutosComponent implements OnInit, AfterViewInit, OnDestroy {
            value.visible_online;
   }
 
-  clearFilters(): void {
-    // Reset sem emitir eventos para evitar múltiplas requisições
-    this.filterForm.reset({
-      search: '',
-      category_id: null,
-      status: 'active',
-      low_stock: false,
-      featured: false,
-      offers: false,
-      is_pack: false,
-      visible_online: false
-    }, { emitEvent: false });
-    
-    this.sortColumn = '';
-    this.sortDirection = '';
-    this.currentPage = 0;
-    
-    if (this.sort) {
-      this.sort.active = '';
-      this.sort.direction = '';
-    }
-    
-    // Disparar busca manualmente após limpar
-    this.loadProducts();
-  }
-
-  // Métodos auxiliares
+  // ========== MÉTODOS AUXILIARES ==========
 
   private parseQueryParams(params: any): any {
     return {
@@ -314,13 +360,11 @@ export class ProdutosComponent implements OnInit, AfterViewInit, OnDestroy {
       params.category_id = formValue.category_id;
     }
 
-    // Status: converter para is_active boolean ou não enviar
     if (formValue.status === 'active') {
       params.is_active = true;
     } else if (formValue.status === 'inactive') {
       params.is_active = false;
     }
-    // Se status === 'all', não enviar is_active
 
     if (formValue.low_stock) {
       params.low_stock = true;
@@ -362,7 +406,6 @@ export class ProdutosComponent implements OnInit, AfterViewInit, OnDestroy {
       queryParams.category_id = params.category_id;
     }
 
-    // Status: sempre incluir
     queryParams.status = formValue.status;
 
     if (params.low_stock) {
@@ -393,42 +436,15 @@ export class ProdutosComponent implements OnInit, AfterViewInit, OnDestroy {
     queryParams.page = params.page;
     queryParams.per_page = params.per_page;
 
-    // Marcar que estamos atualizando a URL para evitar loop
-    this.isUpdatingFromUrl = true;
     this.router.navigate([], {
       relativeTo: this.route,
       queryParams,
       queryParamsHandling: 'replace',
       replaceUrl: true
-    }).then(() => {
-      // Resetar flag após navegação completa
-      setTimeout(() => {
-        this.isUpdatingFromUrl = false;
-      }, 0);
     });
   }
 
-  // Método auxiliar para carregar produtos manualmente
-  private loadProducts(): void {
-    const params = this.buildApiParams();
-    this.updateUrl(params);
-    this.loading = true;
-    
-    this.productService.getProducts(params).subscribe({
-      next: (response: ProductResponse) => {
-        this.products = response.data || [];
-        this.totalItems = response.total || 0;
-        this.loading = false;
-      },
-      error: (error) => {
-        console.error('Erro ao carregar produtos:', error);
-        this.loading = false;
-        this.snackBar.open('Erro ao carregar produtos', 'Fechar', { duration: 3000 });
-      }
-    });
-  }
-
-  // Métodos de UI
+  // ========== MÉTODOS DE UI ==========
 
   getImageUrl(product: Product): string {
     const imageUrl = product.image_url;
@@ -457,7 +473,21 @@ export class ProdutosComponent implements OnInit, AfterViewInit, OnDestroy {
     return '#4caf50';
   }
 
-  // Métodos de ações
+  // ========== MÉTODOS DE AÇÕES ==========
+
+  loadCategories(): void {
+    this.categoryService.getAllCategories()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (categories) => {
+          this.categories = categories;
+        },
+        error: (error) => {
+          console.error('Erro ao carregar categorias:', error);
+          this.snackBar.open('Erro ao carregar categorias', 'Fechar', { duration: 3000 });
+        }
+      });
+  }
 
   openProductDialog(product?: Product): void {
     const dialogRef = this.dialog.open(ProductFormDialogComponent, {
@@ -467,8 +497,18 @@ export class ProdutosComponent implements OnInit, AfterViewInit, OnDestroy {
 
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
-        // Recarregar produtos após criar/editar
-        this.loadProducts();
+        this.fetchProducts().subscribe({
+          next: (response: ProductResponse) => {
+            this.products = response.data || [];
+            this.totalItems = response.total || 0;
+            this.loading = false;
+          },
+          error: (error) => {
+            console.error('Erro ao carregar produtos:', error);
+            this.loading = false;
+            this.snackBar.open('Erro ao carregar produtos', 'Fechar', { duration: 3000 });
+          }
+        });
         this.snackBar.open(
           product ? 'Produto atualizado com sucesso' : 'Produto criado com sucesso',
           'Fechar',
@@ -495,8 +535,18 @@ export class ProdutosComponent implements OnInit, AfterViewInit, OnDestroy {
           .pipe(takeUntil(this.destroy$))
           .subscribe({
             next: () => {
-              // Recarregar produtos após excluir
-              this.loadProducts();
+              this.fetchProducts().subscribe({
+                next: (response: ProductResponse) => {
+                  this.products = response.data || [];
+                  this.totalItems = response.total || 0;
+                  this.loading = false;
+                },
+                error: (error) => {
+                  console.error('Erro ao carregar produtos:', error);
+                  this.loading = false;
+                  this.snackBar.open('Erro ao carregar produtos', 'Fechar', { duration: 3000 });
+                }
+              });
               this.snackBar.open('Produto excluído com sucesso', 'Fechar', { duration: 3000 });
             },
             error: (error) => {
@@ -521,8 +571,18 @@ export class ProdutosComponent implements OnInit, AfterViewInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: () => {
-          // Recarregar produtos após alterar status
-          this.loadProducts();
+          this.fetchProducts().subscribe({
+            next: (response: ProductResponse) => {
+              this.products = response.data || [];
+              this.totalItems = response.total || 0;
+              this.loading = false;
+            },
+            error: (error) => {
+              console.error('Erro ao carregar produtos:', error);
+              this.loading = false;
+              this.snackBar.open('Erro ao carregar produtos', 'Fechar', { duration: 3000 });
+            }
+          });
           this.snackBar.open(
             `Produto ${product.is_active ? 'desativado' : 'ativado'} com sucesso`,
             'Fechar',
@@ -543,8 +603,18 @@ export class ProdutosComponent implements OnInit, AfterViewInit, OnDestroy {
 
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
-        // Recarregar produtos após importar
-        this.loadProducts();
+        this.fetchProducts().subscribe({
+          next: (response: ProductResponse) => {
+            this.products = response.data || [];
+            this.totalItems = response.total || 0;
+            this.loading = false;
+          },
+          error: (error) => {
+            console.error('Erro ao carregar produtos:', error);
+            this.loading = false;
+            this.snackBar.open('Erro ao carregar produtos', 'Fechar', { duration: 3000 });
+          }
+        });
       }
     });
   }
