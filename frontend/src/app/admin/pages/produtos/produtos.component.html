@@ -49,9 +49,9 @@
           <div class="status-group">
             <label class="filter-label">Status:</label>
             <mat-button-toggle-group 
-              formControlName="status"
-              appearance="standard"
-              value="active">
+              [value]="filterForm.get('status')?.value"
+              (change)="onStatusChange($event)"
+              appearance="standard">
               <mat-button-toggle value="all">Todos</mat-button-toggle>
               <mat-button-toggle value="active">Ativos</mat-button-toggle>
               <mat-button-toggle value="inactive">Inativos</mat-button-toggle>
@@ -65,31 +65,36 @@
               multiple="true"
               class="flags-chips">
               <mat-chip-option
-                formControlName="low_stock"
+                [selected]="filterForm.get('low_stock')?.value"
+                (selectionChange)="onChipChange('low_stock', $event.selected)"
                 class="flag-chip flag-chip-warn">
                 <mat-icon>warning</mat-icon>
                 Estoque Baixo
               </mat-chip-option>
               <mat-chip-option
-                formControlName="featured"
+                [selected]="filterForm.get('featured')?.value"
+                (selectionChange)="onChipChange('featured', $event.selected)"
                 class="flag-chip flag-chip-accent">
                 <mat-icon>star</mat-icon>
                 Destaques
               </mat-chip-option>
               <mat-chip-option
-                formControlName="offers"
+                [selected]="filterForm.get('offers')?.value"
+                (selectionChange)="onChipChange('offers', $event.selected)"
                 class="flag-chip flag-chip-primary">
                 <mat-icon>local_offer</mat-icon>
                 Em Oferta
               </mat-chip-option>
               <mat-chip-option
-                formControlName="is_pack"
+                [selected]="filterForm.get('is_pack')?.value"
+                (selectionChange)="onChipChange('is_pack', $event.selected)"
                 class="flag-chip flag-chip-info">
                 <mat-icon>inventory_2</mat-icon>
                 Caixas / Fardos
               </mat-chip-option>
               <mat-chip-option
-                formControlName="visible_online"
+                [selected]="filterForm.get('visible_online')?.value"
+                (selectionChange)="onChipChange('visible_online', $event.selected)"
                 class="flag-chip flag-chip-success">
                 <mat-icon>visibility</mat-icon>
                 Visíveis no Site
