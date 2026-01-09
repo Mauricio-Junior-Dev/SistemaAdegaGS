@@ -11,6 +11,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatExpansionModule } from '@angular/material/expansion';
 
 import { ProductService, Product, CreateProductDTO } from '../../../services/product.service';
 import { CategoryService } from '../../../services/category.service';
@@ -31,7 +32,8 @@ import { environment } from '../../../../../environments/environment';
     MatProgressSpinnerModule,
     MatIconModule,
     MatTooltipModule,
-    MatSnackBarModule
+    MatSnackBarModule,
+    MatExpansionModule
   ],
   template: `
     <h2 mat-dialog-title>{{isEdit ? 'Editar' : 'Novo'}} Produto</h2>
@@ -82,6 +84,43 @@ import { environment } from '../../../../../environments/environment';
               </mat-select>
               <mat-error *ngIf="productForm.get('category_id')?.hasError('required')">
                 Categoria é obrigatória
+              </mat-error>
+            </mat-form-field>
+          </div>
+
+          <!-- Código de Barras -->
+          <div class="form-row">
+            <mat-form-field appearance="outline">
+              <mat-label>Código de Barras</mat-label>
+              <input matInput formControlName="barcode">
+              <mat-error *ngIf="productForm.get('barcode')?.hasError('barcodeExists')">
+                Código de barras já existe
+              </mat-error>
+            </mat-form-field>
+
+            <!-- Preço de Venda (Essencial - sempre visível) -->
+            <mat-form-field appearance="outline">
+              <mat-label>
+                <span class="label-with-help">
+                  Preço de Venda (Final)
+                  <mat-icon matTooltip="Este é o preço padrão cobrado no Balcão para retirada. Se não houver preço de entrega definido, este valor também será usado no site." 
+                            matTooltipPosition="above"
+                            class="help-icon">help_outline</mat-icon>
+                </span>
+              </mat-label>
+              <input matInput 
+                     type="number" 
+                     formControlName="price" 
+                     required
+                     min="0"
+                     step="0.01">
+              <span matPrefix>R$&nbsp;</span>
+              <mat-hint>Valor que o cliente pagará</mat-hint>
+              <mat-error *ngIf="productForm.get('price')?.hasError('required')">
+                Preço é obrigatório
+              </mat-error>
+              <mat-error *ngIf="productForm.get('price')?.hasError('min')">
+                Preço deve ser maior que zero
               </mat-error>
             </mat-form-field>
           </div>
@@ -138,74 +177,86 @@ import { environment } from '../../../../../environments/environment';
             </div>
           </div>
 
-          <!-- Código de Barras -->
-          <div class="form-row">
-            <mat-form-field appearance="outline">
-              <mat-label>Código de Barras</mat-label>
-              <input matInput formControlName="barcode">
-              <mat-error *ngIf="productForm.get('barcode')?.hasError('barcodeExists')">
-                Código de barras já existe
-              </mat-error>
-            </mat-form-field>
-          </div>
+          <!-- Precificação Avançada & Custos (Expansion Panel) -->
+          <mat-expansion-panel [expanded]="false" class="advanced-pricing-panel">
+            <mat-expansion-panel-header>
+              <mat-panel-title>
+                <mat-icon>attach_money</mat-icon>
+                Precificação Avançada & Custos
+              </mat-panel-title>
+              <mat-panel-description>
+                Preço de entrega, promoções e custo
+              </mat-panel-description>
+            </mat-expansion-panel-header>
 
-          <!-- Preço e Estoque -->
-          <div class="price-section">
-            <div class="form-row">
-              <mat-form-field appearance="outline">
-                <mat-label>Preço de Venda (Final)</mat-label>
-                <input matInput 
-                       type="number" 
-                       formControlName="price" 
-                       required
-                       min="0"
-                       step="0.01">
-                <span matPrefix>R$&nbsp;</span>
-                <mat-hint>Valor que o cliente pagará</mat-hint>
-                <mat-error *ngIf="productForm.get('price')?.hasError('required')">
-                  Preço é obrigatório
-                </mat-error>
-                <mat-error *ngIf="productForm.get('price')?.hasError('min')">
-                  Preço deve ser maior que zero
-                </mat-error>
-              </mat-form-field>
+            <div class="advanced-pricing-content">
+              <div class="form-row">
+                <mat-form-field appearance="outline">
+                  <mat-label>
+                    <span class="label-with-help">
+                      Preço para Entrega (Opcional)
+                      <mat-icon matTooltip="Opcional. Preencha APENAS se o valor para entrega/site for mais caro que o balcão (Ex: Água, Gás). O site mostrará este valor automaticamente." 
+                                matTooltipPosition="above"
+                                class="help-icon">help_outline</mat-icon>
+                    </span>
+                  </mat-label>
+                  <input matInput 
+                         type="number" 
+                         formControlName="delivery_price" 
+                         min="0"
+                         step="0.01"
+                         placeholder="Ex: R$ 12,00">
+                  <span matPrefix>R$&nbsp;</span>
+                  <mat-hint>Preencha apenas se for diferente do preço normal (Balcão)</mat-hint>
+                  <mat-error *ngIf="productForm.get('delivery_price')?.hasError('min')">
+                    Preço de entrega deve ser maior que zero
+                  </mat-error>
+                </mat-form-field>
 
-              <mat-form-field appearance="outline">
-                <mat-label>Preço Original / Tabela</mat-label>
-                <input matInput 
-                       type="number" 
-                       formControlName="original_price" 
-                       min="0"
-                       step="0.01"
-                       placeholder="Ex: De R$ 100,00">
-                <span matPrefix>R$&nbsp;</span>
-                <mat-hint>Preço antes do desconto (opcional)</mat-hint>
-                <mat-error *ngIf="productForm.get('original_price')?.hasError('min')">
-                  Preço original deve ser maior que zero
-                </mat-error>
-                <mat-error *ngIf="productForm.get('original_price')?.hasError('mustBeGreaterThanPrice')">
-                  O preço original deve ser maior que o preço de venda
-                </mat-error>
-              </mat-form-field>
-            </div>
-
-            <!-- Feedback Visual de Desconto -->
-            <div class="discount-feedback" *ngIf="discountInfo.show">
-              <div class="feedback-success" *ngIf="discountInfo.isValid">
-                <mat-icon>check_circle</mat-icon>
-                <span>
-                  <strong>Desconto de {{ discountInfo.percentage }}% aplicado!</strong>
-                  O cliente verá: de <del>R$ {{ discountInfo.originalPrice | number:'1.2-2' }}</del> por R$ {{ discountInfo.finalPrice | number:'1.2-2' }}
-                </span>
+                <mat-form-field appearance="outline">
+                  <mat-label>
+                    <span class="label-with-help">
+                      Preço Original / Tabela
+                      <mat-icon matTooltip="Use para promoções (Preço 'De'). Se preenchido, o site mostrará este valor riscado (De R$ 20,00 por R$ 15,00)." 
+                                matTooltipPosition="above"
+                                class="help-icon">help_outline</mat-icon>
+                    </span>
+                  </mat-label>
+                  <input matInput 
+                         type="number" 
+                         formControlName="original_price" 
+                         min="0"
+                         step="0.01"
+                         placeholder="Ex: De R$ 100,00">
+                  <span matPrefix>R$&nbsp;</span>
+                  <mat-hint>Preço antes do desconto (opcional)</mat-hint>
+                  <mat-error *ngIf="productForm.get('original_price')?.hasError('min')">
+                    Preço original deve ser maior que zero
+                  </mat-error>
+                  <mat-error *ngIf="productForm.get('original_price')?.hasError('mustBeGreaterThanPrice')">
+                    O preço original deve ser maior que o preço de venda
+                  </mat-error>
+                </mat-form-field>
               </div>
-              <div class="feedback-error" *ngIf="!discountInfo.isValid">
-                <mat-icon>error</mat-icon>
-                <span>
-                  <strong>Erro:</strong> O preço original deve ser maior que o preço de venda
-                </span>
+
+              <!-- Feedback Visual de Desconto -->
+              <div class="discount-feedback" *ngIf="discountInfo.show">
+                <div class="feedback-success" *ngIf="discountInfo.isValid">
+                  <mat-icon>check_circle</mat-icon>
+                  <span>
+                    <strong>Desconto de {{ discountInfo.percentage }}% aplicado!</strong>
+                    O cliente verá: de <del>R$ {{ discountInfo.originalPrice | number:'1.2-2' }}</del> por R$ {{ discountInfo.finalPrice | number:'1.2-2' }}
+                  </span>
+                </div>
+                <div class="feedback-error" *ngIf="!discountInfo.isValid">
+                  <mat-icon>error</mat-icon>
+                  <span>
+                    <strong>Erro:</strong> O preço original deve ser maior que o preço de venda
+                  </span>
+                </div>
               </div>
             </div>
-          </div>
+          </mat-expansion-panel>
 
           <!-- Estoque -->
           <div class="form-row">
@@ -407,6 +458,26 @@ import { environment } from '../../../../../environments/environment';
     }
 
     .info-icon:hover {
+      color: var(--primary, #673ab7);
+    }
+
+    .label-with-help {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .help-icon {
+      color: #999;
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+      cursor: help;
+      flex-shrink: 0;
+      vertical-align: middle;
+    }
+
+    .help-icon:hover {
       color: var(--primary, #673ab7);
     }
 
@@ -624,6 +695,43 @@ import { environment } from '../../../../../environments/environment';
       height: 20px;
     }
 
+    .advanced-pricing-panel {
+      margin-top: 16px;
+    }
+
+    .advanced-pricing-panel mat-expansion-panel-header {
+      padding: 16px 24px;
+    }
+
+    .advanced-pricing-panel mat-panel-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 500;
+    }
+
+    .advanced-pricing-panel mat-panel-title mat-icon {
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+    }
+
+    .advanced-pricing-content {
+      padding: 16px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .advanced-pricing-content .form-row {
+      margin-bottom: 0;
+    }
+
+    /* Garantir que os campos dentro do painel tenham fundo branco */
+    :host ::ng-deep .advanced-pricing-panel .mat-mdc-form-field {
+      background-color: #ffffff !important;
+    }
+
     @media (max-width: 600px) {
       .form-row {
         flex-direction: column;
@@ -661,6 +769,7 @@ export class ProductFormDialogComponent implements OnInit {
       category_id: ['', Validators.required],
       barcode: [''],
       price: ['', [Validators.required, Validators.min(0)]],
+      delivery_price: ['', [Validators.min(0)]],
       original_price: ['', [Validators.min(0)]],
       current_stock: ['', [Validators.required, Validators.min(0)]],
       min_stock: ['', [Validators.required, Validators.min(0)]],
@@ -930,7 +1039,8 @@ export class ProductFormDialogComponent implements OnInit {
         category_id: formValue.category_id,
         barcode: formValue.barcode ?? null,
         price: formValue.price,
-        original_price: formValue.original_price ?? null,
+        delivery_price: formValue.delivery_price ? parseFloat(formValue.delivery_price) : null,
+        original_price: formValue.original_price ? parseFloat(formValue.original_price) : null,
         // Se for Pack, sempre enviar 0. Se não for Pack, usar o valor do formulário
         current_stock: formValue.is_pack ? 0 : formValue.current_stock,
         min_stock: formValue.is_pack ? 0 : formValue.min_stock,

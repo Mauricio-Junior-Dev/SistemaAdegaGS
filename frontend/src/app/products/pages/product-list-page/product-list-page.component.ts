@@ -259,7 +259,9 @@ export class ProductListPageComponent implements OnInit, OnDestroy {
 
   addToCart(product: Product): void {
     const currentQuantity = this.getQuantity(product);
-    this.cartService.addItem(product);
+    // No e-commerce, sempre usar delivery_price se disponível
+    const priceToUse = product.delivery_price ?? product.price;
+    this.cartService.addItem(product, 1, priceToUse);
     
     // Mostrar notificação apenas quando a quantidade for de 0 para 1 (primeira adição)
     if (currentQuantity === 0) {
@@ -292,7 +294,9 @@ export class ProductListPageComponent implements OnInit, OnDestroy {
       return;
     }
     
-    this.cartService.addItem(product);
+    // No e-commerce, sempre usar delivery_price se disponível
+    const priceToUse = product.delivery_price ?? product.price;
+    this.cartService.addItem(product, 1, priceToUse);
     
     // Mostrar notificação apenas quando a quantidade for de 0 para 1 (primeira adição)
     if (currentQuantity === 0) {

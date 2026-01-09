@@ -7,6 +7,7 @@ export interface Product {
     slug: string;
     description?: string;
     price: number;
+    delivery_price?: number | null;
     original_price?: number;
     cost_price: number;
     current_stock: number;

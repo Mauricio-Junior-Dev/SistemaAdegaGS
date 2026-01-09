@@ -75,14 +75,24 @@ export class CartService {
     return items.reduce((total, item) => total + (item.price * item.quantity), 0);
   }
 
-  addItem(product: Product, quantity: number = 1): void {
-    console.log('CartService.addItem:', { product, quantity });
+  /**
+   * Adiciona item ao carrinho
+   * @param product Produto a ser adicionado
+   * @param quantity Quantidade (padrão: 1)
+   * @param overridePrice Preço personalizado (override). Se fornecido, sobrescreve o preço do produto. Útil para POS onde o funcionário escolhe entre preço balcão ou entrega.
+   */
+  addItem(product: Product, quantity: number = 1, overridePrice?: number): void {
+    console.log('CartService.addItem:', { product, quantity, overridePrice });
     
     const currentState = this.cartState.value || this.initialState;
     console.log('Current state:', currentState);
     
     const items = currentState.items || [];
-    const existingItem = items.find(item => item.id === product.id);
+    // Para override de preço, considerar que são itens diferentes (mesmo produto, preços diferentes)
+    const existingItem = overridePrice !== undefined 
+      ? items.find(item => item.id === product.id && item.price === overridePrice)
+      : items.find(item => item.id === product.id && item.price === (product.delivery_price || product.price));
+    
     console.log('Existing item:', existingItem);
 
     // Calcular quantidade total após adição
@@ -95,11 +105,16 @@ export class CartService {
       return;
     }
 
+    // Determinar preço a ser usado: override > delivery_price > price
+    const finalPrice = overridePrice !== undefined 
+      ? overridePrice 
+      : (product.delivery_price ?? product.price);
+
     let updatedItems;
     if (existingItem) {
       console.log('Updating existing item');
       updatedItems = items.map(item => 
-        item.id === product.id 
+        (item.id === product.id && item.price === finalPrice)
           ? { ...item, quantity: item.quantity + quantity }
           : item
       );
@@ -109,7 +124,7 @@ export class CartService {
         id: product.id,
         product,
         quantity,
-        price: product.price
+        price: finalPrice
       };
       updatedItems = [...items, newItem];
     }

@@ -107,7 +107,7 @@
             <!-- Ação (Preço e Botão) -->
             <div class="menu-item-action">
               <div class="item-actions">
-                <span class="price">R$ {{ product.price | number:'1.2-2' }}</span>
+                <span class="price">R$ {{ (product.delivery_price ?? product.price) | number:'1.2-2' }}</span>
                 
                 <!-- Botão Adicionar (quando quantidade = 0) -->
                 <button 

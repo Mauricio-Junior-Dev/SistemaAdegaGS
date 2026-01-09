@@ -17,6 +17,7 @@ export interface Product {
   name: string;
   description: string;
   price: number;
+  delivery_price?: number | null;
   current_stock: number;
   min_stock: number;
   doses_por_garrafa: number;
@@ -42,6 +43,7 @@ export interface CreateProductDTO {
   name: string;
   description: string;
   price: number;
+  delivery_price?: number | null;
   original_price?: number | null;
   current_stock: number;
   min_stock: number;

@@ -117,7 +117,8 @@ class ProductController extends Controller
         $product->slug = $slug;
         $product->description = $request->description;
         $product->price = $request->price;
-        $product->original_price = $request->original_price;
+        $product->delivery_price = $request->input('delivery_price') ?: null;
+        $product->original_price = $request->input('original_price') ?: null;
         $product->cost_price = $request->input('cost_price', 0);
         $product->current_stock = $request->current_stock;
         $product->min_stock = $request->min_stock;
@@ -188,6 +189,7 @@ class ProductController extends Controller
             'name' => 'required|string|max:255',
             'description' => 'required|string',
             'price' => 'required|numeric|min:0',
+            'delivery_price' => 'nullable|numeric|min:0',
             'original_price' => 'nullable|numeric|min:0|gt:price',
             'cost_price' => 'nullable|numeric|min:0',
             'current_stock' => 'required|integer|min:0',
@@ -242,7 +244,8 @@ class ProductController extends Controller
         $product->name = $request->name;
         $product->description = $request->description;
         $product->price = $request->price;
-        $product->original_price = $request->original_price;
+        $product->delivery_price = $request->input('delivery_price') ?: null;
+        $product->original_price = $request->input('original_price') ?: null;
         $product->cost_price = $request->input('cost_price', $product->cost_price ?? 0);
         $product->current_stock = $newStock;
         $product->min_stock = $request->min_stock;

@@ -24,7 +24,7 @@
         {{ product.original_price | currency:'BRL' }}
       </span>
       <span class="current-price">
-        {{ product.price | currency:'BRL' }}
+        {{ getDisplayPrice(product) | currency:'BRL' }}
       </span>
     </div>
     <button mat-icon-button 

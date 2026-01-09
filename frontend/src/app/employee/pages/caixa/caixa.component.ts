@@ -30,6 +30,7 @@ import { SangriaDialogComponent, SangriaResult } from './dialogs/sangria-dialog.
 import { PrintConfirmationDialogComponent } from './dialogs/print-confirmation-dialog.component';
 import { CloseCashDialogComponent } from './dialogs/close-cash-dialog.component';
 import { CopaoModalComponent, CopaoResult } from './dialogs/copao-modal.component';
+import { SaleTypeDialogComponent, SaleTypeResult } from './dialogs/sale-type-dialog.component';
 import { DeliveryZoneService } from '../../../services/delivery-zone.service';
 import { AddressService, Address, CreateAddressRequest } from '../../../core/services/address.service';
 import { HttpClient } from '@angular/common/http';
@@ -540,6 +541,28 @@ export class CaixaComponent implements OnInit, OnDestroy {
   addToCart(): void {
     if (!this.selectedProduct || this.quantity < 1) return;
 
+    // Se o produto tem delivery_price, mostrar diálogo de escolha
+    if (this.selectedProduct.delivery_price && this.selectedProduct.delivery_price > 0) {
+      const dialogRef = this.dialog.open(SaleTypeDialogComponent, {
+        width: '400px',
+        data: { product: this.selectedProduct }
+      });
+
+      dialogRef.afterClosed().subscribe((result: SaleTypeResult | null) => {
+        if (result) {
+          this.addToCartWithPrice(result.price);
+        }
+      });
+      return;
+    }
+
+    // Se não tem delivery_price, adicionar direto com o preço normal
+    this.addToCartWithPrice(this.selectedProduct.price);
+  }
+
+  private addToCartWithPrice(priceToUse: number): void {
+    if (!this.selectedProduct || this.quantity < 1) return;
+
     // Verificar disponibilidade baseada no tipo de venda
     if (this.saleType === 'garrafa') {
       if (this.selectedProduct.current_stock <= 0) {
@@ -561,9 +584,16 @@ export class CaixaComponent implements OnInit, OnDestroy {
       }
     }
 
-    // Verificar se já existe item com mesmo produto e tipo de venda
+    // Usar o preço escolhido (balcão ou entrega)
+    const finalPrice = this.saleType === 'dose' 
+      ? (this.selectedProduct.dose_price || 0)
+      : priceToUse;
+
+    // Verificar se já existe item com mesmo produto, tipo de venda e preço
     const existingItem = this.cartItems.find(item => 
-      item.product?.id === this.selectedProduct!.id && item.sale_type === this.saleType
+      item.product?.id === this.selectedProduct!.id && 
+      item.sale_type === this.saleType &&
+      item.subtotal / item.quantity === finalPrice
     );
 
     if (existingItem) {
@@ -585,13 +615,13 @@ export class CaixaComponent implements OnInit, OnDestroy {
       }
       
       existingItem.quantity = newQuantity;
-      existingItem.subtotal = newQuantity * this.getProductPrice(this.selectedProduct, this.saleType);
+      existingItem.subtotal = newQuantity * finalPrice;
     } else {
       this.cartItems.push({
         product: this.selectedProduct,
         quantity: this.quantity,
         sale_type: this.saleType,
-        subtotal: this.quantity * this.getProductPrice(this.selectedProduct, this.saleType)
+        subtotal: this.quantity * finalPrice
       });
     }
 
@@ -631,7 +661,9 @@ export class CaixaComponent implements OnInit, OnDestroy {
     }
 
     item.quantity = newQuantity;
-    item.subtotal = newQuantity * this.getProductPrice(item.product || item.combo, item.sale_type);
+    // Preservar o preço unitário escolhido (balcão ou entrega) ao recalcular
+    const unitPrice = item.subtotal / item.quantity; // Preço unitário atual
+    item.subtotal = newQuantity * unitPrice;
     this.updateTotal();
   }
 

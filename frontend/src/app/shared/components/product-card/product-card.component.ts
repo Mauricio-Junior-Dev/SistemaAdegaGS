@@ -41,8 +41,10 @@ export class ProductCardComponent {
     }
     
     // Para produtos normais, adicionar diretamente ao carrinho
+    // No e-commerce, sempre usar delivery_price se disponível
     const currentQuantity = this.getCurrentQuantity();
-    this.cartService.addItem(this.product, 1);
+    const priceToUse = this.product.delivery_price ?? this.product.price;
+    this.cartService.addItem(this.product, 1, priceToUse);
     
     // Mostrar notificação apenas quando a quantidade for de 0 para 1 (primeira adição)
     if (currentQuantity === 0) {
@@ -114,5 +116,14 @@ export class ProductCardComponent {
 
   getOriginalPrice(product: Product): number {
     return product.original_price || product.price;
+  }
+
+  /**
+   * Retorna o preço a ser exibido no e-commerce
+   * Prioridade: delivery_price > price
+   * No e-commerce, sempre usa delivery_price se disponível
+   */
+  getDisplayPrice(product: Product): number {
+    return product.delivery_price ?? product.price;
   }
 }

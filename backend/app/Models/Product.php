@@ -19,6 +19,7 @@ class Product extends Model
         'slug',
         'description',
         'price',
+        'delivery_price',
         'original_price',
         'cost_price',
         'current_stock',
@@ -38,6 +39,7 @@ class Product extends Model
 
     protected $casts = [
         'price' => 'decimal:2',
+        'delivery_price' => 'decimal:2',
         'original_price' => 'decimal:2',
         'cost_price' => 'decimal:2',
         'current_stock' => 'integer',
