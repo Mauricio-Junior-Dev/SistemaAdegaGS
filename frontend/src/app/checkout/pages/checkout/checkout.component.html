@@ -285,12 +285,18 @@
             <div class="change-field-expandable" *ngIf="paymentForm.get('method')?.value === 'cash'">
               <mat-form-field class="full-width">
                 <mat-label>Valor a ser pago</mat-label>
-                <input id="received-amount-input" matInput formControlName="received_amount" type="number" step="0.01" min="0" placeholder="0.00">
-                <mat-hint>Informe o valor que você vai usar para pagar</mat-hint>
+                <input 
+                  id="received-amount-input" 
+                  matInput 
+                  formControlName="received_amount" 
+                  type="text" 
+                  placeholder="0,00 ou 0.00"
+                  (blur)="onReceivedAmountBlur($event)">
+                <mat-hint>Informe o valor que você vai usar para pagar (aceita vírgula ou ponto)</mat-hint>
               </mat-form-field>
-              <div class="change-info" *ngIf="paymentForm.get('received_amount')?.value && (paymentForm.get('received_amount')?.value > ((cartTotal$ | async) || 0) * 1 + (deliveryFee * 1))">
+              <div class="change-info" *ngIf="getSanitizedReceivedAmount() > ((cartTotal$ | async) || 0) + deliveryFee">
                 <mat-icon>info</mat-icon>
-                <span>Troco: R$ {{ ((paymentForm.get('received_amount')?.value || 0) * 1 - ((cartTotal$ | async) || 0) * 1 - (deliveryFee * 1)) | number:'1.2-2' }}</span>
+                <span>Troco: R$ {{ (getSanitizedReceivedAmount() - ((cartTotal$ | async) || 0) - deliveryFee) | number:'1.2-2' }}</span>
               </div>
             </div>
 

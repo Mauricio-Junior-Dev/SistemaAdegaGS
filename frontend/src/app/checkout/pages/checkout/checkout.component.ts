@@ -138,6 +138,51 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     this.isStoreOpen$ = this.storeStatusService.status$;
   }
 
+  /**
+   * Sanitiza o valor de entrada, removendo caracteres não numéricos
+   * e convertendo vírgula para ponto
+   * Exemplos:
+   * - 'R$ 50,00' -> 50.00
+   * - '100,50' -> 100.50
+   * - '100' -> 100.00
+   * - '50.00' -> 50.00
+   */
+  private sanitizeMoneyValue(value: string | number | null | undefined): number {
+    if (value === null || value === undefined || value === '') {
+      return 0;
+    }
+
+    // Se já for número, retornar como está
+    if (typeof value === 'number') {
+      return Number.isFinite(value) ? value : 0;
+    }
+
+    // Converter para string e remover espaços
+    let sanitized = String(value).trim();
+
+    // Remover símbolos de moeda e espaços
+    sanitized = sanitized.replace(/[R$\s]/g, '');
+
+    // Substituir vírgula por ponto (formato brasileiro)
+    sanitized = sanitized.replace(',', '.');
+
+    // Remover tudo que não for número ou ponto
+    sanitized = sanitized.replace(/[^0-9.]/g, '');
+
+    // Garantir que há apenas um ponto decimal
+    const parts = sanitized.split('.');
+    if (parts.length > 2) {
+      // Se houver múltiplos pontos, manter apenas o primeiro
+      sanitized = parts[0] + '.' + parts.slice(1).join('');
+    }
+
+    // Converter para número
+    const parsed = parseFloat(sanitized);
+
+    // Retornar 0 se não for um número válido
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+
   private updateCartTotals(): void {
     this.cartTotal$ = this.cartItems$.pipe(
       map((items: CartItem[]) => {
@@ -508,6 +553,30 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   /**
    * Faz scroll suave até o campo de valor recebido e foca nele
    */
+  /**
+   * Obtém o valor sanitizado do campo received_amount para uso no template
+   */
+  getSanitizedReceivedAmount(): number {
+    const value = this.paymentForm.get('received_amount')?.value;
+    return this.sanitizeMoneyValue(value);
+  }
+
+  /**
+   * Formata o valor ao sair do campo (blur)
+   * Sanitiza e formata para exibição
+   */
+  onReceivedAmountBlur(event: any): void {
+    const value = this.paymentForm.get('received_amount')?.value;
+    if (value) {
+      const sanitized = this.sanitizeMoneyValue(value);
+      // Formatar com 2 casas decimais e vírgula (formato brasileiro)
+      if (sanitized > 0) {
+        const formatted = sanitized.toFixed(2).replace('.', ',');
+        this.paymentForm.patchValue({ received_amount: formatted }, { emitEvent: false });
+      }
+    }
+  }
+
   private scrollToCashInput(): void {
     setTimeout(() => {
       const element = document.getElementById('received-amount-input');
@@ -694,10 +763,11 @@ export class CheckoutComponent implements OnInit, OnDestroy {
           return;
         }
 
-        const parsedReceived = Number(receivedValue);
+        // Sanitizar o valor antes de fazer o parse
+        const parsedReceived = this.sanitizeMoneyValue(receivedValue);
 
         // Verificar se o valor é válido e maior ou igual ao total
-        if (!Number.isFinite(parsedReceived) || parsedReceived <= 0) {
+        if (parsedReceived <= 0) {
           this.isProcessingPayment = false;
           this.loading = false;
           this.toastr.warning('Informe um valor válido para troco', 'Valor Inválido');
@@ -719,9 +789,10 @@ export class CheckoutComponent implements OnInit, OnDestroy {
 
       if (isCashPayment) {
         const receivedValue = this.paymentForm.value.received_amount || this.paymentForm.value.change;
-        const parsedReceived = Number(receivedValue);
+        // Sanitizar o valor antes de fazer o parse
+        const parsedReceived = this.sanitizeMoneyValue(receivedValue);
 
-        if (Number.isFinite(parsedReceived) && parsedReceived > 0) {
+        if (parsedReceived > 0) {
           receivedAmount = parsedReceived;
           changeAmount = parsedReceived >= orderTotal ? parsedReceived - orderTotal : 0;
         }
