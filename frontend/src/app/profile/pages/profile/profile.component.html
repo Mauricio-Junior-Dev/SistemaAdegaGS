@@ -57,6 +57,29 @@
               Telefone é obrigatório
             </mat-error>
           </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>CPF ou CNPJ</mat-label>
+            <input 
+              matInput 
+              formControlName="document_number" 
+              placeholder="000.000.000-00 ou 00.000.000/0000-00"
+              (input)="formatDocument($event)"
+              maxlength="18">
+            <mat-icon matPrefix>badge</mat-icon>
+            <mat-error *ngIf="profileForm.get('document_number')?.errors?.['required']">
+              CPF/CNPJ é obrigatório
+            </mat-error>
+            <mat-error *ngIf="profileForm.get('document_number')?.errors?.['invalidDocument']">
+              {{ profileForm.get('document_number')?.errors?.['invalidDocument']?.message || 'Documento inválido' }}
+            </mat-error>
+            <mat-error *ngIf="profileForm.get('document_number')?.errors?.['invalidCpf']">
+              {{ profileForm.get('document_number')?.errors?.['invalidCpf']?.message || 'CPF inválido' }}
+            </mat-error>
+            <mat-error *ngIf="profileForm.get('document_number')?.errors?.['invalidCnpj']">
+              {{ profileForm.get('document_number')?.errors?.['invalidCnpj']?.message || 'CNPJ inválido' }}
+            </mat-error>
+          </mat-form-field>
         </div>
 
         <!-- Alterar Senha -->
@@ -84,17 +107,6 @@
             <input matInput formControlName="new_password_confirmation" type="password" placeholder="Confirme a nova senha">
             <mat-icon matPrefix>lock_open</mat-icon>
           </mat-form-field>
-        </div>
-
-        <!-- Mensagens de Feedback -->
-        <div *ngIf="success" class="alert alert-success">
-          <mat-icon>check_circle</mat-icon>
-          <span>Perfil atualizado com sucesso!</span>
-        </div>
-
-        <div *ngIf="error" class="alert alert-error">
-          <mat-icon>error</mat-icon>
-          <span>{{ error }}</span>
         </div>
 
         <!-- Botões de Ação -->

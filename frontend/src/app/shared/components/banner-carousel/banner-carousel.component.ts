@@ -24,7 +24,11 @@ export interface Banner {
                class="carousel-slide carousel-item" 
                [class.active]="i === currentSlide">
             <div class="banner-content">
-              <a *ngIf="banner.link" [href]="banner.link" class="banner-link-wrapper">
+              <a *ngIf="banner.link" 
+                 [href]="getLinkUrl(banner.link)" 
+                 target="_blank" 
+                 rel="noopener noreferrer"
+                 class="banner-link-wrapper">
                 <picture>
                   <source media="(max-width: 768px)" 
                           [srcset]="getImageUrl(banner.mobile_image || banner.desktop_image || banner.image_url)">
@@ -102,6 +106,7 @@ export interface Banner {
       height: auto;
       min-height: 0;
       display: block;
+      z-index: 0;
     }
 
     .banner-content picture {
@@ -126,6 +131,10 @@ export interface Banner {
       min-height: 0;
       text-decoration: none;
       transition: transform 0.3s ease;
+      cursor: pointer;
+      position: relative;
+      z-index: 1;
+      pointer-events: auto;
     }
 
     .banner-link-wrapper:hover {
@@ -323,5 +332,25 @@ export class BannerCarouselComponent implements OnInit, OnDestroy {
     }
     
     return apiBase + '/storage/' + imageUrl;
+  }
+
+  getLinkUrl(link: string | null | undefined): string {
+    if (!link || link.trim() === '') return '#';
+    
+    const trimmedLink = link.trim();
+    
+    // Se já for uma URL absoluta (http:// ou https://), retorna como está
+    if (trimmedLink.startsWith('http://') || trimmedLink.startsWith('https://')) {
+      return trimmedLink;
+    }
+    
+    // Se for uma URL relativa (começa com /), retorna como está
+    // O navegador irá abrir em nova guia (target="_blank") mesmo para URLs relativas
+    if (trimmedLink.startsWith('/')) {
+      return trimmedLink;
+    }
+    
+    // Caso contrário, trata como URL relativa adicionando /
+    return '/' + trimmedLink;
   }
 }

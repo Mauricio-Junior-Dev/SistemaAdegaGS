@@ -3,7 +3,7 @@ export interface User {
   name: string;
   email: string;
   phone: string;
-  document_number: string;
+  document_number?: string | null;
   type: 'admin' | 'employee' | 'customer';
   is_active: boolean;
   avatar?: string;
@@ -35,6 +35,7 @@ export interface UpdateProfileRequest {
   name?: string;
   email?: string;
   phone?: string;
+  document_number?: string;
   current_password?: string;
   new_password?: string;
   new_password_confirmation?: string;

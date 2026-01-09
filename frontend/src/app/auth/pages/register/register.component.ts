@@ -5,6 +5,7 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators, AbstractContro
 import { AuthService } from '../../../core/services/auth.service';
 import { SocialAuthService } from '../../../core/services/social-auth.service';
 import { Router } from '@angular/router';
+import { documentValidator, formatDocument } from '../../../core/validators/document.validator';
 
 @Component({
   selector: 'app-register',
@@ -28,8 +29,8 @@ export class RegisterComponent implements OnDestroy {
       name: ['', [Validators.required, Validators.minLength(3)]],
       email: ['', [Validators.required, Validators.email]],
       phone: ['', [Validators.required, Validators.pattern(/^\(\d{2}\) \d{5}-\d{4}$/)]],
-      // Aceita CPF (11 dígitos) ou CNPJ (14 dígitos) - valida apenas números (ignora formatação)
-      document_number: ['', [Validators.required, (control: AbstractControl) => this.documentValidator(control)]],
+      // Validação robusta de CPF/CNPJ com dígitos verificadores
+      document_number: ['', [Validators.required, documentValidator]],
       password: ['', [Validators.required, Validators.minLength(8)]],
       password_confirmation: ['', [Validators.required]]
     }, {
@@ -89,17 +90,6 @@ export class RegisterComponent implements OnDestroy {
       ? null : { mismatch: true };
   }
 
-  // Validador customizado para CPF/CNPJ (valida apenas números, ignorando formatação)
-  private documentValidator(control: AbstractControl): ValidationErrors | null {
-    if (!control.value) {
-      return null;
-    }
-    const numbersOnly = control.value.replace(/\D/g, '');
-    if (numbersOnly.length === 11 || numbersOnly.length === 14) {
-      return null; // Válido
-    }
-    return { invalidDocument: true };
-  }
 
   onSubmit(): void {
     if (this.registerForm.invalid) {
@@ -140,17 +130,8 @@ export class RegisterComponent implements OnDestroy {
   }
 
   formatDocument(event: any): void {
-    let value = event.target.value.replace(/\D/g, '');
-    
-    // Formata CPF (11 dígitos) ou CNPJ (14 dígitos)
-    if (value.length <= 11) {
-      // Formatação CPF: 000.000.000-00
-      value = value.replace(/^(\d{3})(\d{3})(\d{3})(\d{2}).*/, '$1.$2.$3-$4');
-    } else if (value.length <= 14) {
-      // Formatação CNPJ: 00.000.000/0000-00
-      value = value.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2}).*/, '$1.$2.$3/$4-$5');
-    }
-    
-    this.registerForm.get('document_number')?.setValue(value, { emitEvent: false });
+    const value = event.target.value;
+    const formatted = formatDocument(value);
+    this.registerForm.get('document_number')?.setValue(formatted, { emitEvent: false });
   }
 }
