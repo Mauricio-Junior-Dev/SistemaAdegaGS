@@ -19,15 +19,15 @@ export class FooterComponent implements OnInit, OnDestroy {
   private publicSettingsService = inject(PublicSettingsService);
 
   ngOnInit(): void {
-    // Carregar configurações iniciais
-    this.publicSettingsService.getSettings().subscribe({
-      next: (settings) => {
-        this.settings = settings;
-      },
-      error: (error) => {
-        console.error('Erro ao carregar configurações:', error);
-      }
-    });
+    // Carregar configurações iniciais se ainda não foram carregadas
+    const currentSettings = this.publicSettingsService.getCurrentSettings();
+    if (!currentSettings) {
+      this.publicSettingsService.getSettings().subscribe({
+        error: (error) => {
+          console.error('Erro ao carregar configurações:', error);
+        }
+      });
+    }
 
     // Observar mudanças nas configurações
     this.settingsSubscription = this.publicSettingsService.watchSettings().subscribe(settings => {
@@ -41,9 +41,32 @@ export class FooterComponent implements OnInit, OnDestroy {
     }
   }
 
+  /**
+   * Gera URL do WhatsApp a partir do número de telefone
+   * Remove formatação e garante código do país (55 para Brasil se não tiver)
+   */
   getWhatsAppUrl(phone: string | undefined): string {
-    if (!phone) return '';
-    const cleanPhone = phone.replace(/\D/g, '');
+    if (!phone) return '#';
+    
+    // Remove todos os caracteres não numéricos
+    let cleanPhone = phone.replace(/\D/g, '');
+    
+    // Se já tem código do país (começa com 55), retorna como está
+    if (cleanPhone.startsWith('55') && cleanPhone.length >= 12) {
+      return `https://wa.me/${cleanPhone}`;
+    }
+    
+    // Se começar com 0, remove (formato antigo de telefone brasileiro)
+    if (cleanPhone.startsWith('0')) {
+      cleanPhone = cleanPhone.substring(1);
+    }
+    
+    // Se não tiver código do país (55 para Brasil), adiciona
+    // Números brasileiros têm 10 ou 11 dígitos (DDD + número)
+    if (cleanPhone.length === 10 || cleanPhone.length === 11) {
+      cleanPhone = '55' + cleanPhone;
+    }
+    
     return `https://wa.me/${cleanPhone}`;
   }
 }

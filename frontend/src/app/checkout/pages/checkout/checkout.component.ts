@@ -35,6 +35,7 @@ import { ProductSuggestionsComponent } from '../../components/product-suggestion
 import { environment } from '../../../../environments/environment';
 import { Clipboard } from '@angular/cdk/clipboard';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { documentValidator, formatDocument } from '../../../core/validators/document.validator';
 
 @Component({
   selector: 'app-checkout',
@@ -65,6 +66,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 export class CheckoutComponent implements OnInit, OnDestroy {
   deliveryForm: FormGroup;
   paymentForm: FormGroup;
+  userDataForm: FormGroup; // Formulário para CPF e Telefone do usuário
   cartItems$!: Observable<CartItem[]>;
   cartTotal$!: Observable<number>;
   user$!: Observable<User | null>;
@@ -99,6 +101,10 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   // Controle de UI
   showAddressForm = false;
   showOrderSummary = false;
+  
+  // Flags para campos condicionais do usuário
+  needsDocumentNumber = false;
+  needsPhone = false;
 
   constructor(
     private fb: FormBuilder,
@@ -132,6 +138,12 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       method: ['cash', Validators.required],
       received_amount: [''],
       change: ['']
+    });
+
+    // Formulário para dados do usuário (CPF e Telefone condicionais)
+    this.userDataForm = this.fb.group({
+      document_number: [''],
+      phone: ['']
     });
 
     // Inicializar observável do status da loja após injeção do serviço
@@ -241,12 +253,42 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     this.updateCartTotals();
     this.user$ = this.authService.user$;
 
-    // Preencher formulário com dados do usuário
+    // Verificar dados do usuário e configurar campos condicionais
     this.user$.subscribe((user: User | null) => {
       if (user) {
-        this.deliveryForm.patchValue({
-          phone: user.phone
-        });
+        // Verificar se precisa de CPF
+        this.needsDocumentNumber = !user.document_number || user.document_number.trim() === '';
+        
+        // Verificar se precisa de Telefone
+        this.needsPhone = !user.phone || user.phone.trim() === '';
+        
+        // Se precisar de CPF, adicionar validação obrigatória
+        if (this.needsDocumentNumber) {
+          this.userDataForm.get('document_number')?.setValidators([
+            Validators.required,
+            documentValidator
+          ]);
+        } else {
+          this.userDataForm.get('document_number')?.clearValidators();
+        }
+        
+        // Se precisar de Telefone, adicionar validação obrigatória
+        if (this.needsPhone) {
+          this.userDataForm.get('phone')?.setValidators([
+            Validators.required,
+            Validators.pattern(/^\(\d{2}\) \d{5}-\d{4}$/)
+          ]);
+        } else {
+          this.userDataForm.get('phone')?.clearValidators();
+          // Preencher telefone no formulário de entrega se já existir
+          this.deliveryForm.patchValue({
+            phone: user.phone
+          });
+        }
+        
+        // Atualizar validações
+        this.userDataForm.get('document_number')?.updateValueAndValidity();
+        this.userDataForm.get('phone')?.updateValueAndValidity();
       }
     });
 
@@ -382,6 +424,20 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       value = value.replace(/^(\d{2})(\d{5})(\d{4}).*/, '($1) $2-$3');
       this.deliveryForm.get('phone')?.setValue(value, { emitEvent: false });
     }
+  }
+
+  formatPhoneUserData(event: any): void {
+    let value = event.target.value.replace(/\D/g, '');
+    if (value.length <= 11) {
+      value = value.replace(/^(\d{2})(\d{5})(\d{4}).*/, '($1) $2-$3');
+      this.userDataForm.get('phone')?.setValue(value, { emitEvent: false });
+    }
+  }
+
+  formatDocument(event: any): void {
+    const value = event.target.value;
+    const formatted = formatDocument(value);
+    this.userDataForm.get('document_number')?.setValue(formatted, { emitEvent: false });
   }
 
   formatZipcode(event: any): void {
@@ -588,6 +644,48 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Encontra o primeiro campo inválido dos dados do usuário e faz scroll até ele
+   */
+  private scrollToFirstInvalidUserField(): void {
+    setTimeout(() => {
+      const userFields = [
+        { name: 'document_number', id: 'user-document_number' },
+        { name: 'phone', id: 'user-phone' }
+      ];
+      
+      for (const field of userFields) {
+        const control = this.userDataForm.get(field.name);
+        if (control && control.invalid) {
+          // Buscar pelo ID primeiro
+          let targetElement = document.getElementById(field.id);
+          
+          if (!targetElement) {
+            // Fallback: buscar pelo formControlName dentro do bloco de dados do usuário
+            const userDataBlock = document.querySelector('.user-data-block');
+            if (userDataBlock) {
+              const input = userDataBlock.querySelector(`[formControlName="${field.name}"]`) as HTMLElement;
+              if (input) {
+                targetElement = input;
+              }
+            }
+          }
+          
+          if (targetElement) {
+            targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Focar no input
+            setTimeout(() => {
+              if (targetElement && typeof (targetElement as any).focus === 'function') {
+                (targetElement as any).focus();
+              }
+            }, 300);
+            return;
+          }
+        }
+      }
+    }, 100);
+  }
+
+  /**
    * Encontra o primeiro campo inválido e faz scroll até ele
    */
   private scrollToFirstInvalidField(): void {
@@ -694,6 +792,21 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     }
 
     // Validação de formulários com feedback visual
+    // Primeiro verificar dados do usuário (CPF e Telefone condicionais)
+    if (this.needsDocumentNumber || this.needsPhone) {
+      this.userDataForm.markAllAsTouched();
+      
+      if (this.userDataForm.invalid) {
+        this.toastr.warning('Por favor, preencha os dados obrigatórios (CPF e/ou Telefone).', 'Dados Obrigatórios');
+        
+        setTimeout(() => {
+          this.scrollToFirstInvalidUserField();
+        }, 100);
+        
+        return;
+      }
+    }
+    
     if (!this.isDeliveryFormValid() || this.paymentForm.invalid) {
       // Expandir formulário de endereço se estiver fechado
       if (!this.showAddressForm) {
@@ -801,23 +914,34 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         changeAmount = undefined;
       }
 
+      // Obter telefone: prioridade para o campo condicional do usuário, senão do formulário de entrega
+      const userPhone = this.needsPhone && this.userDataForm.value.phone
+        ? this.userDataForm.value.phone
+        : (this.deliveryForm.value.phone || null);
+      
+      // Obter CPF do campo condicional se necessário
+      const userDocumentNumber = this.needsDocumentNumber && this.userDataForm.value.document_number
+        ? this.userDataForm.value.document_number.replace(/\D/g, '') // Remove formatação
+        : null;
+
       const deliveryData = this.useSavedAddress && this.selectedAddressId
         ? {
             address_id: this.selectedAddressId,
-            phone: this.deliveryForm.value.phone,
+            phone: userPhone,
             instructions: ''
           }
         : {
             name: 'Endereço de Entrega',
-            ...this.deliveryForm.value
+            ...this.deliveryForm.value,
+            phone: userPhone
           };
 
-      const orderPayload = {
+      const orderPayload: any = {
         type: 'online',
         delivery: deliveryData,
         payment_method: mappedPaymentMethod,
         customer_name: deliveryData.address,
-        customer_phone: deliveryData.phone,
+        customer_phone: userPhone,
         items: items
           .map(item => {
             if (item.isCombo && item.combo) {
@@ -851,6 +975,17 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         received_amount: receivedAmount,
         change_amount: changeAmount
       };
+
+      // Adicionar document_number e phone na request se necessário
+      if (userDocumentNumber) {
+        orderPayload.document_number = userDocumentNumber;
+      }
+      
+      if (this.needsPhone && userPhone) {
+        // phone já está em customer_phone e delivery.phone
+        // Mas vamos garantir que está no payload
+        orderPayload.phone = userPhone;
+      }
 
       console.log("Payload que será enviado para 'createOrder':", orderPayload);
 

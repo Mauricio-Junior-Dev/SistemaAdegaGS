@@ -34,11 +34,11 @@
     <!-- Lista de Produtos Agrupada por Categoria -->
     <div *ngIf="!loading && !error" class="menu-list">
       <!-- Seção de Combos -->
-      <div *ngIf="combos.length > 0 && (!searchTerm || searchTerm.trim() === '')" class="category-group">
+      <div *ngIf="filteredCombos.length > 0" class="category-group">
         <h2 class="category-separator">Combos</h2>
         
         <div class="menu-items">
-          <div *ngFor="let combo of combos" class="menu-item">
+          <div *ngFor="let combo of filteredCombos" class="menu-item">
             <!-- Imagem -->
             <div class="menu-item-image">
               <img [src]="getImageUrl(comboAdapter(combo))" [alt]="combo.name">

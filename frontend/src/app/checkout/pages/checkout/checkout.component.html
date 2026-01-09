@@ -387,6 +387,66 @@
           </div>
         </div>
 
+        <!-- Campos Condicionais: CPF e Telefone do Usuário -->
+        <div *ngIf="needsDocumentNumber || needsPhone" class="user-data-block card">
+          <h2 class="section-title">
+            <mat-icon>person</mat-icon>
+            Complete seus dados
+          </h2>
+          <p class="section-description">Precisamos dessas informações para processar seu pedido.</p>
+          
+          <form [formGroup]="userDataForm">
+            <!-- Campo CPF -->
+            <div *ngIf="needsDocumentNumber" class="form-row">
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>CPF ou CNPJ</mat-label>
+                <input 
+                  matInput 
+                  id="user-document_number"
+                  formControlName="document_number" 
+                  placeholder="000.000.000-00 ou 00.000.000/0000-00"
+                  (input)="formatDocument($event)"
+                  maxlength="18"
+                  class="user-data-field">
+                <mat-icon matPrefix>badge</mat-icon>
+                <mat-error *ngIf="userDataForm.get('document_number')?.errors?.['required']">
+                  CPF/CNPJ é obrigatório
+                </mat-error>
+                <mat-error *ngIf="userDataForm.get('document_number')?.errors?.['invalidDocument']">
+                  {{ userDataForm.get('document_number')?.errors?.['invalidDocument']?.message || 'Documento inválido' }}
+                </mat-error>
+                <mat-error *ngIf="userDataForm.get('document_number')?.errors?.['invalidCpf']">
+                  {{ userDataForm.get('document_number')?.errors?.['invalidCpf']?.message || 'CPF inválido' }}
+                </mat-error>
+                <mat-error *ngIf="userDataForm.get('document_number')?.errors?.['invalidCnpj']">
+                  {{ userDataForm.get('document_number')?.errors?.['invalidCnpj']?.message || 'CNPJ inválido' }}
+                </mat-error>
+              </mat-form-field>
+            </div>
+
+            <!-- Campo Telefone -->
+            <div *ngIf="needsPhone" class="form-row">
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Telefone</mat-label>
+                <input 
+                  matInput 
+                  id="user-phone"
+                  formControlName="phone" 
+                  placeholder="(00) 00000-0000" 
+                  (input)="formatPhoneUserData($event)"
+                  class="user-data-field">
+                <mat-icon matPrefix>phone</mat-icon>
+                <mat-error *ngIf="userDataForm.get('phone')?.errors?.['required']">
+                  Telefone é obrigatório
+                </mat-error>
+                <mat-error *ngIf="userDataForm.get('phone')?.errors?.['pattern']">
+                  Telefone inválido
+                </mat-error>
+              </mat-form-field>
+            </div>
+          </form>
+        </div>
+
         <!-- Espaço para o footer fixo -->
         <div class="bottom-spacer"></div>
       </div>

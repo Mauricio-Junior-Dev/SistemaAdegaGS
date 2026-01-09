@@ -32,6 +32,7 @@ export class ProductListPageComponent implements OnInit, OnDestroy {
   filteredProducts: Product[] = [];
   categories: Category[] = [];
   combos: Combo[] = [];
+  filteredCombos: Combo[] = []; // Combos filtrados pela busca
   loading = true;
   loadingCombos = true;
   selectedCategory: number | null = null;
@@ -112,6 +113,8 @@ export class ProductListPageComponent implements OnInit, OnDestroy {
     this.comboService.getCombos({ per_page: 20 }).subscribe({
       next: (response) => {
         this.combos = response.data || [];
+        this.filteredCombos = this.combos; // Inicializar combos filtrados
+        this.filterAndGroupProducts(); // Reaplicar filtros se houver busca ativa
         this.loadingCombos = false;
       },
       error: (err) => {
@@ -176,19 +179,51 @@ export class ProductListPageComponent implements OnInit, OnDestroy {
     });
   }
 
+  /**
+   * Normaliza string removendo acentos e convertendo para minúsculas
+   * Permite busca que funciona tanto com acentos quanto sem acentos
+   */
+  private normalizeString(str: string): string {
+    if (!str) return '';
+    
+    // Remove acentos/diacríticos e converte para minúsculas
+    return str
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, ''); // Remove diacríticos (acentos)
+  }
+
   filterAndGroupProducts(): void {
     // Filtrar produtos por termo de busca
     let filtered = this.products;
     
+    // Filtrar combos também
+    let filteredCombos = this.combos;
+    
     if (this.searchTerm.trim()) {
-      const term = this.searchTerm.toLowerCase().trim();
-      filtered = this.products.filter(product => 
-        product.name.toLowerCase().includes(term) ||
-        (product.description && product.description.toLowerCase().includes(term))
-      );
+      const normalizedSearchTerm = this.normalizeString(this.searchTerm.trim());
+      
+      // Filtrar produtos
+      filtered = this.products.filter(product => {
+        const normalizedName = this.normalizeString(product.name);
+        const normalizedDescription = product.description ? this.normalizeString(product.description) : '';
+        
+        return normalizedName.includes(normalizedSearchTerm) ||
+               normalizedDescription.includes(normalizedSearchTerm);
+      });
+      
+      // Filtrar combos também (mesma lógica)
+      filteredCombos = this.combos.filter(combo => {
+        const normalizedName = this.normalizeString(combo.name);
+        const normalizedDescription = combo.description ? this.normalizeString(combo.description) : '';
+        
+        return normalizedName.includes(normalizedSearchTerm) ||
+               normalizedDescription.includes(normalizedSearchTerm);
+      });
     }
     
     this.filteredProducts = filtered;
+    this.filteredCombos = filteredCombos;
     
     // Agrupar por categoria
     const grouped = new Map<number, { category: Category; products: Product[] }>();

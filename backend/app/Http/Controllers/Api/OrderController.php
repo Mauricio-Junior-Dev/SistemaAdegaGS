@@ -180,6 +180,8 @@ class OrderController extends Controller
             'payment_method' => 'required|in:dinheiro,cartão de débito,cartão de crédito,pix',
             'customer_name' => 'nullable|string|max:255',
             'customer_phone' => 'nullable|string|max:20',
+            'document_number' => 'nullable|string|max:20',
+            'phone' => 'nullable|string|max:20',
             'delivery' => 'nullable|array',
             'delivery_address_id' => 'nullable|integer|exists:addresses,id',
             'delivery_fee' => 'nullable|numeric|min:0',
@@ -212,6 +214,61 @@ class OrderController extends Controller
             DB::beginTransaction();
 
             $user = $request->user();
+
+            // Determinar se estamos atualizando dados do usuário logado
+            // (apenas se não for funcionário/admin criando pedido para cliente)
+            $isUpdatingUserData = !$isEmployeeOrAdmin || !($request->customer_name || $request->customer_email || $request->customer_document);
+            
+            // Validação: CPF é obrigatório na request APENAS SE o usuário não tiver CPF no banco
+            if ($isUpdatingUserData && $user && (!$user->document_number || trim($user->document_number) === '')) {
+                if (!$request->has('document_number') || !$request->document_number || trim($request->document_number) === '') {
+                    DB::rollBack();
+                    return response()->json([
+                        'message' => 'CPF é obrigatório para processar o pedido.',
+                        'error' => 'document_number_required'
+                    ], 422);
+                }
+            }
+            
+            // Atualizar dados do usuário se necessário (CPF e Telefone)
+            if ($isUpdatingUserData && $user) {
+                $userUpdated = false;
+                
+                // Verificar e atualizar document_number se necessário
+                if (($request->has('document_number') && $request->document_number) && 
+                    (!$user->document_number || trim($user->document_number) === '')) {
+                    // Remove formatação do CPF/CNPJ antes de salvar
+                    $documentNumber = preg_replace('/\D/', '', $request->document_number);
+                    $user->document_number = $documentNumber;
+                    $userUpdated = true;
+                }
+                
+                // Verificar e atualizar phone se necessário
+                // Prioridade: phone da request > customer_phone > phone do delivery
+                $phoneToUpdate = null;
+                if ($request->has('phone') && $request->phone && trim($request->phone) !== '') {
+                    $phoneToUpdate = $request->phone;
+                } elseif ($request->has('customer_phone') && $request->customer_phone && trim($request->customer_phone) !== '') {
+                    $phoneToUpdate = $request->customer_phone;
+                } elseif ($request->has('delivery.phone') && is_array($request->delivery) && isset($request->delivery['phone']) && trim($request->delivery['phone']) !== '') {
+                    $phoneToUpdate = $request->delivery['phone'];
+                }
+                
+                if ($phoneToUpdate && (!$user->phone || trim($user->phone) === '')) {
+                    $user->phone = $phoneToUpdate;
+                    $userUpdated = true;
+                }
+                
+                // Salvar se houver alterações
+                if ($userUpdated) {
+                    $user->save();
+                    Log::info('Dados do usuário atualizados durante checkout', [
+                        'user_id' => $user->id,
+                        'document_number_updated' => $request->has('document_number') && $request->document_number,
+                        'phone_updated' => $phoneToUpdate !== null
+                    ]);
+                }
+            }
 
             // Determinar o user_id do pedido:
             // - Se for funcionário/admin criando pedido para cliente, buscar/criar cliente
