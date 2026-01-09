@@ -350,6 +350,19 @@ export class BannerCarouselComponent implements OnInit, OnDestroy {
       return trimmedLink;
     }
     
+    // Verificar se parece ser um domínio externo
+    // Um domínio geralmente contém um ponto e tem formato válido (ex: fast.com, www.exemplo.com)
+    // Regex simples para detectar domínios: contém ponto, não contém espaços, não começa com ponto ou barra
+    const domainPattern = /^[a-zA-Z0-9][a-zA-Z0-9.-]*\.[a-zA-Z]{2,}(\/.*)?$/;
+    const looksLikeDomain = domainPattern.test(trimmedLink) && 
+                           !trimmedLink.includes(' ') && 
+                           !trimmedLink.startsWith('.');
+    
+    // Se parecer um domínio, adicionar https:// para torná-lo um link externo
+    if (looksLikeDomain) {
+      return 'https://' + trimmedLink;
+    }
+    
     // Caso contrário, trata como URL relativa adicionando /
     return '/' + trimmedLink;
   }
