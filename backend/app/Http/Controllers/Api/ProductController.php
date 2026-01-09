@@ -14,44 +14,40 @@ class ProductController extends Controller
 {
     public function index(Request $request)
     {
-        // 1. Inicia a query carregando relacionamentos essenciais para o card de produto
-        $query = Product::with(['category'])
-            ->where('is_active', true); // TRAVA DE SEGURANÇA: O site NUNCA vê inativos
+        // 1. Input (Mantendo compatibilidade BR/EN)
+        $search = $request->input('busca') ?? $request->input('search');
 
-        // 2. Filtro de Busca (Input do Header do site)
-        $query->when($request->filled('search'), function ($q) use ($request) {
-            $search = $request->input('search');
-            $q->where(function ($sub) use ($search) {
+        // 2. Query Base
+        $query = Product::with(['category'])
+            ->where('is_active', true);
+
+        // 3. Busca Simples (Clean Eloquent)
+        $query->when($search, function ($q) use ($search) {
+            $q->where(function($sub) use ($search) {
                 $sub->where('name', 'like', "%{$search}%")
                     ->orWhere('code', 'like', "%{$search}%");
             });
         });
 
-        // 3. Filtro de Categoria
-        $query->when($request->filled('category_id'), function ($q) use ($request) {
+        // 4. Outros Filtros
+        $query->when($request->input('category_id'), function ($q) use ($request) {
             $q->where('category_id', $request->input('category_id'));
         });
 
-        // 4. Filtro: Populares (Geralmente usado na Home)
-        // Se a request tiver ?popular=true
-        $query->when(filter_var($request->input('popular'), FILTER_VALIDATE_BOOLEAN), function ($q) {
-            // Se você tiver uma coluna 'views', use: $q->orderBy('views', 'desc');
-            // Se não, random é um bom fallback para "Vitrine"
-            $q->inRandomOrder(); 
-        });
-
-        // 5. Filtro: Destaques (Featured)
-        // Se a request tiver ?featured=true
         $query->when(filter_var($request->input('featured'), FILTER_VALIDATE_BOOLEAN), function ($q) {
             $q->where('featured', true);
         });
 
-        // 6. Ordenação Padrão (Mais recentes primeiro)
-        if (!$request->has('popular')) {
+        $query->when(filter_var($request->input('popular'), FILTER_VALIDATE_BOOLEAN), function ($q) {
+            $q->inRandomOrder();
+        });
+
+        // 5. Ordenação
+        if (!$request->has('popular') && !$search) {
             $query->latest();
         }
 
-        // Retorna paginado (Site geralmente usa 12, 16 ou 24 itens)
+        // 6. Retorno Paginado
         return response()->json($query->paginate($request->input('per_page', 12)));
     }
 

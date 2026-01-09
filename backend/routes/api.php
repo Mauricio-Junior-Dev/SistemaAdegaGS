@@ -55,6 +55,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Autenticação
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'user']);
+    Route::put('/user', [AuthController::class, 'updateProfile']);
     
     // Endpoint de teste para admin
     Route::get('/test-admin', function (Request $request) {
