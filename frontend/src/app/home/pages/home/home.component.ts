@@ -199,6 +199,22 @@ export class HomeComponent implements OnInit {
     }
   }
 
+  /**
+   * Faz scroll suave até a seção de produtos
+   * Usa setTimeout para garantir que a renderização já aconteceu
+   */
+  private scrollToProducts(): void {
+    setTimeout(() => {
+      const element = document.getElementById('product-grid-anchor');
+      if (element) {
+        element.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'start' 
+        });
+      }
+    }, 100);
+  }
+
   loadAllProducts(page: number = 1): void {
     // Carregar todos os produtos (em destaque)
     this.isLoadingProducts = true;
@@ -208,6 +224,8 @@ export class HomeComponent implements OnInit {
       next: (response) => {
         if (page === 1) {
           this.filteredProducts = response.data || [];
+          // Scroll suave apenas na primeira página (mudança de categoria)
+          this.scrollToProducts();
         } else {
           this.filteredProducts = [...this.filteredProducts, ...(response.data || [])];
         }
@@ -231,6 +249,8 @@ export class HomeComponent implements OnInit {
       next: (response) => {
         if (page === 1) {
           this.filteredProducts = response.data || [];
+          // Scroll suave apenas na primeira página (mudança de categoria)
+          this.scrollToProducts();
         } else {
           this.filteredProducts = [...this.filteredProducts, ...(response.data || [])];
         }

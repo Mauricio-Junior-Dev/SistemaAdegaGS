@@ -187,6 +187,11 @@
   background-color: var(--background);
 }
 
+/* Scroll anchor com margem para compensar header fixo */
+#product-grid-anchor {
+  scroll-margin-top: 200px;
+}
+
 /* Combos */
 .featured-combos {
   padding: 4rem 0;
