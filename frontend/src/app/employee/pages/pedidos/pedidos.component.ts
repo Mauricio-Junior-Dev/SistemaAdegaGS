@@ -60,7 +60,8 @@ export class PedidosComponent implements OnInit, OnDestroy {
   pedidosEmPreparo: Order[] = [];
   pedidosEmEntrega: Order[] = [];
   pedidosConcluidos: Order[] = [];
-  concluidosLoading = true;
+  concluidosLoading = false;
+  concluidosLoaded = false; // Flag para rastrear se já tentou carregar
   orders: Order[] = [];
   displayedColumns = ['id', 'created_at', 'customer', 'address', 'items', 'total', 'status', 'actions'];
   loading = true;
@@ -144,11 +145,17 @@ export class PedidosComponent implements OnInit, OnDestroy {
       .pipe(finalize(() => this.concluidosLoading = false))
       .subscribe({
         next: (response: OrderResponse) => {
-          this.pedidosConcluidos = response.data;
-          this.totalConcluidos = response.total;
+          // Garantir que response.data existe e é um array
+          this.pedidosConcluidos = response.data || [];
+          this.totalConcluidos = response.total || 0;
+          // Atualizar pageIndex para refletir a página atual
+          this.pageIndexConcluidos = page - 1;
         },
         error: (err) => {
           console.error('Erro ao carregar pedidos concluídos', err);
+          console.error('Detalhes do erro:', err);
+          this.pedidosConcluidos = [];
+          this.totalConcluidos = 0;
           this.snackBar.open('Não foi possível carregar os pedidos concluídos.', 'Fechar', { duration: 3000 });
         }
       });
@@ -165,9 +172,10 @@ export class PedidosComponent implements OnInit, OnDestroy {
     // Aba "Concluídos" é o índice 3 (0: Novos, 1: Em Preparo, 2: Em Entrega, 3: Concluídos)
     const CONCLUIDOS_TAB_INDEX = 3;
     
-    if (event.index === CONCLUIDOS_TAB_INDEX && this.pedidosConcluidos.length === 0) {
-      // Lazy Loading: carregar apenas se a lista estiver vazia
-      this.loadConcluidos(this.pageIndexConcluidos + 1, this.pageSizeConcluidos);
+    if (event.index === CONCLUIDOS_TAB_INDEX && !this.concluidosLoaded) {
+      // Lazy Loading: carregar na primeira vez que a aba é acessada
+      this.concluidosLoaded = true;
+      this.loadConcluidos(1, this.pageSizeConcluidos);
     }
   }
 

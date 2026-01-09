@@ -831,13 +831,19 @@ export class CaixaComponent implements OnInit, OnDestroy {
     }
 
     const order: CreateOrderRequest = {
-      items: this.cartItems.map(item => ({
-        product_id: item.product?.id,
-        combo_id: item.combo?.id,
-        quantity: item.quantity,
-        sale_type: item.sale_type,
-        price: item.product?.price || item.combo?.price || 0
-      })),
+      items: this.cartItems.map(item => {
+        // Calcular o preço unitário baseado no subtotal calculado (não no preço padrão do produto)
+        // Isso garante que doses sejam enviadas com dose_price, não com product.price
+        const unitPrice = this.getItemUnitPrice(item);
+        
+        return {
+          product_id: item.product?.id,
+          combo_id: item.combo?.id,
+          quantity: item.quantity,
+          sale_type: item.sale_type,
+          price: unitPrice // Usar o preço calculado, não o preço padrão do produto
+        };
+      }),
       total: this.total - this.deliveryFee, // Subtotal sem frete (o backend recalcula)
       delivery_fee: this.isPayOnDelivery ? (this.deliveryFee || 0) : 0,
       payment_method: paymentMethod,
@@ -1135,6 +1141,56 @@ export class CaixaComponent implements OnInit, OnDestroy {
       return product.dose_price;
     }
     return product.price; // Preço da garrafa
+  }
+
+  /**
+   * Sanitiza um valor numérico, convertendo vírgula para ponto e garantindo que seja um número válido
+   */
+  private sanitizePrice(value: string | number | null | undefined): number {
+    if (value === null || value === undefined) {
+      return 0;
+    }
+    
+    if (typeof value === 'number') {
+      return isNaN(value) ? 0 : value;
+    }
+    
+    if (typeof value === 'string') {
+      // Substituir vírgula por ponto e remover espaços
+      const cleaned = value.replace(',', '.').replace(/\s/g, '');
+      const parsed = parseFloat(cleaned);
+      return isNaN(parsed) ? 0 : parsed;
+    }
+    
+    return 0;
+  }
+
+  /**
+   * Calcula o preço unitário de um item do carrinho baseado no subtotal e quantidade
+   * Garante que o preço enviado ao backend seja o preço real calculado, não o preço padrão do produto
+   */
+  private getItemUnitPrice(item: CartItem): number {
+    if (item.quantity <= 0) {
+      return 0;
+    }
+    
+    // Se o subtotal foi calculado corretamente, usar ele dividido pela quantidade
+    // Isso garante que o preço enviado seja o preço real (ex: dose_price) e não o preço padrão
+    const calculatedPrice = item.subtotal / item.quantity;
+    
+    // Validar que o preço calculado é válido
+    if (isNaN(calculatedPrice) || calculatedPrice <= 0) {
+      // Fallback: usar o método getProductPrice se o subtotal não estiver disponível
+      if (item.product) {
+        return this.getProductPrice(item.product, item.sale_type);
+      }
+      if (item.combo) {
+        return item.combo.price || 0;
+      }
+      return 0;
+    }
+    
+    return calculatedPrice;
   }
 
   toggleCashValueVisibility(): void {

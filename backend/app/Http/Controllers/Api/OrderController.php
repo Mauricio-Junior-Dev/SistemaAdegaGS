@@ -59,32 +59,46 @@ class OrderController extends Controller
             }
             
             // FILTRO: Esconder pedidos do Ecommerce (Online) com PIX pendente
-            // Regra: Não mostrar pedidos onde TODAS as condições são verdadeiras:
-            // - type = 'online'
-            // - payment_method = 'pix' (na tabela payments)
-            // - status = 'pending'
-            // Lógica: Mostrar tudo EXCETO (online AND PIX AND pending)
-            // Usando whereNot para excluir pedidos que atendem todas as condições
-            $query->where(function($q) {
-                $q->where('status', '!=', 'pending') // Se não for pendente, mostra sempre
-                  ->orWhere('type', '!=', 'online') // Se não for online, mostra sempre
-                  ->orWhere(function($orderQuery) {
-                      // Se for online e pending, verificar se NÃO tem payment PIX pendente
-                      $orderQuery->where('type', 'online')
-                                 ->where('status', 'pending')
-                                 ->whereDoesntHave('payment', function($paymentQuery) {
-                                     $paymentQuery->where('payment_method', 'pix')
-                                                  ->where('status', 'pending');
-                                 });
-                  });
-            });
+            // Aplicar APENAS quando não há filtro de status ou quando o status é 'pending'
+            // Para pedidos concluídos, não precisamos desse filtro
+            $requestedStatus = $request->get('status');
+            if (!$requestedStatus || $requestedStatus === 'pending') {
+                // Regra: Não mostrar pedidos onde TODAS as condições são verdadeiras:
+                // - type = 'online'
+                // - payment_method = 'pix' (na tabela payments)
+                // - status = 'pending'
+                // Lógica: Mostrar tudo EXCETO (online AND PIX AND pending)
+                $query->where(function($q) {
+                    $q->where('status', '!=', 'pending') // Se não for pendente, mostra sempre
+                      ->orWhere('type', '!=', 'online') // Se não for online, mostra sempre
+                      ->orWhere(function($orderQuery) {
+                          // Se for online e pending, verificar se NÃO tem payment PIX pendente
+                          $orderQuery->where('type', 'online')
+                                     ->where('status', 'pending')
+                                     ->whereDoesntHave('payment', function($paymentQuery) {
+                                         $paymentQuery->where('payment_method', 'pix')
+                                                      ->where('status', 'pending');
+                                     });
+                      });
+                });
+            }
         } else {
             // Se não for nenhum, não retorna nada
             return response()->json(['error' => 'Não autorizado'], 403);
         }
 
-        $orders = $query->orderBy('created_at', 'desc')->paginate(20);
-        return response()->json($orders);
+        // Paginação: usar per_page da requisição ou padrão de 20
+        $perPage = min($request->get('per_page', 20), 100); // Máximo de 100 por página
+        $orders = $query->orderBy('created_at', 'desc')->paginate($perPage);
+        
+        // Retornar no formato esperado pelo frontend
+        return response()->json([
+            'data' => $orders->items(),
+            'total' => $orders->total(),
+            'current_page' => $orders->currentPage(),
+            'per_page' => $orders->perPage(),
+            'last_page' => $orders->lastPage()
+        ]);
     }
 
     public function myOrders(Request $request)
