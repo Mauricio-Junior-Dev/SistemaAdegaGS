@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormArray, FormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormArray, FormsModule, FormControl } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
@@ -13,7 +13,11 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
+import { MatTableModule } from '@angular/material/table';
 import { Router, ActivatedRoute } from '@angular/router';
+import { Subject, Observable, of } from 'rxjs';
+import { startWith, map, debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
 
 import { ComboService } from '../../../services/combo.service';
 import { Combo, ComboFormData, ComboFormDataForBackend, Product } from '../../../../core/models/combo.model';
@@ -37,7 +41,9 @@ import { AuthService } from '../../../../core/services/auth.service';
     MatProgressSpinnerModule,
     MatChipsModule,
     MatTooltipModule,
-    MatDialogModule
+    MatDialogModule,
+    MatAutocompleteModule,
+    MatTableModule
   ],
   templateUrl: './combo-form.component.html',
   styleUrls: ['./combo-form.component.css']
@@ -45,7 +51,6 @@ import { AuthService } from '../../../../core/services/auth.service';
 export class ComboFormComponent implements OnInit, OnDestroy {
   comboForm!: FormGroup;
   products: Product[] = [];
-  filteredProducts: Product[] = [];
   loading = false;
   isEdit = false;
   comboId?: number;
@@ -55,6 +60,18 @@ export class ComboFormComponent implements OnInit, OnDestroy {
   selectedImages: File[] = [];
   existingImages: string[] = [];
   imagePreviewUrls: string[] = []; // URLs de preview para evitar NG0100
+
+  // Novo sistema de busca e seleção
+  productSearchControl = new FormControl('');
+  filteredProducts$!: Observable<Product[]>;
+  selectedProducts: Array<{
+    product: Product;
+    quantity: number;
+    sale_type: 'garrafa' | 'dose';
+  }> = [];
+  
+  // Colunas da tabela
+  displayedColumns: string[] = ['name', 'quantity', 'sale_type', 'actions'];
 
   private comboService = inject(ComboService);
   private router = inject(Router);
@@ -104,62 +121,98 @@ export class ComboFormComponent implements OnInit, OnDestroy {
       is_active: [true],
       featured: [false],
       offers: [false],
-      popular: [false],
-      products: this.fb.array([]),
-      productSearchTerm: ['']
+      popular: [false]
     });
 
-    // Adicionar primeiro produto
-    this.addProduct();
+    // Inicializar autocomplete com array vazio
+    this.filteredProducts$ = of([]);
   }
 
-  get productsArray(): FormArray {
-    return this.comboForm.get('products') as FormArray;
+  setupProductAutocomplete(): void {
+    this.filteredProducts$ = this.productSearchControl.valueChanges.pipe(
+      startWith(''),
+      debounceTime(300),
+      distinctUntilChanged(),
+      map(value => {
+        const searchTerm = typeof value === 'string' ? value : '';
+        if (!this.products || this.products.length === 0) {
+          return [];
+        }
+        if (!searchTerm.trim()) {
+          return this.products;
+        }
+        const term = searchTerm.toLowerCase();
+        return this.products.filter(product => 
+          product.name.toLowerCase().includes(term)
+        );
+      })
+    );
   }
 
-  createProductFormGroup(): FormGroup {
-    return this.fb.group({
-      product_id: ['', Validators.required],
-      quantity: [1, [Validators.required, Validators.min(1)]],
-      sale_type: ['garrafa', Validators.required]
-    });
-  }
+  // Novo método para adicionar produto via autocomplete
+  addProductFromAutocomplete(product: Product): void {
+    // Verificar se o produto já foi adicionado
+    const existingIndex = this.selectedProducts.findIndex(
+      item => item.product.id === product.id
+    );
 
-  addProduct(): void {
-    const productGroup = this.createProductFormGroup();
-    this.productsArray.push(productGroup);
+    if (existingIndex >= 0) {
+      // Produto já existe, apenas aumentar quantidade
+      this.selectedProducts[existingIndex].quantity += 1;
+      this.snackBar.open(
+        `Quantidade de "${product.name}" aumentada para ${this.selectedProducts[existingIndex].quantity}`,
+        'Fechar',
+        { duration: 2000 }
+      );
+    } else {
+      // Adicionar novo produto
+      this.selectedProducts.push({
+        product: product,
+        quantity: 1,
+        sale_type: 'garrafa'
+      });
+    }
+
+    // Limpar campo de busca
+    this.productSearchControl.setValue('');
+    
+    // Recalcular preço
+    this.calculatePrice();
   }
 
   removeProduct(index: number): void {
-    if (this.productsArray.length > 1) {
-      this.productsArray.removeAt(index);
+    this.selectedProducts.splice(index, 1);
+    this.calculatePrice();
+  }
+
+  updateProductQuantity(index: number, quantity: number): void {
+    if (quantity >= 1) {
+      this.selectedProducts[index].quantity = quantity;
       this.calculatePrice();
     }
+  }
+
+  updateProductSaleType(index: number, saleType: 'garrafa' | 'dose'): void {
+    this.selectedProducts[index].sale_type = saleType;
+    this.calculatePrice();
+  }
+
+  displayProductName(product: Product | null): string {
+    return product ? product.name : '';
   }
 
   loadProducts(): void {
     this.comboService.getProducts().subscribe({
       next: (products) => {
         this.products = products;
-        this.filteredProducts = products;
+        // Reconfigurar autocomplete após carregar produtos
+        this.setupProductAutocomplete();
       },
       error: (error: any) => {
         console.error('Erro ao carregar produtos:', error);
         this.snackBar.open('Erro ao carregar produtos', 'Fechar', { duration: 3000 });
       }
     });
-  }
-
-  filterProducts(): void {
-    const searchTerm = this.comboForm.get('productSearchTerm')?.value || '';
-    if (!searchTerm.trim()) {
-      this.filteredProducts = this.products;
-    } else {
-      const term = searchTerm.toLowerCase();
-      this.filteredProducts = this.products.filter(product => 
-        product.name.toLowerCase().includes(term)
-      );
-    }
   }
 
   loadCombo(): void {
@@ -204,12 +257,10 @@ export class ComboFormComponent implements OnInit, OnDestroy {
       this.existingImages = [];
     }
 
-    // Limpar produtos existentes
-    while (this.productsArray.length !== 0) {
-      this.productsArray.removeAt(0);
-    }
+    // Limpar produtos selecionados
+    this.selectedProducts = [];
 
-    // Adicionar produtos do combo
+    // Adicionar produtos do combo ao novo sistema
     if (combo.products && combo.products.length > 0) {
       console.log('Adicionando produtos ao formulário...');
       combo.products.forEach((product, index) => {
@@ -218,25 +269,24 @@ export class ComboFormComponent implements OnInit, OnDestroy {
         // Para relação many-to-many com pivot, os dados estão em product.pivot
         const productId = product.id || product.product_id;
         const quantity = product.pivot?.quantity || product.quantity || 1;
-        const saleType = product.pivot?.sale_type || product.sale_type || 'garrafa';
+        const saleType = (product.pivot?.sale_type || product.sale_type || 'garrafa') as 'garrafa' | 'dose';
         
         console.log(`Produto ${index} - ID: ${productId}, Quantidade: ${quantity}, Tipo: ${saleType}`);
         
-        const productGroup = this.fb.group({
-          product_id: [productId, Validators.required],
-          quantity: [quantity, [Validators.required, Validators.min(1)]],
-          sale_type: [saleType, Validators.required]
-        });
-        this.productsArray.push(productGroup);
+        // Encontrar o produto completo na lista de produtos carregados
+        const fullProduct = this.products.find(p => p.id === productId);
+        if (fullProduct) {
+          this.selectedProducts.push({
+            product: fullProduct,
+            quantity: quantity,
+            sale_type: saleType
+          });
+        }
       });
-    } else {
-      console.log('Nenhum produto encontrado no combo, adicionando produto padrão');
-      // Se não há produtos, adicionar um produto padrão
-      this.addProduct();
     }
 
     // Calcular preço apenas se há produtos válidos
-    if (combo.products && combo.products.length > 0) {
+    if (this.selectedProducts.length > 0) {
       this.calculatePrice();
     }
 
@@ -244,25 +294,25 @@ export class ComboFormComponent implements OnInit, OnDestroy {
     console.log('Formulário após popular:', this.comboForm.valid);
     console.log('Erros do formulário:', this.getFormErrors());
     console.log('Valor do formulário:', this.comboForm.value);
-    console.log('Produtos array:', this.productsArray.value);
+    console.log('Produtos selecionados:', this.selectedProducts);
   }
 
   calculatePrice(): void {
-    const products = this.productsArray.value;
-    
-    // Verificar se há produtos válidos
-    const validProducts = products.filter((product: any) => 
-      product.product_id && product.quantity && product.sale_type
-    );
-    
-    if (validProducts.length === 0) {
+    if (this.selectedProducts.length === 0) {
       this.originalPrice = 0;
       this.calculatedPrice = 0;
       this.discountAmount = 0;
       return;
     }
 
-    this.comboService.calculatePrice(validProducts).subscribe({
+    // Converter selectedProducts para o formato esperado pelo backend
+    const productsForCalculation = this.selectedProducts.map(item => ({
+      product_id: item.product.id,
+      quantity: item.quantity,
+      sale_type: item.sale_type
+    }));
+
+    this.comboService.calculatePrice(productsForCalculation).subscribe({
       next: (calculation) => {
         this.originalPrice = calculation.total_original_price;
         this.calculatedPrice = calculation.final_price;
@@ -287,27 +337,27 @@ export class ComboFormComponent implements OnInit, OnDestroy {
     console.log('=== DEBUG SUBMIT ===');
     console.log('Formulário válido:', this.comboForm.valid);
     console.log('Valor completo do formulário:', this.comboForm.value);
-    console.log('Produtos array:', this.productsArray.value);
+    console.log('Produtos selecionados:', this.selectedProducts);
     console.log('Erros do formulário:', this.getFormErrors());
     
     if (this.comboForm.valid) {
       this.loading = true;
       
+      // Converter selectedProducts para o formato esperado pelo backend
+      const productsData = this.selectedProducts.map(item => ({
+        product_id: item.product.id,
+        quantity: item.quantity,
+        sale_type: item.sale_type
+      }));
+
       const comboData: ComboFormData = {
         ...this.comboForm.value,
         price: Number(this.comboForm.value.price),
         original_price: this.comboForm.value.original_price ? Number(this.comboForm.value.original_price) : undefined,
         discount_percentage: this.comboForm.value.discount_percentage ? Number(this.comboForm.value.discount_percentage) : undefined,
-        products: this.productsArray.value.map((product: any) => ({
-          product_id: Number(product.product_id),
-          quantity: Number(product.quantity),
-          sale_type: product.sale_type
-        })),
+        products: productsData,
         images: this.selectedImages.length > 0 ? this.selectedImages : undefined
       };
-
-      // Remover campos que não devem ser enviados
-      delete (comboData as any).productSearchTerm;
 
       // Debug: log dos dados que serão enviados
       console.log('Dados do formulário (convertidos):', comboData);
@@ -371,37 +421,19 @@ export class ComboFormComponent implements OnInit, OnDestroy {
       }
     });
     
-    // Verificar erros nos produtos
-    if (this.productsArray && this.productsArray.length > 0) {
-      this.productsArray.controls.forEach((control, index) => {
-        if (control.errors) {
-          errors[`products[${index}]`] = control.errors;
-        }
-        // Verificar erros nos controles filhos
-        Object.keys(control.value).forEach(childKey => {
-          const childControl = control.get(childKey);
-          if (childControl && childControl.errors) {
-            errors[`products[${index}].${childKey}`] = childControl.errors;
-          }
-        });
-      });
+    // Verificar se há produtos selecionados
+    if (this.selectedProducts.length === 0) {
+      errors['products'] = { required: true };
     }
     
     return errors;
   }
 
   hasValidProducts(): boolean {
-    if (!this.productsArray || this.productsArray.length === 0) {
-      return false;
-    }
-    
-    return this.productsArray.controls.every(control => {
-      const productId = control.get('product_id')?.value;
-      const quantity = control.get('quantity')?.value;
-      const saleType = control.get('sale_type')?.value;
-      
-      return productId && quantity && saleType && control.valid;
-    });
+    return this.selectedProducts.length > 0 && 
+           this.selectedProducts.every(item => 
+             item.product && item.quantity >= 1 && item.sale_type
+           );
   }
 
   getProductName(productId: number): string {

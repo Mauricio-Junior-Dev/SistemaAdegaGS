@@ -47,69 +47,75 @@
         <mat-card-subtitle>Adicione os produtos que compõem este combo</mat-card-subtitle>
       </mat-card-header>
       <mat-card-content>
-        <!-- Campo de pesquisa -->
+        <!-- Campo de busca com autocomplete -->
         <div class="search-section">
-          <mat-form-field appearance="outline" class="search-field">
-            <mat-label>Pesquisar produtos</mat-label>
-            <input matInput 
-                   formControlName="productSearchTerm" 
-                   (input)="filterProducts()"
-                   placeholder="Digite o nome do produto...">
+          <mat-form-field appearance="outline" class="search-field-full">
+            <mat-label>Adicionar produto ao combo</mat-label>
+            <input matInput [formControl]="productSearchControl" [matAutocomplete]="auto"
+              placeholder="Digite o nome do produto...">
             <mat-icon matSuffix>search</mat-icon>
+            <mat-autocomplete #auto="matAutocomplete" [displayWith]="displayProductName"
+              (optionSelected)="addProductFromAutocomplete($event.option.value)">
+              <mat-option *ngFor="let product of filteredProducts$ | async" [value]="product">
+                {{ product.name }} - {{ formatPrice(product.price) }}
+              </mat-option>
+            </mat-autocomplete>
           </mat-form-field>
         </div>
 
-        <div formArrayName="products">
-          <div *ngFor="let productGroup of productsArray.controls; let i = index" 
-               [formGroupName]="i" 
-               class="product-item">
-            <div class="product-form">
-              <mat-form-field appearance="outline" class="product-select">
-                <mat-label>Produto</mat-label>
-                <mat-select formControlName="product_id" (selectionChange)="calculatePrice()">
-                  <mat-option *ngFor="let product of filteredProducts" [value]="product.id">
-                    {{ product.name }} - {{ formatPrice(product.price) }}
-                  </mat-option>
-                </mat-select>
-                <mat-error *ngIf="productGroup.get('product_id')?.hasError('required')">
-                  Produto é obrigatório
-                </mat-error>
-              </mat-form-field>
+        <!-- Tabela de produtos selecionados -->
+        <div class="selected-products-section" *ngIf="selectedProducts.length > 0">
+          <h3 class="section-subtitle">Produtos Selecionados</h3>
+          <table mat-table [dataSource]="selectedProducts" class="products-table">
+            <!-- Nome do Produto -->
+            <ng-container matColumnDef="name">
+              <th mat-header-cell *matHeaderCellDef>Nome do Produto</th>
+              <td mat-cell *matCellDef="let item">{{ item.product.name }}</td>
+            </ng-container>
 
-              <mat-form-field appearance="outline" class="quantity-field">
-                <mat-label>Quantidade</mat-label>
-                <input matInput type="number" formControlName="quantity" 
-                       (input)="calculatePrice()" min="1">
-                <mat-error *ngIf="productGroup.get('quantity')?.hasError('required')">
-                  Quantidade é obrigatória
-                </mat-error>
-                <mat-error *ngIf="productGroup.get('quantity')?.hasError('min')">
-                  Quantidade deve ser pelo menos 1
-                </mat-error>
-              </mat-form-field>
+            <!-- Quantidade -->
+            <ng-container matColumnDef="quantity">
+              <th mat-header-cell *matHeaderCellDef>Quantidade</th>
+              <td mat-cell *matCellDef="let item; let i = index">
+                <input type="number" [value]="item.quantity"
+                  (change)="updateProductQuantity(i, $any($event.target).value)" min="1" class="quantity-input">
+              </td>
+            </ng-container>
 
-              <mat-form-field appearance="outline" class="sale-type-field">
-                <mat-label>Tipo de Venda</mat-label>
-                <mat-select formControlName="sale_type" (selectionChange)="calculatePrice()">
-                  <mat-option value="garrafa">Garrafa</mat-option>
-                  <mat-option value="dose">Dose</mat-option>
-                </mat-select>
-              </mat-form-field>
+            <!-- Tipo de Venda -->
+            <ng-container matColumnDef="sale_type">
+              <th mat-header-cell *matHeaderCellDef>Tipo de Venda</th>
+              <td mat-cell *matCellDef="let item; let i = index">
+                <mat-form-field appearance="outline" class="sale-type-select">
+                  <mat-select [value]="item.sale_type" (selectionChange)="updateProductSaleType(i, $event.value)">
+                    <mat-option value="garrafa">Unidade/Garrafa</mat-option>
+                    <mat-option value="dose">Dose</mat-option>
+                  </mat-select>
+                </mat-form-field>
+              </td>
+            </ng-container>
 
-              <button type="button" mat-icon-button color="warn" 
-                      (click)="removeProduct(i)" 
-                      [disabled]="productsArray.length === 1"
-                      matTooltip="Remover produto">
-                <mat-icon>delete</mat-icon>
-              </button>
-            </div>
-          </div>
+            <!-- Ações -->
+            <ng-container matColumnDef="actions">
+              <th mat-header-cell *matHeaderCellDef>Ação</th>
+              <td mat-cell *matCellDef="let item; let i = index">
+                <button type="button" mat-icon-button color="warn" (click)="removeProduct(i)"
+                  matTooltip="Remover produto">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+          </table>
         </div>
 
-        <button type="button" mat-stroked-button (click)="addProduct()" class="add-product-btn">
-          <mat-icon>add</mat-icon>
-          Adicionar Produto
-        </button>
+        <!-- Mensagem quando não há produtos -->
+        <div class="no-products-message" *ngIf="selectedProducts.length === 0">
+          <mat-icon>info</mat-icon>
+          <p>Nenhum produto adicionado. Use o campo de busca acima para adicionar produtos ao combo.</p>
+        </div>
       </mat-card-content>
     </mat-card>
 
@@ -140,15 +146,14 @@
         <div class="form-row">
           <mat-form-field appearance="outline" class="price-field">
             <mat-label>Preço Original</mat-label>
-            <input matInput type="number" formControlName="original_price" 
-                   step="0.01" min="0" (input)="calculatePrice()">
+            <input matInput type="number" formControlName="original_price" step="0.01" min="0"
+              (input)="calculatePrice()">
             <span matPrefix>R$&nbsp;</span>
           </mat-form-field>
 
           <mat-form-field appearance="outline" class="price-field">
             <mat-label>Preço de Venda</mat-label>
-            <input matInput type="number" formControlName="price" 
-                   step="0.01" min="0" required>
+            <input matInput type="number" formControlName="price" step="0.01" min="0" required>
             <span matPrefix>R$&nbsp;</span>
             <mat-error *ngIf="comboForm.get('price')?.hasError('required')">
               Preço é obrigatório
@@ -160,8 +165,8 @@
 
           <mat-form-field appearance="outline" class="discount-field">
             <mat-label>Desconto (%)</mat-label>
-            <input matInput type="number" formControlName="discount_percentage" 
-                   step="0.01" min="0" max="100" (input)="calculatePrice()">
+            <input matInput type="number" formControlName="discount_percentage" step="0.01" min="0" max="100"
+              (input)="calculatePrice()">
             <span matSuffix>%</span>
           </mat-form-field>
         </div>
@@ -180,9 +185,8 @@
           <div *ngIf="isEdit && existingImages.length > 0" class="existing-images">
             <div *ngFor="let imageUrl of existingImages; let i = index" class="image-preview">
               <img [src]="imageUrl" alt="Imagem do combo">
-              <button type="button" mat-icon-button color="warn" 
-                      (click)="removeExistingImage(i)"
-                      matTooltip="Remover imagem">
+              <button type="button" mat-icon-button color="warn" (click)="removeExistingImage(i)"
+                matTooltip="Remover imagem">
                 <mat-icon>delete</mat-icon>
               </button>
             </div>
@@ -192,9 +196,7 @@
           <div *ngIf="selectedImages.length > 0" class="selected-images">
             <div *ngFor="let image of selectedImages; let i = index" class="image-preview">
               <img [src]="getImagePreview(i)" alt="Preview">
-              <button type="button" mat-icon-button color="warn" 
-                      (click)="removeImage(i)"
-                      matTooltip="Remover imagem">
+              <button type="button" mat-icon-button color="warn" (click)="removeImage(i)" matTooltip="Remover imagem">
                 <mat-icon>delete</mat-icon>
               </button>
             </div>
@@ -202,15 +204,10 @@
 
           <!-- Input de upload -->
           <div class="upload-section">
-            <input 
-              type="file" 
-              #fileInput 
-              multiple 
-              accept="image/*"
-              (change)="onImageSelected($event)"
+            <input type="file" #fileInput multiple accept="image/*" (change)="onImageSelected($event)"
               style="display: none">
-            <button type="button" mat-stroked-button (click)="fileInput.click()" 
-                    [disabled]="selectedImages.length >= 5">
+            <button type="button" mat-stroked-button (click)="fileInput.click()"
+              [disabled]="selectedImages.length >= 5">
               <mat-icon>add_photo_alternate</mat-icon>
               Adicionar Imagens
             </button>
@@ -248,20 +245,11 @@
 
     <!-- Botões de Ação -->
     <div class="form-actions">
-      <!-- Debug Info -->
-      <div class="debug-info" style="background: #f5f5f5; padding: 10px; margin: 10px 0; border-radius: 4px; font-size: 12px;">
-        <strong>Debug:</strong><br>
-        Formulário válido: {{ comboForm.valid }}<br>
-        Produtos válidos: {{ hasValidProducts() }}<br>
-        Loading: {{ loading }}<br>
-        Erros: {{ getFormErrors() | json }}
-      </div>
-      
       <button type="button" mat-stroked-button (click)="onCancel()" [disabled]="loading">
         Cancelar
       </button>
-      <button type="submit" mat-raised-button color="primary" 
-              [disabled]="loading || !comboForm.valid || !hasValidProducts()">
+      <button type="submit" mat-raised-button color="primary"
+        [disabled]="loading || !comboForm.valid || !hasValidProducts()">
         <mat-spinner *ngIf="loading" diameter="20"></mat-spinner>
         <mat-icon *ngIf="!loading">{{ isEdit ? 'save' : 'add' }}</mat-icon>
         {{ isEdit ? 'Atualizar' : 'Criar' }} Combo

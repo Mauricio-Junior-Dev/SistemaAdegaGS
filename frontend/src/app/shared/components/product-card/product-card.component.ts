@@ -126,4 +126,14 @@ export class ProductCardComponent {
   getDisplayPrice(product: Product): number {
     return product.delivery_price ?? product.price;
   }
+
+  /**
+   * Verifica se o produto é um combo adaptado
+   */
+  isCombo(): boolean {
+    return this.product.category_id === 0 && 
+           (this.product as any).doses_por_garrafa === 0 && 
+           this.product.current_stock === 999;
+  }
+
 }

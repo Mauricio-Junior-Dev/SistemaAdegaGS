@@ -12,6 +12,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatExpansionModule } from '@angular/material/expansion';
+import { MatDividerModule } from '@angular/material/divider';
 
 import { ProductService, Product, CreateProductDTO } from '../../../services/product.service';
 import { CategoryService } from '../../../services/category.service';
@@ -33,7 +34,8 @@ import { environment } from '../../../../../environments/environment';
     MatIconModule,
     MatTooltipModule,
     MatSnackBarModule,
-    MatExpansionModule
+    MatExpansionModule,
+    MatDividerModule
   ],
   template: `
     <h2 mat-dialog-title>{{isEdit ? 'Editar' : 'Novo'}} Produto</h2>
@@ -130,134 +132,6 @@ import { environment } from '../../../../../environments/environment';
             <textarea matInput formControlName="description" rows="3"></textarea>
           </mat-form-field>
 
-          <!-- Configuração de Pack -->
-          <div class="pack-section">
-            <h3>Configuração de Pack (Caixa/Fardo)</h3>
-            <p class="pack-warning">
-              <mat-icon>info</mat-icon>
-              Use esta opção apenas para Caixas/Fardos.
-            </p>
-            
-            <mat-slide-toggle formControlName="is_pack" color="primary">
-              Este produto é um Pack (desconta estoque do produto pai)
-            </mat-slide-toggle>
-
-            <div *ngIf="productForm.get('is_pack')?.value" class="pack-config">
-              <div class="form-row">
-                <mat-form-field appearance="outline">
-                  <mat-label>Produto Pai (Unidade Base)</mat-label>
-                  <mat-select formControlName="parent_product_id" required>
-                    <mat-option [value]="null">Selecione o produto base</mat-option>
-                    <mat-option *ngFor="let parentProduct of availableParentProducts" [value]="parentProduct.id">
-                      {{parentProduct.name}}
-                    </mat-option>
-                  </mat-select>
-                  <mat-error *ngIf="productForm.get('parent_product_id')?.hasError('required')">
-                    Produto pai é obrigatório para Caixa/Fardo
-                  </mat-error>
-                </mat-form-field>
-
-                <mat-form-field appearance="outline">
-                  <mat-label>Quantidade por Caixa/Fardo</mat-label>
-                  <input matInput 
-                         type="number" 
-                         formControlName="stock_multiplier" 
-                         required
-                         min="2"
-                         [disabled]="!productForm.get('is_pack')?.value">
-                  <mat-hint>Quantas unidades do produto pai equivalem a 1 Caixa/Fardo</mat-hint>
-                  <mat-error *ngIf="productForm.get('stock_multiplier')?.hasError('required')">
-                    Quantidade por Caixa/Fardo é obrigatória
-                  </mat-error>
-                  <mat-error *ngIf="productForm.get('stock_multiplier')?.hasError('min')">
-                    Quantidade por Caixa/Fardo deve ser maior que 1
-                  </mat-error>
-                </mat-form-field>
-              </div>
-            </div>
-          </div>
-
-          <!-- Precificação Avançada & Custos (Expansion Panel) -->
-          <mat-expansion-panel [expanded]="false" class="advanced-pricing-panel">
-            <mat-expansion-panel-header>
-              <mat-panel-title>
-                <mat-icon>attach_money</mat-icon>
-                Precificação Avançada & Custos
-              </mat-panel-title>
-              <mat-panel-description>
-                Preço de entrega, promoções e custo
-              </mat-panel-description>
-            </mat-expansion-panel-header>
-
-            <div class="advanced-pricing-content">
-              <div class="form-row">
-                <mat-form-field appearance="outline">
-                  <mat-label>
-                    <span class="label-with-help">
-                      Preço para Entrega (Opcional)
-                      <mat-icon matTooltip="Opcional. Preencha APENAS se o valor para entrega/site for mais caro que o balcão (Ex: Água, Gás). O site mostrará este valor automaticamente." 
-                                matTooltipPosition="above"
-                                class="help-icon">help_outline</mat-icon>
-                    </span>
-                  </mat-label>
-                  <input matInput 
-                         type="number" 
-                         formControlName="delivery_price" 
-                         min="0"
-                         step="0.01"
-                         placeholder="Ex: R$ 12,00">
-                  <span matPrefix>R$&nbsp;</span>
-                  <mat-hint>Preencha apenas se for diferente do preço normal (Balcão)</mat-hint>
-                  <mat-error *ngIf="productForm.get('delivery_price')?.hasError('min')">
-                    Preço de entrega deve ser maior que zero
-                  </mat-error>
-                </mat-form-field>
-
-                <mat-form-field appearance="outline">
-                  <mat-label>
-                    <span class="label-with-help">
-                      Preço Original / Tabela
-                      <mat-icon matTooltip="Use para promoções (Preço 'De'). Se preenchido, o site mostrará este valor riscado (De R$ 20,00 por R$ 15,00)." 
-                                matTooltipPosition="above"
-                                class="help-icon">help_outline</mat-icon>
-                    </span>
-                  </mat-label>
-                  <input matInput 
-                         type="number" 
-                         formControlName="original_price" 
-                         min="0"
-                         step="0.01"
-                         placeholder="Ex: De R$ 100,00">
-                  <span matPrefix>R$&nbsp;</span>
-                  <mat-hint>Preço antes do desconto (opcional)</mat-hint>
-                  <mat-error *ngIf="productForm.get('original_price')?.hasError('min')">
-                    Preço original deve ser maior que zero
-                  </mat-error>
-                  <mat-error *ngIf="productForm.get('original_price')?.hasError('mustBeGreaterThanPrice')">
-                    O preço original deve ser maior que o preço de venda
-                  </mat-error>
-                </mat-form-field>
-              </div>
-
-              <!-- Feedback Visual de Desconto -->
-              <div class="discount-feedback" *ngIf="discountInfo.show">
-                <div class="feedback-success" *ngIf="discountInfo.isValid">
-                  <mat-icon>check_circle</mat-icon>
-                  <span>
-                    <strong>Desconto de {{ discountInfo.percentage }}% aplicado!</strong>
-                    O cliente verá: de <del>R$ {{ discountInfo.originalPrice | number:'1.2-2' }}</del> por R$ {{ discountInfo.finalPrice | number:'1.2-2' }}
-                  </span>
-                </div>
-                <div class="feedback-error" *ngIf="!discountInfo.isValid">
-                  <mat-icon>error</mat-icon>
-                  <span>
-                    <strong>Erro:</strong> O preço original deve ser maior que o preço de venda
-                  </span>
-                </div>
-              </div>
-            </div>
-          </mat-expansion-panel>
-
           <!-- Estoque -->
           <div class="form-row">
             <mat-form-field *ngIf="!productForm.get('is_pack')?.value" appearance="outline">
@@ -291,44 +165,179 @@ import { environment } from '../../../../../environments/environment';
             </mat-form-field>
           </div>
 
-          <!-- Configurações de Dose -->
-          <div *ngIf="!productForm.get('is_pack')?.value" class="dose-section">
-            <h3>Configurações de Venda por Dose</h3>
-            
-            <div class="form-row">
-              <mat-form-field appearance="outline">
-                <mat-label>Doses por Garrafa</mat-label>
-                <input matInput 
-                       type="number" 
-                       formControlName="doses_por_garrafa" 
-                       required
-                       min="1">
-                <mat-error *ngIf="productForm.get('doses_por_garrafa')?.hasError('required')">
-                  Doses por garrafa é obrigatório
-                </mat-error>
-                <mat-error *ngIf="productForm.get('doses_por_garrafa')?.hasError('min')">
-                  Deve ser pelo menos 1 dose por garrafa
-                </mat-error>
-              </mat-form-field>
+          <!-- Painel de Configurações Avançadas -->
+          <mat-expansion-panel [expanded]="false" class="advanced-settings-panel">
+            <mat-expansion-panel-header>
+              <mat-panel-title>
+                ⚙️ Configurações Avançadas
+              </mat-panel-title>
+              <mat-panel-description>
+                Preços de entrega, custos, packs e doses
+              </mat-panel-description>
+            </mat-expansion-panel-header>
 
-              <mat-form-field appearance="outline">
-                <mat-label>Preço da Dose</mat-label>
-                <input matInput 
-                       type="number" 
-                       formControlName="dose_price" 
-                       min="0"
-                       step="0.01">
-                <span matPrefix>R$&nbsp;</span>
-                <mat-error *ngIf="productForm.get('dose_price')?.hasError('min')">
-                  Preço da dose deve ser maior que zero
-                </mat-error>
-              </mat-form-field>
+            <div class="advanced-settings-content">
+              <!-- Precificação Extra -->
+              <div class="advanced-section">
+                <h4 class="section-title">Precificação Extra</h4>
+                <div class="form-row">
+                  <mat-form-field appearance="outline">
+                    <mat-label>
+                      <span class="label-with-help">
+                        Preço para Entrega (Opcional)
+                        <mat-icon matTooltip="Opcional. Preencha APENAS se o valor para entrega/site for mais caro que o balcão (Ex: Água, Gás). O site mostrará este valor automaticamente." 
+                                  matTooltipPosition="above"
+                                  class="help-icon">help_outline</mat-icon>
+                      </span>
+                    </mat-label>
+                    <input matInput 
+                           type="number" 
+                           formControlName="delivery_price" 
+                           min="0"
+                           step="0.01"
+                           placeholder="Ex: R$ 12,00">
+                    <span matPrefix>R$&nbsp;</span>
+                    <mat-hint>Preencha apenas se for diferente do preço normal (Balcão)</mat-hint>
+                    <mat-error *ngIf="productForm.get('delivery_price')?.hasError('min')">
+                      Preço de entrega deve ser maior que zero
+                    </mat-error>
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline">
+                    <mat-label>
+                      <span class="label-with-help">
+                        Preço Original / Tabela
+                        <mat-icon matTooltip="Use para promoções (Preço 'De'). Se preenchido, o site mostrará este valor riscado (De R$ 20,00 por R$ 15,00)." 
+                                  matTooltipPosition="above"
+                                  class="help-icon">help_outline</mat-icon>
+                      </span>
+                    </mat-label>
+                    <input matInput 
+                           type="number" 
+                           formControlName="original_price" 
+                           min="0"
+                           step="0.01"
+                           placeholder="Ex: De R$ 100,00">
+                    <span matPrefix>R$&nbsp;</span>
+                    <mat-hint>Preço antes do desconto (opcional)</mat-hint>
+                    <mat-error *ngIf="productForm.get('original_price')?.hasError('min')">
+                      Preço original deve ser maior que zero
+                    </mat-error>
+                    <mat-error *ngIf="productForm.get('original_price')?.hasError('mustBeGreaterThanPrice')">
+                      O preço original deve ser maior que o preço de venda
+                    </mat-error>
+                  </mat-form-field>
+                </div>
+
+                <!-- Feedback Visual de Desconto -->
+                <div class="discount-feedback" *ngIf="discountInfo.show">
+                  <div class="feedback-success" *ngIf="discountInfo.isValid">
+                    <mat-icon>check_circle</mat-icon>
+                    <span>
+                      <strong>Desconto de {{ discountInfo.percentage }}% aplicado!</strong>
+                      O cliente verá: de <del>R$ {{ discountInfo.originalPrice | number:'1.2-2' }}</del> por R$ {{ discountInfo.finalPrice | number:'1.2-2' }}
+                    </span>
+                  </div>
+                  <div class="feedback-error" *ngIf="!discountInfo.isValid">
+                    <mat-icon>error</mat-icon>
+                    <span>
+                      <strong>Erro:</strong> O preço original deve ser maior que o preço de venda
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <mat-divider></mat-divider>
+
+              <!-- Configuração de Pack -->
+              <div class="advanced-section">
+                <h4 class="section-title">Configuração de Pack (Caixa/Fardo)</h4>
+                <p class="pack-warning">
+                  <mat-icon>info</mat-icon>
+                  Use esta opção apenas para Caixas/Fardos.
+                </p>
+                
+                <mat-slide-toggle formControlName="is_pack" color="primary">
+                  Este produto é um Pack (desconta estoque do produto pai)
+                </mat-slide-toggle>
+
+                <div *ngIf="productForm.get('is_pack')?.value" class="pack-config">
+                  <div class="form-row">
+                    <mat-form-field appearance="outline">
+                      <mat-label>Produto Pai (Unidade Base)</mat-label>
+                      <mat-select formControlName="parent_product_id" required>
+                        <mat-option [value]="null">Selecione o produto base</mat-option>
+                        <mat-option *ngFor="let parentProduct of availableParentProducts" [value]="parentProduct.id">
+                          {{parentProduct.name}}
+                        </mat-option>
+                      </mat-select>
+                      <mat-error *ngIf="productForm.get('parent_product_id')?.hasError('required')">
+                        Produto pai é obrigatório para Caixa/Fardo
+                      </mat-error>
+                    </mat-form-field>
+
+                    <mat-form-field appearance="outline">
+                      <mat-label>Quantidade por Caixa/Fardo</mat-label>
+                      <input matInput 
+                             type="number" 
+                             formControlName="stock_multiplier" 
+                             required
+                             min="2"
+                             [disabled]="!productForm.get('is_pack')?.value">
+                      <mat-hint>Quantas unidades do produto pai equivalem a 1 Caixa/Fardo</mat-hint>
+                      <mat-error *ngIf="productForm.get('stock_multiplier')?.hasError('required')">
+                        Quantidade por Caixa/Fardo é obrigatória
+                      </mat-error>
+                      <mat-error *ngIf="productForm.get('stock_multiplier')?.hasError('min')">
+                        Quantidade por Caixa/Fardo deve ser maior que 1
+                      </mat-error>
+                    </mat-form-field>
+                  </div>
+                </div>
+              </div>
+
+              <mat-divider *ngIf="!productForm.get('is_pack')?.value"></mat-divider>
+
+              <!-- Configurações de Dose -->
+              <div *ngIf="!productForm.get('is_pack')?.value" class="advanced-section">
+                <h4 class="section-title">Configuração de Venda por Dose</h4>
+                
+                <div class="form-row">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Doses por Garrafa</mat-label>
+                    <input matInput 
+                           type="number" 
+                           formControlName="doses_por_garrafa" 
+                           required
+                           min="1">
+                    <mat-error *ngIf="productForm.get('doses_por_garrafa')?.hasError('required')">
+                      Doses por garrafa é obrigatório
+                    </mat-error>
+                    <mat-error *ngIf="productForm.get('doses_por_garrafa')?.hasError('min')">
+                      Deve ser pelo menos 1 dose por garrafa
+                    </mat-error>
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline">
+                    <mat-label>Preço da Dose</mat-label>
+                    <input matInput 
+                           type="number" 
+                           formControlName="dose_price" 
+                           min="0"
+                           step="0.01">
+                    <span matPrefix>R$&nbsp;</span>
+                    <mat-error *ngIf="productForm.get('dose_price')?.hasError('min')">
+                      Preço da dose deve ser maior que zero
+                    </mat-error>
+                  </mat-form-field>
+                </div>
+
+                <mat-slide-toggle formControlName="can_sell_by_dose" color="primary">
+                  Permitir venda por dose
+                </mat-slide-toggle>
+              </div>
             </div>
-
-            <mat-slide-toggle formControlName="can_sell_by_dose" color="primary">
-              Permitir venda por dose
-            </mat-slide-toggle>
-          </div>
+          </mat-expansion-panel>
 
           <!-- Status -->
           <div class="form-row status-row">
@@ -494,28 +503,6 @@ import { environment } from '../../../../../environments/environment';
       background-color: transparent !important;
     }
 
-    .pack-section {
-      margin-top: 24px;
-      padding: 16px;
-      background-color: #f9f9f9 !important;
-      border-radius: 8px;
-      border: 1px solid #ddd;
-      border-left: 4px solid var(--primary, #673ab7);
-    }
-
-    /* Garantir que elementos internos não tenham fundo amarelo */
-    :host ::ng-deep .pack-section .mat-mdc-slide-toggle,
-    :host ::ng-deep .pack-section .mat-mdc-form-field {
-      background-color: transparent !important;
-    }
-
-    .pack-section h3 {
-      margin: 0 0 12px 0;
-      color: #333;
-      font-size: 16px;
-      font-weight: 500;
-    }
-
     .pack-warning {
       display: flex;
       align-items: center;
@@ -537,28 +524,6 @@ import { environment } from '../../../../../environments/environment';
       margin-top: 16px;
       padding-top: 16px;
       border-top: 1px solid #ddd;
-    }
-
-    .dose-section {
-      margin-top: 24px;
-      padding: 16px;
-      background-color: #f9f9f9 !important;
-      border-radius: 8px;
-      border: 1px solid #ddd;
-      border-left: 4px solid var(--primary, #673ab7);
-    }
-
-    /* Garantir que elementos internos não tenham fundo amarelo */
-    :host ::ng-deep .dose-section .mat-mdc-slide-toggle,
-    :host ::ng-deep .dose-section .mat-mdc-form-field {
-      background-color: transparent !important;
-    }
-
-    .dose-section h3 {
-      margin: 0 0 16px 0;
-      color: #333;
-      font-size: 16px;
-      font-weight: 500;
     }
 
     .image-upload {
@@ -695,41 +660,86 @@ import { environment } from '../../../../../environments/environment';
       height: 20px;
     }
 
-    .advanced-pricing-panel {
+    /* Painel de Configurações Avançadas - Estilo Moderno */
+    .advanced-settings-panel {
       margin-top: 16px;
+      box-shadow: none !important;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
     }
 
-    .advanced-pricing-panel mat-expansion-panel-header {
+    :host ::ng-deep .advanced-settings-panel .mat-expansion-panel {
+      box-shadow: none !important;
+      border: 1px solid #e0e0e0;
+      border-radius: 8px;
+    }
+
+    :host ::ng-deep .advanced-settings-panel .mat-expansion-panel-header {
+      background-color: #f8f9fa;
+      padding: 16px 24px;
+      border-radius: 8px 8px 0 0;
+    }
+
+    :host ::ng-deep .advanced-settings-panel .mat-expansion-panel-header:hover {
+      background-color: #f0f1f2;
+    }
+
+    :host ::ng-deep .advanced-settings-panel.mat-expanded .mat-expansion-panel-header {
+      border-radius: 8px 8px 0 0;
+    }
+
+    :host ::ng-deep .advanced-settings-panel .mat-expansion-panel-body {
       padding: 16px 24px;
     }
 
-    .advanced-pricing-panel mat-panel-title {
+    .advanced-settings-panel mat-panel-title {
+      font-weight: 500;
+      color: #212529;
+      font-size: 15px;
+    }
+
+    .advanced-settings-panel mat-panel-description {
+      color: #6c757d;
+      font-size: 13px;
+    }
+
+    .advanced-settings-content {
+      padding: 0;
       display: flex;
-      align-items: center;
-      gap: 8px;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .advanced-section {
+      padding: 16px 0;
+    }
+
+    .advanced-section:first-child {
+      padding-top: 0;
+    }
+
+    .advanced-section:last-child {
+      padding-bottom: 0;
+    }
+
+    .section-title {
+      margin: 0 0 16px 0;
+      color: #333;
+      font-size: 15px;
       font-weight: 500;
     }
 
-    .advanced-pricing-panel mat-panel-title mat-icon {
-      font-size: 20px;
-      width: 20px;
-      height: 20px;
-    }
-
-    .advanced-pricing-content {
-      padding: 16px 0;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    .advanced-pricing-content .form-row {
-      margin-bottom: 0;
+    :host ::ng-deep .advanced-settings-panel mat-divider {
+      margin: 16px 0;
     }
 
     /* Garantir que os campos dentro do painel tenham fundo branco */
-    :host ::ng-deep .advanced-pricing-panel .mat-mdc-form-field {
+    :host ::ng-deep .advanced-settings-panel .mat-mdc-form-field {
       background-color: #ffffff !important;
+    }
+
+    :host ::ng-deep .advanced-settings-panel .mat-mdc-slide-toggle {
+      background-color: transparent !important;
     }
 
     @media (max-width: 600px) {

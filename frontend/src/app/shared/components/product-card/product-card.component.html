@@ -1,4 +1,6 @@
-<div class="product-card">
+<div class="product-card" 
+     [routerLink]="isCombo() ? ['/combos', product.id.toString()] : null"
+     [style.cursor]="isCombo() ? 'pointer' : 'default'">
   <!-- Tag de Desconto -->
   <div class="discount-tag" *ngIf="product.has_discount && product.discount_percentage">
     {{ product.discount_percentage }}% OFF

@@ -55,37 +55,94 @@
   flex: 1;
 }
 
-/* Produtos do Combo */
-.product-item {
-  margin-bottom: 16px;
-  padding: 16px;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  background-color: #fafafa;
+/* Produtos do Combo - Nova Estrutura */
+.search-section {
+  margin-bottom: 24px;
 }
 
-.product-form {
-  display: flex;
-  gap: 16px;
-  align-items: flex-start;
-}
-
-.product-select {
-  flex: 2;
-}
-
-.quantity-field {
-  flex: 1;
-}
-
-.sale-type-field {
-  flex: 1;
-}
-
-.add-product-btn {
+.search-field-full {
   width: 100%;
+}
+
+.selected-products-section {
+  margin-top: 24px;
+}
+
+.section-subtitle {
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: #333;
+  margin: 0 0 16px 0;
+}
+
+.products-table {
+  width: 100%;
+  background-color: #fff;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.products-table th {
+  background-color: #f5f5f5;
+  font-weight: 500;
+  color: #333;
+  padding: 16px;
+}
+
+.products-table td {
+  padding: 16px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.products-table tr:last-child td {
+  border-bottom: none;
+}
+
+.quantity-input {
+  width: 80px;
+  padding: 8px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  text-align: center;
+  font-size: 14px;
+}
+
+.quantity-input:focus {
+  outline: none;
+  border-color: #673ab7;
+  box-shadow: 0 0 0 2px rgba(103, 58, 183, 0.1);
+}
+
+.sale-type-select {
+  width: 180px;
+}
+
+.sale-type-select .mat-mdc-form-field {
+  width: 100%;
+}
+
+.no-products-message {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 24px;
+  background-color: #f5f5f5;
+  border-radius: 8px;
+  color: #666;
   margin-top: 16px;
-  height: 48px;
+}
+
+.no-products-message mat-icon {
+  color: #999;
+  font-size: 24px;
+  width: 24px;
+  height: 24px;
+}
+
+.no-products-message p {
+  margin: 0;
+  font-size: 14px;
 }
 
 /* Cálculo de Preços */
@@ -175,9 +232,22 @@
     gap: 8px;
   }
   
-  .product-form {
-    flex-direction: column;
-    gap: 8px;
+  .products-table {
+    font-size: 12px;
+  }
+
+  .products-table th,
+  .products-table td {
+    padding: 12px 8px;
+  }
+
+  .quantity-input {
+    width: 60px;
+    font-size: 12px;
+  }
+
+  .sale-type-select {
+    width: 140px;
   }
   
   .price-info {
@@ -212,15 +282,6 @@
   }
 }
 
-/* Campo de pesquisa */
-.search-section {
-  margin-bottom: 24px;
-}
-
-.search-field {
-  width: 100%;
-  max-width: 400px;
-}
 
 /* Estilos para validação */
 mat-form-field {
