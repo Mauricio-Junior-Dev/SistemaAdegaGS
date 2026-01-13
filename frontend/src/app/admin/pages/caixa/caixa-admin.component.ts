@@ -9,7 +9,6 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { RouterModule } from '@angular/router';
 import { environment } from '../../../../environments/environment';
 import { FormsModule } from '@angular/forms';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
@@ -51,12 +50,11 @@ interface PaginatedResponse<T> {
     MatInputModule,
     MatSelectModule,
     MatSnackBarModule,
-    MatPaginatorModule,
-    RouterModule
+    MatPaginatorModule
   ]
 })
 export class CaixaAdminComponent implements OnInit, OnDestroy {
-  displayedColumns = ['opened_at', 'opened_by', 'initial_amount', 'current_amount', 'total_income', 'total_outcome', 'status', 'actions'];
+  displayedColumns = ['opened_at', 'opened_by', 'initial_amount', 'current_amount', 'total_income', 'total_outcome', 'status'];
   rows: CashSessionRow[] = [];
   loading = false;
   filterDate = '';
