@@ -8,16 +8,7 @@ import { MatIconModule } from '@angular/material/icon';
 
 import { SettingsService, SystemSettings } from '../../services/settings.service';
 import { GeneralSettingsComponent } from './tabs/general-settings.component';
-// Removidas as abas: Negócio, Pagamentos, Estoque, Pedidos, E-mail
-// import { BusinessSettingsComponent } from './tabs/business-settings.component';
-// import { PaymentSettingsComponent } from './tabs/payment-settings.component';
-// import { StockSettingsComponent } from './tabs/stock-settings.component';
-// import { OrderSettingsComponent } from './tabs/order-settings.component';
-// import { EmailSettingsComponent } from './tabs/email-settings.component';
 import { SecuritySettingsComponent } from './tabs/security-settings.component';
-// These components will be implemented later
-// import { BackupSettingsComponent } from './tabs/backup-settings.component';
-// import { IntegrationSettingsComponent } from './tabs/integration-settings.component';
 
 @Component({
   selector: 'app-configuracoes',
@@ -30,28 +21,17 @@ import { SecuritySettingsComponent } from './tabs/security-settings.component';
     MatSnackBarModule,
     MatIconModule,
     GeneralSettingsComponent,
-    // Removidas as abas: Negócio, Pagamentos, Estoque, Pedidos, E-mail
-    // BusinessSettingsComponent,
-    // PaymentSettingsComponent,
-    // StockSettingsComponent,
-    // OrderSettingsComponent,
-    // EmailSettingsComponent,
-    SecuritySettingsComponent,
-    // These components will be implemented later
-    // BackupSettingsComponent,
-    // IntegrationSettingsComponent
+    SecuritySettingsComponent
   ],
   template: `
     <div class="settings-container">
       <h1>Configurações do Sistema</h1>
 
-      <!-- Loading State -->
       <div *ngIf="loading" class="loading-container">
         <mat-spinner diameter="50"></mat-spinner>
         <p>Carregando configurações...</p>
       </div>
 
-      <!-- Settings Content -->
       <mat-card *ngIf="!loading && settings">
         <mat-card-content>
           <mat-tab-group>
@@ -62,68 +42,16 @@ import { SecuritySettingsComponent } from './tabs/security-settings.component';
               </app-general-settings>
             </mat-tab>
 
-            <!-- Removidas as abas: Negócio, Pagamentos, Estoque, Pedidos, E-mail -->
-            <!-- <mat-tab label="Negócio">
-              <app-business-settings
-                [settings]="settings"
-                (settingsChange)="onSettingsChange($event)">
-              </app-business-settings>
-            </mat-tab>
-
-            <mat-tab label="Pagamentos">
-              <app-payment-settings
-                [settings]="settings"
-                (settingsChange)="onSettingsChange($event)">
-              </app-payment-settings>
-            </mat-tab>
-
-            <mat-tab label="Estoque">
-              <app-stock-settings
-                [settings]="settings"
-                (settingsChange)="onSettingsChange($event)">
-              </app-stock-settings>
-            </mat-tab>
-
-            <mat-tab label="Pedidos">
-              <app-order-settings
-                [settings]="settings"
-                (settingsChange)="onSettingsChange($event)">
-              </app-order-settings>
-            </mat-tab>
-
-            <mat-tab label="E-mail">
-              <app-email-settings
-                [settings]="settings"
-                (settingsChange)="onSettingsChange($event)">
-              </app-email-settings>
-            </mat-tab> -->
-
             <mat-tab label="Segurança">
               <app-security-settings
                 [settings]="settings"
                 (settingsChange)="onSettingsChange($event)">
               </app-security-settings>
             </mat-tab>
-
-            <!-- These tabs will be implemented later -->
-            <!-- <mat-tab label="Backup">
-              <app-backup-settings
-                [settings]="settings"
-                (settingsChange)="onSettingsChange($event)">
-              </app-backup-settings>
-            </mat-tab>
-
-            <mat-tab label="Integrações">
-              <app-integration-settings
-                [settings]="settings"
-                (settingsChange)="onSettingsChange($event)">
-              </app-integration-settings>
-            </mat-tab> -->
           </mat-tab-group>
         </mat-card-content>
       </mat-card>
 
-      <!-- Error State -->
       <div *ngIf="!loading && !settings" class="error-container">
         <mat-icon color="warn">error</mat-icon>
         <p>Erro ao carregar configurações</p>
@@ -169,7 +97,6 @@ import { SecuritySettingsComponent } from './tabs/security-settings.component';
       height: 48px;
     }
 
-    /* Card Principal - Estilo Clean */
     mat-card {
       margin-bottom: 20px;
       background: #ffffff !important;
@@ -184,7 +111,6 @@ import { SecuritySettingsComponent } from './tabs/security-settings.component';
       padding: 24px !important;
     }
 
-    /* Tabs - Fundo transparente/branco */
     ::ng-deep .mat-mdc-tab-group {
       background: transparent !important;
     }
@@ -212,7 +138,6 @@ import { SecuritySettingsComponent } from './tabs/security-settings.component';
       background: transparent !important;
     }
 
-    /* Inputs - Garantir legibilidade */
     ::ng-deep .mat-mdc-form-field {
       background: transparent !important;
     }
@@ -225,7 +150,6 @@ import { SecuritySettingsComponent } from './tabs/security-settings.component';
       color: #333 !important;
     }
 
-    /* Garantir que os campos de texto estejam legíveis */
     ::ng-deep .mdc-text-field--filled:not(.mdc-text-field--disabled) {
       background-color: #ffffff !important;
     }
@@ -242,7 +166,6 @@ import { SecuritySettingsComponent } from './tabs/security-settings.component';
       border-bottom-color: var(--primary) !important;
     }
 
-    /* Cards dentro das abas também devem ter fundo branco */
     ::ng-deep .settings-section mat-card {
       background: #ffffff !important;
       border-radius: 12px !important;
@@ -254,7 +177,6 @@ import { SecuritySettingsComponent } from './tabs/security-settings.component';
       background: #ffffff !important;
     }
 
-    /* Garantir que labels e textos estejam legíveis */
     ::ng-deep .settings-section h2 {
       color: #2c3e50 !important;
     }
@@ -296,17 +218,13 @@ export class ConfiguracoesComponent implements OnInit {
   onSettingsChange(settings: Partial<SystemSettings>): void {
     if (!this.settings) return;
 
-    console.log('Updating settings:', settings);
-    
     this.settingsService.updateSettings(settings).subscribe({
       next: (updatedSettings) => {
-        console.log('Settings updated successfully:', updatedSettings);
         this.settings = updatedSettings;
         this.snackBar.open('Configurações atualizadas com sucesso!', 'Fechar', { duration: 3000 });
       },
       error: (error) => {
         console.error('Erro ao atualizar configurações:', error);
-        console.error('Error details:', error);
         this.snackBar.open('Erro ao atualizar configurações', 'Fechar', { duration: 3000 });
       }
     });

@@ -136,9 +136,6 @@ export class PedidosComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  // Método removido: A impressão automática agora é feita pelo OrderPollingService
-  // que roda globalmente quando o funcionário está logado
-
   loadConcluidos(page: number = 1, size: number = 10): void {
     this.concluidosLoading = true;
     this.orderService.fetchOrders({ status: 'completed', per_page: size, page: page })

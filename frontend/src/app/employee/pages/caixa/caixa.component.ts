@@ -200,7 +200,7 @@ export class CaixaComponent implements OnInit, OnDestroy {
     // Carregar configurações para habilitar métodos de pagamento
     this.settingsService.getSettings().subscribe({
       next: (s) => this.settings = s,
-      error: () => { /* fallback silencioso */ }
+      error: () => {}
     });
   }
 

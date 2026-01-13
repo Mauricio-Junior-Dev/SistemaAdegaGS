@@ -66,7 +66,7 @@
         <!-- Tabela de produtos selecionados -->
         <div class="selected-products-section" *ngIf="selectedProducts.length > 0">
           <h3 class="section-subtitle">Produtos Selecionados</h3>
-          <table mat-table [dataSource]="selectedProducts" class="products-table">
+          <table mat-table [dataSource]="dataSource" class="products-table">
             <!-- Nome do Produto -->
             <ng-container matColumnDef="name">
               <th mat-header-cell *matHeaderCellDef>Nome do Produto</th>

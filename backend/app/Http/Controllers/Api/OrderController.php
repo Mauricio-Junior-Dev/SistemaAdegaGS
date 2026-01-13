@@ -160,10 +160,8 @@ class OrderController extends Controller
             ], 422);
         }
 
-        // Debug: Log do payload recebido
         Log::info('Payload recebido no Store:', $request->all());
 
-        // Determinar tipo de pedido baseado no STATUS, não no tipo de usuário
         $requestedStatus = $request->input('status', 'pending');
         $isCompleted = $requestedStatus === 'completed'; // Venda Balcão
         $isPending = $requestedStatus === 'pending'; // Entrega/Delivery
@@ -433,8 +431,6 @@ class OrderController extends Controller
                 $orderData['delivery_notes'] = $request->input('delivery_notes');
             }
 
-            // Garantir que delivery_fee seja atribuído (pode ser 0 para frete grátis)
-            // Nota: O delivery_fee será recalculado depois, mas definimos aqui para garantir que existe
             if (!isset($orderData['delivery_fee'])) {
                 $orderData['delivery_fee'] = (float) $request->input('delivery_fee', 0);
             }

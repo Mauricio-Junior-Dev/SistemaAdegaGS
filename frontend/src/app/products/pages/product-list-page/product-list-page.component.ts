@@ -156,11 +156,6 @@ export class ProductListPageComponent implements OnInit, OnDestroy {
     if (this.selectedCategory) {
       params.category_id = this.selectedCategory;
     }
-    
-    // Não usar search no backend, vamos filtrar localmente para tempo real
-    // if (this.searchTerm) {
-    //   params.search = this.searchTerm;
-    // }
 
     this.loading = true;
     this.error = null;

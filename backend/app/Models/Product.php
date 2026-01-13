@@ -150,7 +150,6 @@ class Product extends Model
 
         $this->stockMovements()->save($movement);
 
-        // Coluna única
         if ($type === 'entrada') {
             $this->increment('current_stock', $quantity);
         } elseif ($type === 'saida') {
@@ -170,26 +169,21 @@ class Product extends Model
      */
     public function atualizarEstoquePorVenda(int $quantidade, string $tipo): void
     {
-        // LÓGICA DE PACK: Se este produto é um Pack, desconta do produto pai
         if ($this->isPack()) {
             $parentProduct = $this->getParentProduct();
             if (!$parentProduct) {
                 throw new \Exception('Produto pai não encontrado para o Pack');
             }
 
-            // Calcula quantas unidades do produto pai devem ser descontadas
             $unidadesPai = $quantidade * $this->stock_multiplier;
 
-            // Verifica estoque do produto pai
             if ($parentProduct->current_stock < $unidadesPai) {
                 throw new \Exception("Estoque insuficiente no produto pai. Necessário: {$unidadesPai}, Disponível: {$parentProduct->current_stock}");
             }
 
-            // Desconta do produto pai
             $parentProduct->decrement('current_stock', $unidadesPai);
             $parentProduct->save();
 
-            // Registra movimentação no produto pai
             $parentProduct->stockMovements()->create([
                 'user_id' => auth()->id(),
                 'type' => 'saida',
@@ -198,32 +192,24 @@ class Product extends Model
                 'unit_cost' => $this->cost_price ?? 0
             ]);
 
-            // Pack não tem estoque próprio, apenas referencia o pai
             return;
         }
 
-        // LÓGICA NORMAL: Produto não é Pack, usa lógica padrão
         if ($tipo === 'dose') {
-            // Incrementa o contador de doses vendidas
             $this->increment('doses_vendidas', $quantidade);
             
-            // Verifica se atingiu o limite para deduzir garrafas
             if ($this->doses_vendidas >= $this->doses_por_garrafa) {
                 $garrafas_a_deduzir = floor($this->doses_vendidas / $this->doses_por_garrafa);
                 
-                // Verifica se há estoque suficiente
                 if ($this->current_stock < $garrafas_a_deduzir) {
                     throw new \Exception('Estoque insuficiente de garrafas');
                 }
                 
-                // Deduz as garrafas do estoque
                 $this->decrement('current_stock', $garrafas_a_deduzir);
                 
-                // Atualiza o contador de doses vendidas com o resto
                 $this->doses_vendidas = $this->doses_vendidas % $this->doses_por_garrafa;
             }
         } else {
-            // Venda direta de garrafa - deduz do estoque
             if ($this->current_stock < $quantidade) {
                 throw new \Exception('Estoque insuficiente de garrafas');
             }

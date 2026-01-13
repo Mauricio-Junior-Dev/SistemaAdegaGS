@@ -30,7 +30,6 @@ export class CartService {
     private http: HttpClient,
     private toastr: ToastrService
   ) {
-    // Carregar carrinho do localStorage
     try {
       const savedCart = localStorage.getItem('cart');
       if (savedCart) {
@@ -44,18 +43,13 @@ export class CartService {
       localStorage.removeItem('cart');
     }
 
-    // Observar mudanças no estado de autenticação
     this.authService.user$.subscribe(user => {
       if (!user) {
-        // Se deslogou, manter apenas o carrinho local
         const localCart = localStorage.getItem('cart');
         if (localCart) {
           const { items, total } = JSON.parse(localCart);
           this.cartState.next({ items, total, isOpen: false });
         }
-      } else {
-        // Se logou, buscar carrinho do servidor e mesclar com o local
-        // TODO: Implementar sincronização com o servidor
       }
     });
   }
@@ -88,24 +82,20 @@ export class CartService {
     console.log('Current state:', currentState);
     
     const items = currentState.items || [];
-    // Para override de preço, considerar que são itens diferentes (mesmo produto, preços diferentes)
     const existingItem = overridePrice !== undefined 
       ? items.find(item => item.id === product.id && item.price === overridePrice)
       : items.find(item => item.id === product.id && item.price === (product.delivery_price || product.price));
     
     console.log('Existing item:', existingItem);
 
-    // Calcular quantidade total após adição
     const currentQuantity = existingItem ? existingItem.quantity : 0;
     const newQuantity = currentQuantity + quantity;
 
-    // Validar estoque antes de adicionar
     if (newQuantity > product.current_stock) {
       this.toastr.warning(`Estoque máximo atingido para este produto. Restam apenas ${product.current_stock} unidades.`, 'Estoque Insuficiente');
       return;
     }
 
-    // Determinar preço a ser usado: override > delivery_price > price
     const finalPrice = overridePrice !== undefined 
       ? overridePrice 
       : (product.delivery_price ?? product.price);
@@ -137,21 +127,15 @@ export class CartService {
       ...currentState,
       items: updatedItems,
       total,
-      isOpen: currentState.isOpen // Manter o estado atual do carrinho (não abrir automaticamente)
+      isOpen: currentState.isOpen
     };
     console.log('New state:', newState);
 
     this.cartState.next(newState);
     this.saveCart();
     
-    // Disparar animação
     this.itemAdded$.next(true);
     setTimeout(() => this.itemAdded$.next(false), 300);
-
-    // Se estiver autenticado, sincronizar com o servidor
-    if (this.authService.isLoggedIn()) {
-      // TODO: Implementar sincronização com o servidor
-    }
   }
 
   addComboToCart(combo: Combo, quantity: number = 1): void {
@@ -195,14 +179,8 @@ export class CartService {
     this.cartState.next(newState);
     this.saveCart();
     
-    // Disparar animação
     this.itemAdded$.next(true);
     setTimeout(() => this.itemAdded$.next(false), 300);
-
-    // Se estiver autenticado, sincronizar com o servidor
-    if (this.authService.isLoggedIn()) {
-      // TODO: Implementar sincronização com o servidor
-    }
   }
 
   removeItem(productId: number): void {
@@ -219,11 +197,6 @@ export class CartService {
 
     this.cartState.next(newState);
     this.saveCart();
-
-    // Se estiver autenticado, sincronizar com o servidor
-    if (this.authService.isLoggedIn()) {
-      // TODO: Implementar sincronização com o servidor
-    }
   }
 
   updateQuantity(productId: number, quantity: number): void {
@@ -236,7 +209,6 @@ export class CartService {
     const items = currentState.items || [];
     const item = items.find(i => i.id === productId);
     
-    // Validar estoque antes de atualizar (apenas para produtos, não combos)
     if (item && item.product && !item.isCombo) {
       if (quantity > item.product.current_stock) {
         this.toastr.warning(`Estoque máximo atingido para este produto. Restam apenas ${item.product.current_stock} unidades.`, 'Estoque Insuficiente');
@@ -257,11 +229,6 @@ export class CartService {
 
     this.cartState.next(newState);
     this.saveCart();
-
-    // Se estiver autenticado, sincronizar com o servidor
-    if (this.authService.isLoggedIn()) {
-      // TODO: Implementar sincronização com o servidor
-    }
   }
 
   clearCart(): void {
@@ -304,22 +271,18 @@ export class CartService {
 
   async finishOrder(orderData: any): Promise<any> {
     try {
-      // Verificar se está autenticado
       if (!this.authService.isLoggedIn()) {
         throw new Error('Usuário não autenticado');
       }
 
-      // Preparar dados do pedido
       const order = {
         ...orderData,
         items: this.cartState.value.items,
         total: this.cartState.value.total
       };
 
-      // Enviar pedido para o servidor
       const response = await this.http.post('/api/orders', order).toPromise();
 
-      // Se o pedido foi bem sucedido, limpar o carrinho
       this.clearCart();
 
       return response;

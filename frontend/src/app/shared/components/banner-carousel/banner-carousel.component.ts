@@ -290,18 +290,14 @@ export class BannerCarouselComponent implements OnInit, OnDestroy {
   private handleSwipe(): void {
     const diff = this.touchStartX - this.touchEndX;
     
-    // Verifica se o movimento foi significativo (threshold)
     if (Math.abs(diff) > this.swipeThreshold) {
       if (diff > 0) {
-        // Arrastou para a esquerda -> próximo slide
         this.nextSlide();
       } else {
-        // Arrastou para a direita -> slide anterior
         this.previousSlide();
       }
     }
     
-    // Reset das posições
     this.touchStartX = 0;
     this.touchEndX = 0;
   }
@@ -309,20 +305,15 @@ export class BannerCarouselComponent implements OnInit, OnDestroy {
   getImageUrl(imageUrl: string | null | undefined): string {
     if (!imageUrl) return '';
     
-    // Normaliza a URL base da API (remove o /api do final se tiver)
-    // Ex: de 'http://192.168.1.5:8000/api' para 'http://192.168.1.5:8000'
     const apiBase = environment.apiUrl.replace(/\/api\/?$/, '');
     
-    // SE for URL absoluta
     if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-      // Se estiver apontando para localhost, força a troca pelo IP atual
       if (imageUrl.includes('localhost')) {
         return imageUrl.replace(/http:\/\/localhost:\d+/, apiBase);
       }
       return imageUrl;
     }
     
-    // Caminhos relativos - usar a base da API
     if (imageUrl.startsWith('/storage/')) {
       return apiBase + imageUrl;
     }
@@ -339,31 +330,23 @@ export class BannerCarouselComponent implements OnInit, OnDestroy {
     
     const trimmedLink = link.trim();
     
-    // Se já for uma URL absoluta (http:// ou https://), retorna como está
     if (trimmedLink.startsWith('http://') || trimmedLink.startsWith('https://')) {
       return trimmedLink;
     }
     
-    // Se for uma URL relativa (começa com /), retorna como está
-    // O navegador irá abrir em nova guia (target="_blank") mesmo para URLs relativas
     if (trimmedLink.startsWith('/')) {
       return trimmedLink;
     }
     
-    // Verificar se parece ser um domínio externo
-    // Um domínio geralmente contém um ponto e tem formato válido (ex: fast.com, www.exemplo.com)
-    // Regex simples para detectar domínios: contém ponto, não contém espaços, não começa com ponto ou barra
     const domainPattern = /^[a-zA-Z0-9][a-zA-Z0-9.-]*\.[a-zA-Z]{2,}(\/.*)?$/;
     const looksLikeDomain = domainPattern.test(trimmedLink) && 
                            !trimmedLink.includes(' ') && 
                            !trimmedLink.startsWith('.');
     
-    // Se parecer um domínio, adicionar https:// para torná-lo um link externo
     if (looksLikeDomain) {
       return 'https://' + trimmedLink;
     }
     
-    // Caso contrário, trata como URL relativa adicionando /
     return '/' + trimmedLink;
   }
 }

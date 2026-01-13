@@ -14,14 +14,11 @@ class ProductController extends Controller
 {
     public function index(Request $request)
     {
-        // 1. Input (Mantendo compatibilidade BR/EN)
         $search = $request->input('busca') ?? $request->input('search');
 
-        // 2. Query Base
         $query = Product::with(['category'])
             ->where('is_active', true);
 
-        // 3. Busca Simples (Clean Eloquent)
         $query->when($search, function ($q) use ($search) {
             $q->where(function($sub) use ($search) {
                 $sub->where('name', 'like', "%{$search}%")
@@ -29,7 +26,6 @@ class ProductController extends Controller
             });
         });
 
-        // 4. Outros Filtros
         $query->when($request->input('category_id'), function ($q) use ($request) {
             $q->where('category_id', $request->input('category_id'));
         });
@@ -42,12 +38,10 @@ class ProductController extends Controller
             $q->inRandomOrder();
         });
 
-        // 5. Ordenação
         if (!$request->has('popular') && !$search) {
             $query->latest();
         }
 
-        // 6. Retorno Paginado
         return response()->json($query->paginate($request->input('per_page', 12)));
     }
 
@@ -148,18 +142,12 @@ class ProductController extends Controller
             $product->image_url = Storage::disk('public')->url($path);
         }
 
-        // LÓGICA DE PACK: Se for um Pack, estoque sempre é 0 (gerenciado pelo produto pai)
         if ($product->isPack()) {
-            // Pack não tem estoque próprio, sempre 0
             $product->current_stock = 0;
-            
-            // Nota: Estoque inicial de Packs não é aplicado automaticamente no produto pai
-            // O admin deve gerenciar o estoque diretamente no produto pai
         }
 
         $product->save();
 
-        // Criar movimento de estoque inicial (apenas para produtos normais, não Packs)
         if (!$product->isPack()) {
             $product->stockMovements()->create([
                 'user_id' => auth()->id(),
@@ -174,7 +162,6 @@ class ProductController extends Controller
 
     public function update(Request $request, Product $product): JsonResponse
     {
-        // Log temporário para debug
         \Log::info('Product Update Request:', [
             'method' => $request->method(),
             'url' => $request->fullUrl(),
@@ -280,7 +267,6 @@ class ProductController extends Controller
             $product->image_url = Storage::disk('public')->url($path);
         }
 
-        // LÓGICA DE PACK: Se for um Pack, interceptar e aplicar no produto pai
         if ($product->isPack()) {
             $parentProduct = $product->getParentProduct();
             if (!$parentProduct) {
@@ -289,7 +275,6 @@ class ProductController extends Controller
                 ], 400);
             }
 
-            // Se o estoque mudou, aplicar a diferença no produto pai multiplicado pelo multiplier
             if ($oldStock != $newStock) {
                 $difference = $newStock - $oldStock;
                 $unidadesPai = abs($difference) * $product->stock_multiplier;
@@ -298,7 +283,6 @@ class ProductController extends Controller
                 if ($type === 'entrada') {
                     $parentProduct->increment('current_stock', $unidadesPai);
                 } else {
-                    // Verificar se há estoque suficiente no pai
                     if ($parentProduct->current_stock < $unidadesPai) {
                         return response()->json([
                             'error' => "Estoque insuficiente no produto pai. Tentativa de remover {$unidadesPai} unidades, mas há apenas {$parentProduct->current_stock} disponíveis."
@@ -308,7 +292,6 @@ class ProductController extends Controller
                 }
                 $parentProduct->save();
 
-                // Registrar movimentação no produto pai
                 $parentProduct->stockMovements()->create([
                     'type' => $type,
                     'quantity' => $unidadesPai,
@@ -317,13 +300,11 @@ class ProductController extends Controller
                 ]);
             }
 
-            // Pack não tem estoque próprio, manter como 0 ou valor simbólico
             $product->current_stock = 0;
         }
 
         $product->save();
 
-        // Criar movimento de estoque se a quantidade mudou (apenas para produtos normais, não Packs)
         if (!$product->isPack() && $oldStock != $newStock) {
             $difference = $newStock - $oldStock;
             $type = $difference > 0 ? 'entrada' : 'saida';
@@ -435,8 +416,6 @@ class ProductController extends Controller
             'file' => 'required|file|mimes:csv,xlsx,xls'
         ]);
 
-        // Implementar lógica de importação
-        // Por enquanto, retornar sucesso
         return response()->json([
             'imported' => 0,
             'errors' => ['Funcionalidade de importação será implementada']
@@ -449,8 +428,6 @@ class ProductController extends Controller
             'format' => 'required|in:csv,xlsx'
         ]);
 
-        // Implementar lógica de exportação
-        // Por enquanto, retornar erro
         return response()->json(['error' => 'Funcionalidade de exportação será implementada'], 501);
     }
 }

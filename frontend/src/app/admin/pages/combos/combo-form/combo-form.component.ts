@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormArray, FormsModule, FormControl } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -14,7 +14,7 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
-import { MatTableModule } from '@angular/material/table';
+import { MatTableModule, MatTableDataSource } from '@angular/material/table';
 import { Router, ActivatedRoute } from '@angular/router';
 import { Subject, Observable, of } from 'rxjs';
 import { startWith, map, debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
@@ -70,6 +70,13 @@ export class ComboFormComponent implements OnInit, OnDestroy {
     sale_type: 'garrafa' | 'dose';
   }> = [];
   
+  // DataSource para a tabela do Angular Material
+  dataSource = new MatTableDataSource<{
+    product: Product;
+    quantity: number;
+    sale_type: 'garrafa' | 'dose';
+  }>([]);
+  
   // Colunas da tabela
   displayedColumns: string[] = ['name', 'quantity', 'sale_type', 'actions'];
 
@@ -79,6 +86,7 @@ export class ComboFormComponent implements OnInit, OnDestroy {
   private snackBar = inject(MatSnackBar);
   private dialog = inject(MatDialog);
   private authService = inject(AuthService);
+  private cdr = inject(ChangeDetectorRef);
 
   constructor(private fb: FormBuilder) {
     this.initializeForm();
@@ -173,6 +181,9 @@ export class ComboFormComponent implements OnInit, OnDestroy {
       });
     }
 
+    // Atualizar o dataSource com uma nova referência do array para forçar a detecção de mudanças
+    this.dataSource.data = [...this.selectedProducts];
+    
     // Limpar campo de busca
     this.productSearchControl.setValue('');
     
@@ -182,18 +193,24 @@ export class ComboFormComponent implements OnInit, OnDestroy {
 
   removeProduct(index: number): void {
     this.selectedProducts.splice(index, 1);
+    // Atualizar o dataSource com uma nova referência do array
+    this.dataSource.data = [...this.selectedProducts];
     this.calculatePrice();
   }
 
   updateProductQuantity(index: number, quantity: number): void {
     if (quantity >= 1) {
       this.selectedProducts[index].quantity = quantity;
+      // Atualizar o dataSource para refletir a mudança
+      this.dataSource.data = [...this.selectedProducts];
       this.calculatePrice();
     }
   }
 
   updateProductSaleType(index: number, saleType: 'garrafa' | 'dose'): void {
     this.selectedProducts[index].sale_type = saleType;
+    // Atualizar o dataSource para refletir a mudança
+    this.dataSource.data = [...this.selectedProducts];
     this.calculatePrice();
   }
 
@@ -259,6 +276,7 @@ export class ComboFormComponent implements OnInit, OnDestroy {
 
     // Limpar produtos selecionados
     this.selectedProducts = [];
+    this.dataSource.data = [];
 
     // Adicionar produtos do combo ao novo sistema
     if (combo.products && combo.products.length > 0) {
@@ -283,6 +301,9 @@ export class ComboFormComponent implements OnInit, OnDestroy {
           });
         }
       });
+      
+      // Atualizar o dataSource após adicionar todos os produtos
+      this.dataSource.data = [...this.selectedProducts];
     }
 
     // Calcular preço apenas se há produtos válidos
