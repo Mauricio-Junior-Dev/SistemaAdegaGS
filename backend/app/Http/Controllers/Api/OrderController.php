@@ -1503,17 +1503,17 @@ class OrderController extends Controller
 
             // Determinar o tipo de transação baseado no método de pagamento
             $paymentMethod = $payment->payment_method ?? '';
+
+            if ($paymentMethod !== 'dinheiro') {
+                Log::info("Transação de caixa não criada para pedido #{$order->order_number} - Método: {$paymentMethod} (não é dinheiro)");
+                return;
+            }
+        
+            // O valor que entra na gaveta é o valor da venda (total), não o valor recebido
             $amount = (float) $order->total;
             
             // Criar descrição da transação
-            $description = "Venda - Pedido #{$order->order_number}";
-            if ($paymentMethod === 'dinheiro') {
-                $description .= " (Dinheiro)";
-            } elseif (in_array($paymentMethod, ['cartão de débito', 'cartão de crédito'])) {
-                $description .= " ({$paymentMethod})";
-            } elseif ($paymentMethod === 'pix') {
-                $description .= " (PIX)";
-            }
+            $description = "Venda - Pedido #{$order->order_number} (Dinheiro)";
 
             // Criar transação de entrada no caixa
             CashTransaction::create([

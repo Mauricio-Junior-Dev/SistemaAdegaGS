@@ -1372,22 +1372,25 @@ export class CaixaComponent implements OnInit, OnDestroy {
 
     switch (paymentMethod) {
       case 'dinheiro':
-        // Para dinheiro: adiciona o valor recebido, mas subtrai o troco dado
-        const receivedAmount = Number(this.receivedAmount || saleAmountNum) || 0;
-        const changeAmount = Number(this.changeAmount) || 0;
-        cashChange = receivedAmount - changeAmount;
+        // Para dinheiro: usar o valor líquido da venda (total da venda)
+        // O valor líquido é o que realmente entra na gaveta física
+        // Não usar receivedAmount - changeAmount, pois isso pode estar incorreto
+        // O valor correto é simplesmente o total da venda (saleAmount)
+        cashChange = saleAmountNum;
         break;
       case 'cartão de débito':
       case 'cartão de crédito':
       case 'pix':
-        // Para cartão/PIX: o valor vai direto para o caixa
-        cashChange = saleAmountNum;
-        break;
+        // Para cartão/PIX: NÃO deve somar na gaveta física
+        // Esses valores vão para contas bancárias, não para o caixa físico
+        // Não criar transação de entrada para esses métodos
+        return; // Sair sem criar transação
       default:
-        cashChange = saleAmountNum;
+        // Para outros métodos, não criar transação
+        return;
     }
 
-    // Criar transação no caixa
+    // Criar transação no caixa apenas para dinheiro
     this.cashService.addTransaction({
       type: 'entrada',
       amount: cashChange,
