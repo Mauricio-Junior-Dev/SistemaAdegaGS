@@ -187,7 +187,9 @@ export class ComboFormComponent implements OnInit, OnDestroy {
     // Limpar campo de busca
     this.productSearchControl.setValue('');
     
-    // Recalcular preço
+    // Recalcular preço original automaticamente
+    this.calculateOriginalPrice();
+    // Recalcular preço final
     this.calculatePrice();
   }
 
@@ -195,6 +197,9 @@ export class ComboFormComponent implements OnInit, OnDestroy {
     this.selectedProducts.splice(index, 1);
     // Atualizar o dataSource com uma nova referência do array
     this.dataSource.data = [...this.selectedProducts];
+    // Recalcular preço original automaticamente
+    this.calculateOriginalPrice();
+    // Recalcular preço final
     this.calculatePrice();
   }
 
@@ -203,6 +208,9 @@ export class ComboFormComponent implements OnInit, OnDestroy {
       this.selectedProducts[index].quantity = quantity;
       // Atualizar o dataSource para refletir a mudança
       this.dataSource.data = [...this.selectedProducts];
+      // Recalcular preço original automaticamente
+      this.calculateOriginalPrice();
+      // Recalcular preço final
       this.calculatePrice();
     }
   }
@@ -211,6 +219,9 @@ export class ComboFormComponent implements OnInit, OnDestroy {
     this.selectedProducts[index].sale_type = saleType;
     // Atualizar o dataSource para refletir a mudança
     this.dataSource.data = [...this.selectedProducts];
+    // Recalcular preço original automaticamente
+    this.calculateOriginalPrice();
+    // Recalcular preço final
     this.calculatePrice();
   }
 
@@ -308,6 +319,7 @@ export class ComboFormComponent implements OnInit, OnDestroy {
 
     // Calcular preço apenas se há produtos válidos
     if (this.selectedProducts.length > 0) {
+      this.calculateOriginalPrice();
       this.calculatePrice();
     }
 
@@ -316,6 +328,40 @@ export class ComboFormComponent implements OnInit, OnDestroy {
     console.log('Erros do formulário:', this.getFormErrors());
     console.log('Valor do formulário:', this.comboForm.value);
     console.log('Produtos selecionados:', this.selectedProducts);
+  }
+
+  /**
+   * Calcula o preço original automaticamente somando (produto.price * quantidade) de todos os itens
+   * Este método atualiza o campo original_price no formulário, mas mantém o campo editável
+   * Só atualiza se o valor atual for 0 ou se for igual ao valor calculado anteriormente
+   * (para não sobrescrever edições manuais do usuário)
+   */
+  calculateOriginalPrice(): void {
+    if (this.selectedProducts.length === 0) {
+      this.comboForm.get('original_price')?.setValue(0, { emitEvent: false });
+      this.originalPrice = 0;
+      return;
+    }
+
+    // Calcular soma simples: produto.price * quantidade
+    let totalOriginalPrice = 0;
+    this.selectedProducts.forEach(item => {
+      const productPrice = item.product.price || 0;
+      totalOriginalPrice += productPrice * item.quantity;
+    });
+
+    // Verificar o valor atual no formulário
+    const currentOriginalPrice = this.comboForm.get('original_price')?.value || 0;
+    
+    // Só atualizar se:
+    // 1. O valor atual for 0 (não foi definido)
+    // 2. O valor atual for igual ao valor calculado anteriormente (não foi editado manualmente)
+    // Isso permite que o usuário edite manualmente sem ser sobrescrito
+    if (currentOriginalPrice === 0 || Math.abs(currentOriginalPrice - this.originalPrice) < 0.01) {
+      this.comboForm.get('original_price')?.setValue(totalOriginalPrice, { emitEvent: false });
+    }
+    
+    this.originalPrice = totalOriginalPrice;
   }
 
   calculatePrice(): void {
@@ -340,7 +386,9 @@ export class ComboFormComponent implements OnInit, OnDestroy {
         this.discountAmount = calculation.discount_amount;
         
         // Atualizar preço original no formulário se não foi definido manualmente
-        if (!this.comboForm.get('original_price')?.value) {
+        // Mas respeitar se o usuário já editou manualmente
+        const currentOriginalPrice = this.comboForm.get('original_price')?.value || 0;
+        if (currentOriginalPrice === 0 || currentOriginalPrice === this.originalPrice) {
           this.comboForm.patchValue({ original_price: this.originalPrice });
         }
       },
@@ -353,6 +401,39 @@ export class ComboFormComponent implements OnInit, OnDestroy {
     });
   }
 
+  /**
+   * Encontra o primeiro campo inválido na tela e faz scroll até ele
+   */
+  scrollToFirstInvalidField(): void {
+    // Aguardar um tick para garantir que o DOM foi atualizado
+    setTimeout(() => {
+      // Tentar encontrar campos inválidos do Angular Material primeiro
+      let firstInvalidField = document.querySelector('.mat-form-field.ng-invalid');
+      
+      // Se não encontrar, procurar por qualquer campo inválido
+      if (!firstInvalidField) {
+        firstInvalidField = document.querySelector('input.ng-invalid, textarea.ng-invalid, select.ng-invalid');
+      }
+      
+      // Se ainda não encontrar, procurar por mat-form-field que contém ng-invalid
+      if (!firstInvalidField) {
+        const invalidInputs = document.querySelectorAll('input.ng-invalid, textarea.ng-invalid');
+        if (invalidInputs.length > 0) {
+          // Encontrar o mat-form-field pai
+          const input = invalidInputs[0] as HTMLElement;
+          firstInvalidField = input.closest('.mat-form-field') || input;
+        }
+      }
+      
+      if (firstInvalidField) {
+        firstInvalidField.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center' 
+        });
+      }
+    }, 100);
+  }
+
   onSubmit(): void {
     // Debug: sempre mostrar os dados, mesmo se o formulário não for válido
     console.log('=== DEBUG SUBMIT ===');
@@ -361,69 +442,85 @@ export class ComboFormComponent implements OnInit, OnDestroy {
     console.log('Produtos selecionados:', this.selectedProducts);
     console.log('Erros do formulário:', this.getFormErrors());
     
-    if (this.comboForm.valid) {
-      this.loading = true;
+    // Verificar se o formulário é válido e se há produtos selecionados
+    const isValid = this.comboForm.valid && this.hasValidProducts();
+    
+    if (!isValid) {
+      // Marcar todos os campos como tocados
+      this.comboForm.markAllAsTouched();
       
-      // Converter selectedProducts para o formato esperado pelo backend
-      const productsData = this.selectedProducts.map(item => ({
-        product_id: item.product.id,
-        quantity: item.quantity,
-        sale_type: item.sale_type
-      }));
-
-      const comboData: ComboFormData = {
-        ...this.comboForm.value,
-        price: Number(this.comboForm.value.price),
-        original_price: this.comboForm.value.original_price ? Number(this.comboForm.value.original_price) : undefined,
-        discount_percentage: this.comboForm.value.discount_percentage ? Number(this.comboForm.value.discount_percentage) : undefined,
-        products: productsData,
-        images: this.selectedImages.length > 0 ? this.selectedImages : undefined
-      };
-
-      // Debug: log dos dados que serão enviados
-      console.log('Dados do formulário (convertidos):', comboData);
-      console.log('Produtos (convertidos):', comboData.products);
-      console.log('Imagens selecionadas:', this.selectedImages.length);
-
-      const operation = this.isEdit 
-        ? this.comboService.updateCombo(this.comboId!, comboData)
-        : this.comboService.createCombo(comboData);
-
-      operation.subscribe({
-        next: (combo: Combo) => {
-          this.snackBar.open(
-            `Combo ${this.isEdit ? 'atualizado' : 'criado'} com sucesso!`,
-            'Fechar',
-            { duration: 3000 }
-          );
-          this.router.navigate(['/admin/combos']);
-        },
-        error: (error: any) => {
-          console.error('Erro ao salvar combo:', error);
-          console.error('Detalhes do erro:', error.error);
-          console.error('Status:', error.status);
-          console.error('Status Text:', error.statusText);
-          
-          let errorMessage = 'Erro ao salvar combo';
-          if (error.error && error.error.message) {
-            errorMessage = error.error.message;
-            console.error('Mensagem de erro:', error.error.message);
-          }
-          if (error.error && error.error.errors) {
-            console.error('Erros de validação:', error.error.errors);
-            // Mostrar erros de validação
-            const validationErrors = Object.values(error.error.errors).flat();
-            errorMessage = validationErrors.join(', ');
-          }
-          
-          this.snackBar.open(errorMessage, 'Fechar', { duration: 5000 });
-          this.loading = false;
-        }
-      });
-    } else {
-      console.log('Formulário inválido - marcando campos como tocados');
-      this.markFormGroupTouched();
+      // Mostrar mensagem de erro
+      this.snackBar.open(
+        'Verifique os campos obrigatórios',
+        'Fechar',
+        { duration: 3000 }
+      );
+      
+      // Scroll até o primeiro campo inválido
+      this.scrollToFirstInvalidField();
+      
+      return;
     }
+    
+    // Se válido, prosseguir com o envio
+    this.loading = true;
+    
+    // Converter selectedProducts para o formato esperado pelo backend
+    const productsData = this.selectedProducts.map(item => ({
+      product_id: item.product.id,
+      quantity: item.quantity,
+      sale_type: item.sale_type
+    }));
+
+    const comboData: ComboFormData = {
+      ...this.comboForm.value,
+      price: Number(this.comboForm.value.price),
+      original_price: this.comboForm.value.original_price ? Number(this.comboForm.value.original_price) : undefined,
+      discount_percentage: this.comboForm.value.discount_percentage ? Number(this.comboForm.value.discount_percentage) : undefined,
+      products: productsData,
+      images: this.selectedImages.length > 0 ? this.selectedImages : undefined
+    };
+
+    // Debug: log dos dados que serão enviados
+    console.log('Dados do formulário (convertidos):', comboData);
+    console.log('Produtos (convertidos):', comboData.products);
+    console.log('Imagens selecionadas:', this.selectedImages.length);
+
+    const operation = this.isEdit 
+      ? this.comboService.updateCombo(this.comboId!, comboData)
+      : this.comboService.createCombo(comboData);
+
+    operation.subscribe({
+      next: (combo: Combo) => {
+        this.snackBar.open(
+          `Combo ${this.isEdit ? 'atualizado' : 'criado'} com sucesso!`,
+          'Fechar',
+          { duration: 3000 }
+        );
+        this.router.navigate(['/admin/combos']);
+      },
+      error: (error: any) => {
+        console.error('Erro ao salvar combo:', error);
+        console.error('Detalhes do erro:', error.error);
+        console.error('Status:', error.status);
+        console.error('Status Text:', error.statusText);
+        
+        let errorMessage = 'Erro ao salvar combo';
+        if (error.error && error.error.message) {
+          errorMessage = error.error.message;
+          console.error('Mensagem de erro:', error.error.message);
+        }
+        if (error.error && error.error.errors) {
+          console.error('Erros de validação:', error.error.errors);
+          // Mostrar erros de validação
+          const validationErrors = Object.values(error.error.errors).flat();
+          errorMessage = validationErrors.join(', ');
+        }
+        
+        this.snackBar.open(errorMessage, 'Fechar', { duration: 5000 });
+        this.loading = false;
+      }
+    });
   }
 
   markFormGroupTouched(): void {
