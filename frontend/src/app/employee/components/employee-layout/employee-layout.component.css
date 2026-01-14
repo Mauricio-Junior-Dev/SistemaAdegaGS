@@ -102,6 +102,10 @@ mat-toolbar.main-toolbar {
   padding: 0 16px;
 }
 
+.toolbar-spacer {
+  flex: 1 1 auto;
+}
+
 /* Footer do sidenav com botão de logout */
 .sidenav-footer {
   margin-top: auto;

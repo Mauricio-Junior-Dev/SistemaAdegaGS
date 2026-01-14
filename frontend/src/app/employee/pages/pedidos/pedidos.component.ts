@@ -323,16 +323,16 @@ export class PedidosComponent implements OnInit, OnDestroy {
       const quantity = item.quantity;
       const price = this.formatCurrency(item.subtotal || 0);
       const saleType = item.sale_type === 'dose' ? ' (Dose)' : '';
-      return `➡️ ${quantity}x ${productName}${saleType} - ${price}`;
+      return `- ${quantity}x ${productName}${saleType} - ${price}`;
     }).join('\n');
     
-    const message = `*Pedido Adega GS* saiu para entrega! 🛵
-Link p/ acompanhar: https://adegags.com.br/minha-conta/pedidos/${orderId}
+    const message = `*Pedido Adega GS* saiu para entrega!
+Acesse nosso site para acompanhar: https://adegags.com.br
 
 SENHA: ${password}
 Data: ${formattedDate}
 Tipo: ${deliveryType}
-Endereço: ${addressFull}
+Endereco: ${addressFull}
 Estimativa: 30-40 minutos
 ------------------------------
 Cliente: ${customerName}

@@ -34,10 +34,18 @@ export class EmployeeLayoutComponent {
     { path: '/funcionario/estoque', icon: 'inventory_2', label: 'Estoque' }
   ];
 
+  get isAdmin(): boolean {
+    return this.authService.isAdmin();
+  }
+
   constructor(
     private authService: AuthService,
     private orderPollingService: OrderPollingService
   ) {}
+
+  goToAdmin(): void {
+    window.location.href = '/admin/dashboard';
+  }
 
   logout(): void {
     this.authService.logout().subscribe({
