@@ -80,6 +80,14 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
             <mat-icon>local_shipping</mat-icon>
             <span>Zonas de Entrega</span>
           </a>
+          <a routerLink="/funcionario/caixa" routerLinkActive="active" class="nav-item" matTooltip="Abrir PDV (Caixa do Funcionário)">
+            <mat-icon>point_of_sale</mat-icon>
+            <span>Caixa PDV</span>
+          </a>
+          <a routerLink="/funcionario/pedidos" routerLinkActive="active" class="nav-item" matTooltip="Ver Pedidos do PDV">
+            <mat-icon>receipt_long</mat-icon>
+            <span>Pedidos PDV</span>
+          </a>
         </nav>
 
         <div class="sidenav-footer">

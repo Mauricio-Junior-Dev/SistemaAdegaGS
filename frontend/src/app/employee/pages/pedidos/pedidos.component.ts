@@ -19,7 +19,7 @@ import { FormsModule } from '@angular/forms';
 import { Subject, takeUntil, debounceTime, distinctUntilChanged, Observable, combineLatest, map, Subscription } from 'rxjs';
 import { finalize } from 'rxjs/operators';
 
-import { OrderService, Order, OrderStatus, OrderResponse } from '../../services/order.service';
+import { OrderService, Order, OrderStatus, OrderResponse, PaymentMethod } from '../../services/order.service';
 import { PrintService } from '../../../core/services/print.service';
 import { OrderPollingService } from '../../../core/services/order-polling.service';
 import { UpdateOrderStatusDialogComponent } from './dialogs/update-order-status-dialog.component';
@@ -275,8 +275,95 @@ export class PedidosComponent implements OnInit, OnDestroy {
     });
   }
 
+  private generateWhatsAppMessage(order: Order): string {
+    const customerName = order.customer_name || order.user?.name || 'Cliente';
+    const customerPhone = order.customer_phone || order.user?.phone || '';
+    const orderNumber = order.order_number || String(order.id);
+    const orderId = order.id;
+    
+    const orderDate = new Date(order.created_at);
+    const formattedDate = orderDate.toLocaleString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+    
+    const deliveryType = order.type === 'online' ? 'Delivery' : 'Balcão';
+    
+    let addressFull = 'Retirada no Balcão';
+    if (order.delivery_address) {
+      const addr = order.delivery_address;
+      addressFull = `${addr.street}, ${addr.number}`;
+      if (addr.complement) addressFull += ` - ${addr.complement}`;
+      addressFull += ` - ${addr.neighborhood}, ${addr.city} - ${addr.state}`;
+      if (addr.zipcode) addressFull += ` (CEP: ${addr.zipcode})`;
+    }
+    
+    const phoneDigits = customerPhone.replace(/\D/g, '');
+    const password = phoneDigits.length >= 4 
+      ? phoneDigits.slice(-4) 
+      : orderNumber.slice(-4);
+    
+    const payment = Array.isArray(order.payment) ? order.payment[0] : order.payment;
+    const paymentMethod = payment?.payment_method || order.payment_method || 'Não informado';
+    const paymentMethodLabel = this.getPaymentMethodLabel(paymentMethod);
+    
+    const subtotal = (order.items || []).reduce((sum, item) => sum + (item.subtotal || 0), 0);
+    const deliveryFee = order.delivery_fee || 0;
+    const discount = 0;
+    const total = order.total || 0;
+    
+    const changeAmount = payment?.change_amount || 0;
+    const hasChange = paymentMethod === 'dinheiro' && changeAmount > 0;
+    
+    const itemsText = (order.items || []).map(item => {
+      const productName = item.product?.name || item.combo?.name || 'Produto não encontrado';
+      const quantity = item.quantity;
+      const price = this.formatCurrency(item.subtotal || 0);
+      const saleType = item.sale_type === 'dose' ? ' (Dose)' : '';
+      return `➡️ ${quantity}x ${productName}${saleType} - ${price}`;
+    }).join('\n');
+    
+    const message = `*Pedido Adega GS* saiu para entrega! 🛵
+Link p/ acompanhar: https://adegags.com.br/minha-conta/pedidos/${orderId}
+
+SENHA: ${password}
+Data: ${formattedDate}
+Tipo: ${deliveryType}
+Endereço: ${addressFull}
+Estimativa: 30-40 minutos
+------------------------------
+Cliente: ${customerName}
+Fone: ${customerPhone}
+------------------------------
+*RESUMO DO PEDIDO:*
+
+${itemsText}
+------------------------------
+Itens: ${this.formatCurrency(subtotal)}
+Entrega: ${this.formatCurrency(deliveryFee)}
+Desconto: ${this.formatCurrency(discount)}
+
+*TOTAL: ${this.formatCurrency(total)}*
+------------------------------
+Pagamento: ${paymentMethodLabel}${hasChange ? `\nTroco: ${this.formatCurrency(changeAmount)}` : ''}`;
+
+    return message;
+  }
+
+  private getPaymentMethodLabel(method: PaymentMethod | string): string {
+    const labels: Record<string, string> = {
+      'dinheiro': 'Dinheiro',
+      'cartão de débito': 'Cartão de Débito',
+      'cartão de crédito': 'Cartão de Crédito',
+      'pix': 'PIX'
+    };
+    return labels[method] || method;
+  }
+
   openWhatsApp(order: Order): void {
-    // Verificar se existe telefone do cliente
     const phone = order.customer_phone || order.user?.phone;
     
     if (!phone) {
@@ -284,31 +371,17 @@ export class PedidosComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Formatar telefone: remover caracteres não numéricos
     const formattedPhone = phone.replace(/\D/g, '');
     
-    // Verificar se o telefone tem pelo menos 10 dígitos (formato mínimo válido)
     if (formattedPhone.length < 10) {
       this.snackBar.open('Telefone do cliente inválido. Não foi possível abrir o WhatsApp.', 'Fechar', { duration: 4000 });
       return;
     }
 
-    // Obter nome do cliente
-    const customerName = order.customer_name || order.user?.name || 'Cliente';
-    
-    // Obter número do pedido
-    const orderNumber = order.order_number || order.id;
-
-    // Montar mensagem
-    const message = `Olá ${customerName}! Seu pedido #${orderNumber} da Adega GS acabou de sair para entrega! 🛵💨`;
-    
-    // Codificar a mensagem para URL
+    const message = this.generateWhatsAppMessage(order);
     const encodedMessage = encodeURIComponent(message);
-    
-    // Montar URL do WhatsApp Web
     const whatsappUrl = `https://wa.me/${formattedPhone}?text=${encodedMessage}`;
     
-    // Abrir WhatsApp em nova aba
     window.open(whatsappUrl, '_blank');
   }
 

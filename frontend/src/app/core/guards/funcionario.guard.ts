@@ -8,7 +8,7 @@ export const funcionarioGuard = () => {
   const snackBar = inject(MatSnackBar);
   const authService = inject(AuthService);
 
-  if (authService.isEmployee()) {
+  if (authService.isEmployee() || authService.isAdmin()) {
     return true;
   }
 
