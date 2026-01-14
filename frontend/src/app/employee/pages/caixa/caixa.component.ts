@@ -638,32 +638,28 @@ export class CaixaComponent implements OnInit, OnDestroy {
 
   updateQuantity(index: number, change: number): void {
     const item = this.cartItems[index];
+    if (!item) return;
+
     const newQuantity = item.quantity + change;
+    if (newQuantity < 1) return;
 
-    if (newQuantity < 1) {
-      return;
-    }
-
-    // Verificar disponibilidade baseada no tipo de venda
     if (item.sale_type === 'garrafa') {
       if (item.product && newQuantity > item.product.current_stock) {
         return;
       }
-    } else {
-      // Para doses, verificar se há garrafas suficientes para converter
-      if (item.product) {
-        const dosesNecessarias = newQuantity;
-        const garrafasNecessarias = Math.ceil(dosesNecessarias / item.product.doses_por_garrafa);
-        if (item.product.current_stock < garrafasNecessarias) {
-          return;
-        }
+    } else if (item.product) {
+      const dosesNecessarias = newQuantity;
+      const garrafasNecessarias = Math.ceil(dosesNecessarias / item.product.doses_por_garrafa);
+      if (item.product.current_stock < garrafasNecessarias) {
+        return;
       }
     }
 
+    const unitPrice = this.getItemUnitPrice(item);
+
     item.quantity = newQuantity;
-    // Preservar o preço unitário escolhido (balcão ou entrega) ao recalcular
-    const unitPrice = item.subtotal / item.quantity; // Preço unitário atual
     item.subtotal = newQuantity * unitPrice;
+
     this.updateTotal();
   }
 
