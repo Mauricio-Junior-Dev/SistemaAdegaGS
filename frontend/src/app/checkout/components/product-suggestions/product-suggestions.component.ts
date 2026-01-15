@@ -93,7 +93,8 @@ export class ProductSuggestionsComponent implements OnInit, OnDestroy {
       this.toastr.success(message, '', {
         timeOut: 1500,
         positionClass: 'toast-bottom-center',
-        progressBar: false
+        progressBar: false,
+        toastClass: 'modern-toast-notification'
       });
     }
   }

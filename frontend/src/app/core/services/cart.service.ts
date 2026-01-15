@@ -92,7 +92,9 @@ export class CartService {
     const newQuantity = currentQuantity + quantity;
 
     if (newQuantity > product.current_stock) {
-      this.toastr.warning(`Estoque máximo atingido para este produto. Restam apenas ${product.current_stock} unidades.`, 'Estoque Insuficiente');
+      this.toastr.warning(`Estoque máximo atingido para este produto. Restam apenas ${product.current_stock} unidades.`, 'Estoque Insuficiente', {
+        toastClass: 'modern-toast-notification'
+      });
       return;
     }
 
@@ -211,7 +213,9 @@ export class CartService {
     
     if (item && item.product && !item.isCombo) {
       if (quantity > item.product.current_stock) {
-        this.toastr.warning(`Estoque máximo atingido para este produto. Restam apenas ${item.product.current_stock} unidades.`, 'Estoque Insuficiente');
+        this.toastr.warning(`Estoque máximo atingido para este produto. Restam apenas ${item.product.current_stock} unidades.`, 'Estoque Insuficiente', {
+          toastClass: 'modern-toast-notification'
+        });
         return;
       }
     }
