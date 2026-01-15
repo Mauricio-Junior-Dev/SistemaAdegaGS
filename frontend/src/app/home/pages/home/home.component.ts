@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { ProductService } from '../../../core/services/product.service';
@@ -18,7 +18,7 @@ import { environment } from '../../../../environments/environment';
   standalone: true,
   imports: [CommonModule, RouterModule, BannerCarouselComponent, ProductCardComponent]
 })
-export class HomeComponent implements OnInit {
+export class HomeComponent implements OnInit, AfterViewInit {
   categories: Category[] = [];
   featuredProducts: Product[] = [];
   popularProducts: Product[] = [];
@@ -63,6 +63,11 @@ export class HomeComponent implements OnInit {
     this.loadBanners();
   }
 
+  ngAfterViewInit(): void {
+    // Garantir que a página inicie no topo absoluto
+    window.scrollTo(0, 0);
+  }
+
   loadCategories(): void {
     this.loading.categories = true;
     this.error.categories = null;
@@ -91,8 +96,9 @@ export class HomeComponent implements OnInit {
       next: (products) => {
         this.featuredProducts = products;
         // Se não há categoria selecionada, carregar produtos com paginação
+        // Sem scroll automático no carregamento inicial
         if (this.selectedCategory === null) {
-          this.loadAllProducts(1);
+          this.loadAllProducts(1, false);
         }
         this.loading.featured = false;
       },
@@ -178,7 +184,7 @@ export class HomeComponent implements OnInit {
     if (category && this.selectedCategory === category.id) {
       this.selectedCategory = null;
       this.sectionTitle = 'Destaques';
-      this.loadAllProducts();
+      this.loadAllProducts(1, true); // Scroll quando usuário clica
       return;
     }
 
@@ -192,16 +198,17 @@ export class HomeComponent implements OnInit {
       } else {
         this.sectionTitle = category.name;
       }
-      this.loadProductsByCategory(category.id);
+      this.loadProductsByCategory(category.id, 1, true); // Scroll quando usuário clica
     } else {
       this.sectionTitle = 'Destaques';
-      this.loadAllProducts();
+      this.loadAllProducts(1, true); // Scroll quando usuário clica
     }
   }
 
   /**
    * Faz scroll suave até a seção de produtos
    * Usa setTimeout para garantir que a renderização já aconteceu
+   * Deve ser chamado apenas quando o usuário clica em uma categoria
    */
   private scrollToProducts(): void {
     setTimeout(() => {
@@ -215,7 +222,7 @@ export class HomeComponent implements OnInit {
     }, 100);
   }
 
-  loadAllProducts(page: number = 1): void {
+  loadAllProducts(page: number = 1, shouldScroll: boolean = false): void {
     // Carregar todos os produtos (em destaque)
     this.isLoadingProducts = true;
     this.error.filtered = null;
@@ -224,8 +231,10 @@ export class HomeComponent implements OnInit {
       next: (response) => {
         if (page === 1) {
           this.filteredProducts = response.data || [];
-          // Scroll suave apenas na primeira página (mudança de categoria)
-          this.scrollToProducts();
+          // Scroll suave apenas quando solicitado (ação do usuário)
+          if (shouldScroll) {
+            this.scrollToProducts();
+          }
         } else {
           this.filteredProducts = [...this.filteredProducts, ...(response.data || [])];
         }
@@ -241,7 +250,7 @@ export class HomeComponent implements OnInit {
     });
   }
 
-  loadProductsByCategory(categoryId: number, page: number = 1): void {
+  loadProductsByCategory(categoryId: number, page: number = 1, shouldScroll: boolean = false): void {
     this.isLoadingProducts = true;
     this.error.filtered = null;
 
@@ -249,8 +258,10 @@ export class HomeComponent implements OnInit {
       next: (response) => {
         if (page === 1) {
           this.filteredProducts = response.data || [];
-          // Scroll suave apenas na primeira página (mudança de categoria)
-          this.scrollToProducts();
+          // Scroll suave apenas quando solicitado (ação do usuário)
+          if (shouldScroll) {
+            this.scrollToProducts();
+          }
         } else {
           this.filteredProducts = [...this.filteredProducts, ...(response.data || [])];
         }
