@@ -1,5 +1,6 @@
-/* Toastr Styles - deve vir primeiro */
+/* Imports - devem vir primeiro */
 @import 'ngx-toastr/toastr';
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 /* ==========================================
    TOASTR MODERN NOTIFICATION STYLES
@@ -191,9 +192,6 @@
     bottom: 24px; /* Menos margem no desktop (sem bottom-nav) */
   }
 }
-
-/* Importação da fonte */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 /* Variáveis CSS (funcionam na maioria dos navegadores modernos) */
 :root {
