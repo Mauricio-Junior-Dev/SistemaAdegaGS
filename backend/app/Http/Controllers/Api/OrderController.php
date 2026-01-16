@@ -17,6 +17,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Database\QueryException;
 use App\Services\PrintService;
 
 class OrderController extends Controller
@@ -286,15 +287,24 @@ class OrderController extends Controller
                 
                 if (!$customer && ($request->customer_name || $request->customer_email)) {
                     // Criar novo cliente
-                    $customer = User::create([
-                        'name' => $request->customer_name ?? 'Cliente',
-                        'email' => $request->customer_email ?? 'cliente@temp.com',
-                        'phone' => $request->customer_phone,
-                        'document_number' => $request->customer_document,
-                        'type' => 'customer',
-                        'is_active' => true,
-                        'password' => bcrypt('temp123') // Senha temporária
-                    ]);
+                    try {
+                        $customer = User::create([
+                            'name' => $request->customer_name ?? 'Cliente',
+                            'email' => $request->customer_email ?? $this->generateUniqueEmail($request->customer_phone),
+                            'phone' => $request->customer_phone,
+                            'document_number' => $request->customer_document,
+                            'type' => 'customer',
+                            'is_active' => true,
+                            'password' => bcrypt('temp123') // Senha temporária
+                        ]);
+                    } catch (QueryException $e) {
+                        DB::rollBack();
+                        $error = $this->handleDatabaseError($e);
+                        return response()->json([
+                            'message' => $error['message'],
+                            'error' => 'database_error'
+                        ], $error['status_code']);
+                    }
                 }
                 
                 if ($customer) {
@@ -729,6 +739,14 @@ class OrderController extends Controller
                 201
             );
 
+        } catch (QueryException $e) {
+            DB::rollBack();
+            // Se for erro de duplicata de cliente, retornar mensagem amigável
+            $error = $this->handleDatabaseError($e);
+            return response()->json([
+                'message' => $error['message'],
+                'error' => 'database_error'
+            ], $error['status_code']);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('OrderController@store - Erro ao criar pedido:', [
@@ -737,7 +755,7 @@ class OrderController extends Controller
                 'data' => $request->all()
             ]);
             return response()->json([
-                'message' => 'Erro ao processar pedido: ' . $e->getMessage()
+                'message' => 'Erro ao processar pedido. Verifique os dados e tente novamente.'
             ], 500);
         }
     }
@@ -784,15 +802,24 @@ class OrderController extends Controller
 
             if (!$customer) {
                 // Criar novo cliente
-                $customer = User::create([
-                    'name' => $request->customer_name,
-                    'email' => $request->customer_email ?? 'cliente@temp.com',
-                    'phone' => $request->customer_phone,
-                    'document_number' => $request->customer_document,
-                    'type' => 'customer',
-                    'is_active' => true,
-                    'password' => bcrypt('temp123') // Senha temporária
-                ]);
+                try {
+                    $customer = User::create([
+                        'name' => $request->customer_name,
+                        'email' => $request->customer_email ?? $this->generateUniqueEmail($request->customer_phone),
+                        'phone' => $request->customer_phone,
+                        'document_number' => $request->customer_document,
+                        'type' => 'customer',
+                        'is_active' => true,
+                        'password' => bcrypt('temp123') // Senha temporária
+                    ]);
+                } catch (QueryException $e) {
+                    DB::rollBack();
+                    $error = $this->handleDatabaseError($e);
+                    return response()->json([
+                        'message' => $error['message'],
+                        'error' => 'database_error'
+                    ], $error['status_code']);
+                }
             }
 
             // Criar pedido
@@ -1040,9 +1067,23 @@ class OrderController extends Controller
                 'change_amount' => $request->change_amount
             ], 201);
 
+        } catch (QueryException $e) {
+            DB::rollBack();
+            // Se for erro de duplicata de cliente, retornar mensagem amigável
+            $error = $this->handleDatabaseError($e);
+            return response()->json([
+                'message' => $error['message'],
+                'error' => 'database_error'
+            ], $error['status_code']);
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['message' => $e->getMessage()], 422);
+            Log::error('OrderController@createManualOrder - Erro ao criar pedido:', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json([
+                'message' => 'Erro ao processar pedido. Verifique os dados e tente novamente.'
+            ], 422);
         }
     }
 
@@ -1213,15 +1254,23 @@ class OrderController extends Controller
         }
 
         // Criar novo cliente
-        $customer = User::create([
-            'name' => $request->name,
-            'email' => $request->email ?? 'cliente@temp.com',
-            'phone' => $request->phone,
-            'document_number' => $request->document_number,
-            'type' => 'customer',
-            'is_active' => true,
-            'password' => bcrypt('temp123') // Senha temporária
-        ]);
+        try {
+            $customer = User::create([
+                'name' => $request->name,
+                'email' => $request->email ?? $this->generateUniqueEmail($request->phone),
+                'phone' => $request->phone,
+                'document_number' => $request->document_number,
+                'type' => 'customer',
+                'is_active' => true,
+                'password' => bcrypt('temp123') // Senha temporária
+            ]);
+        } catch (QueryException $e) {
+            $error = $this->handleDatabaseError($e);
+            return response()->json([
+                'message' => $error['message'],
+                'error' => 'database_error'
+            ], $error['status_code']);
+        }
 
         $addresses = [];
         
@@ -1464,6 +1513,104 @@ class OrderController extends Controller
         $order->load(['items.product', 'items.combo', 'delivery_address', 'payment']);
 
         return response()->json($order);
+    }
+
+    /**
+     * Trata erros de banco de dados e retorna mensagens amigáveis
+     * 
+     * @param QueryException $e Exceção do banco de dados
+     * @return array Array com 'message' e 'status_code'
+     */
+    private function handleDatabaseError(QueryException $e): array
+    {
+        $errorCode = $e->errorInfo[1] ?? null;
+        $errorMessage = strtolower($e->getMessage());
+        $errorInfo = $e->errorInfo[2] ?? ''; // Mensagem de erro do MySQL
+        
+        // Erro 1062 = Duplicate Entry (MySQL)
+        if ($errorCode === 1062) {
+            // Verificar qual chave única causou o erro
+            // A mensagem do MySQL geralmente contém: "Duplicate entry 'valor' for key 'nome_da_constraint'"
+            $errorString = strtolower($errorMessage . ' ' . $errorInfo);
+            
+            // Verificar email primeiro (mais específico)
+            if (strpos($errorString, 'users_email_unique') !== false || 
+                (strpos($errorString, 'email') !== false && strpos($errorString, 'users') !== false)) {
+                return [
+                    'message' => 'Este e-mail já está cadastrado em outro cliente.',
+                    'status_code' => 422
+                ];
+            }
+            
+            // Verificar document_number (CPF/CNPJ)
+            if (strpos($errorString, 'users_document_number_unique') !== false || 
+                (strpos($errorString, 'document_number') !== false && strpos($errorString, 'users') !== false)) {
+                return [
+                    'message' => 'Este CPF já pertence a outro cliente.',
+                    'status_code' => 422
+                ];
+            }
+            
+            // Verificar phone
+            if (strpos($errorString, 'users_phone_unique') !== false || 
+                (strpos($errorString, 'phone') !== false && strpos($errorString, 'users') !== false)) {
+                return [
+                    'message' => 'Este telefone já está cadastrado.',
+                    'status_code' => 422
+                ];
+            }
+            
+            // Fallback: se for erro de duplicata mas não identificamos o campo específico
+            return [
+                'message' => 'Os dados informados já estão cadastrados em outro cliente.',
+                'status_code' => 422
+            ];
+        }
+        
+        // Para outros erros, logar e retornar mensagem genérica
+        Log::error('Erro de banco de dados ao criar/atualizar cliente', [
+            'error_code' => $errorCode,
+            'error_message' => $errorMessage,
+            'error_info' => $e->errorInfo
+        ]);
+        
+        return [
+            'message' => 'Erro ao salvar cliente. Verifique os dados.',
+            'status_code' => 422
+        ];
+    }
+
+    /**
+     * Gera um email único para clientes que não forneceram email
+     * 
+     * @param string|null $phone Telefone do cliente (opcional)
+     * @return string Email único gerado
+     */
+    private function generateUniqueEmail(?string $phone = null): string
+    {
+        $timestamp = time();
+        $phonePart = '';
+        
+        // Se tiver telefone, usar apenas números para criar parte do email
+        if ($phone) {
+            $phoneClean = preg_replace('/\D/', '', $phone);
+            if (!empty($phoneClean)) {
+                // Usar últimos 8 dígitos do telefone para evitar emails muito longos
+                $phonePart = substr($phoneClean, -8) . '_';
+            }
+        }
+        
+        $baseEmail = "cliente_{$phonePart}{$timestamp}@adegatemp.com";
+        $email = $baseEmail;
+        $counter = 0;
+        
+        // Verificar se o email já existe e incrementar contador se necessário
+        while (User::where('email', $email)->exists()) {
+            $counter++;
+            $email = "cliente_{$phonePart}{$timestamp}_{$counter}@adegatemp.com";
+        }
+        
+        return $email;
     }
 
     /**

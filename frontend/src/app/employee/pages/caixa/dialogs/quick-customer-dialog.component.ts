@@ -111,7 +111,9 @@ export class QuickCustomerDialogComponent {
           this.snackBar.open('Cliente já existe! Usando dados existentes.', 'Fechar', { duration: 3000 });
           this.dialogRef.close(error.error.customer);
         } else {
-          this.snackBar.open('Erro ao criar cliente: ' + (error.error?.message || 'Erro desconhecido'), 'Fechar', { duration: 5000 });
+          // Extrair mensagem de erro amigável do backend
+          const errorMessage = error.error?.message || error.error?.error || 'Erro ao criar cliente. Verifique os dados.';
+          this.snackBar.open(errorMessage, 'Fechar', { duration: 5000 });
         }
       }
     });
