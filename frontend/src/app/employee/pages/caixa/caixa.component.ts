@@ -16,6 +16,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatSelectModule } from '@angular/material/select';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { Subject, Observable, of } from 'rxjs';
 import { debounceTime, distinctUntilChanged, takeUntil, map, catchError } from 'rxjs/operators';
 
@@ -67,7 +68,8 @@ interface CartItem {
     MatTooltipModule,
     MatDividerModule,
     MatSelectModule,
-    MatCheckboxModule
+    MatCheckboxModule,
+    MatSlideToggleModule
   ]
 })
 export class CaixaComponent implements OnInit, OnDestroy {
@@ -108,6 +110,8 @@ export class CaixaComponent implements OnInit, OnDestroy {
   
   // Pagamento na Entrega
   isPayOnDelivery = false;
+  // Controle se a taxa de entrega será cobrada no total/pedido
+  isDeliveryFeeEnabled = false;
   
   // Método de Pagamento Selecionado
   selectedPaymentMethod: PaymentMethod | null = null;
@@ -288,8 +292,27 @@ export class CaixaComponent implements OnInit, OnDestroy {
       });
   }
 
-  onCustomerSearch(event: any): void {
-    this.customerSearchTerm = event.target.value;
+  /**
+   * Usa o texto digitado como nome de cliente avulso (sem cadastro),
+   * preenchendo apenas customer_name e deixando customer_id nulo.
+   */
+  useQuickCustomerName(): void {
+    const name = (this.customerSearchTerm || '').trim();
+    if (!name) {
+      return;
+    }
+
+    // Cliente avulso: apenas nome, sem vincular a um registro de cliente
+    this.selectedCustomer = null;
+    this.customerName = name;
+    this.customerPhone = '';
+    this.customerEmail = '';
+    this.customerDocument = '';
+    this.customerSearchResults = [];
+  }
+
+  onCustomerSearch(term: string): void {
+    this.customerSearchTerm = term;
     this.customerSearchSubject.next(this.customerSearchTerm);
   }
 
@@ -371,6 +394,7 @@ export class CaixaComponent implements OnInit, OnDestroy {
     if (addressId && this.isPayOnDelivery) {
       this.calculateDeliveryFee(addressId);
     } else {
+      // Ao limpar endereço ou quando não é entrega, não considerar taxa de entrega
       this.deliveryFee = 0;
       this.estimatedDeliveryTime = '';
       this.updateTotal();
@@ -430,9 +454,12 @@ export class CaixaComponent implements OnInit, OnDestroy {
       // Se desmarcou, limpar endereço e frete
       this.selectedAddressId = null;
       this.deliveryFee = 0;
+      this.isDeliveryFeeEnabled = false;
       this.estimatedDeliveryTime = '';
       this.updateTotal();
     } else {
+      // Ao marcar entrega, por padrão habilitar a cobrança da taxa de entrega
+      this.isDeliveryFeeEnabled = true;
       // Se marcou, verificar se tem cliente selecionado
       if (!this.selectedCustomer) {
         this.snackBar.open('Selecione um cliente antes de marcar "Pagamento na Entrega"', 'Fechar', { duration: 3000 });
@@ -496,7 +523,6 @@ export class CaixaComponent implements OnInit, OnDestroy {
     this.customerDocument = '';
     this.customerSearchTerm = '';
     this.customerSearchResults = [];
-    this.showCustomerSearch = false;
     this.customerAddresses = [];
     this.selectedAddressId = null;
     this.deliveryFee = 0;
@@ -664,7 +690,24 @@ export class CaixaComponent implements OnInit, OnDestroy {
   }
 
   updateTotal(): void {
-    this.total = this.cartItems.reduce((sum, item) => sum + item.subtotal, 0) + this.deliveryFee;
+    const itemsTotal = this.cartItems.reduce((sum, item) => sum + item.subtotal, 0);
+    // Somar taxa de entrega apenas se estiver em modo entrega e se a cobrança estiver habilitada
+    const appliedDeliveryFee = (this.isPayOnDelivery && this.isDeliveryFeeEnabled) ? this.deliveryFee : 0;
+    this.total = itemsTotal + appliedDeliveryFee;
+    
+    // Recalcular troco automaticamente se o método de pagamento for dinheiro
+    if (this.selectedPaymentMethod === 'dinheiro' && this.receivedAmount > 0) {
+      this.changeAmount = Math.max(0, this.receivedAmount - this.total);
+    }
+  }
+
+  /**
+   * Método chamado quando o toggle de cobrança de taxa de entrega é alterado.
+   * Recalcula o total e o troco automaticamente.
+   */
+  onDeliveryFeeToggleChange(): void {
+    // Atualizar o total (que já recalcula o troco automaticamente se for dinheiro)
+    this.updateTotal();
   }
 
   clearCart(): void {
@@ -680,6 +723,7 @@ export class CaixaComponent implements OnInit, OnDestroy {
     this.deliveryFee = 0;
     this.estimatedDeliveryTime = '';
     this.isPayOnDelivery = false;
+    this.isDeliveryFeeEnabled = false;
     this.customerSearchTerm = '';
     this.customerSearchResults = [];
     this.showCustomerSearch = false;
@@ -858,6 +902,9 @@ export class CaixaComponent implements OnInit, OnDestroy {
       this.changeAmount = this.receivedAmount - this.total;
     }
 
+    // Determinar qual taxa de entrega será efetivamente cobrada
+    const appliedDeliveryFee = (this.isPayOnDelivery && this.isDeliveryFeeEnabled) ? (this.deliveryFee || 0) : 0;
+
     const order: CreateOrderRequest = {
       items: this.cartItems.map(item => {
         // Calcular o preço unitário baseado no subtotal calculado (não no preço padrão do produto)
@@ -872,8 +919,8 @@ export class CaixaComponent implements OnInit, OnDestroy {
           price: unitPrice // Usar o preço calculado, não o preço padrão do produto
         };
       }),
-      total: this.total - this.deliveryFee, // Subtotal sem frete (o backend recalcula)
-      delivery_fee: this.isPayOnDelivery ? (this.deliveryFee || 0) : 0,
+      total: this.total - appliedDeliveryFee, // Subtotal sem frete (o backend recalcula)
+      delivery_fee: appliedDeliveryFee,
       payment_method: paymentMethod,
       customer_name: this.customerName || undefined,
       customer_phone: this.customerPhone || undefined,

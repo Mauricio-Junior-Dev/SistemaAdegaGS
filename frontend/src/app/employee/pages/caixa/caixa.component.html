@@ -216,91 +216,75 @@
             <div class="customer-info">
               <div class="customer-search-header">
                 <h4>Cliente</h4>
-                <div class="customer-actions">
-                  <button mat-icon-button 
-                          (click)="toggleCustomerSearch()"
-                          [color]="showCustomerSearch ? 'primary' : 'basic'"
-                          matTooltip="Buscar cliente cadastrado">
-                    <mat-icon>search</mat-icon>
-                  </button>
-                  <button mat-icon-button 
-                          (click)="openQuickCustomerDialog()"
-                          color="accent"
-                          matTooltip="Criar novo cliente">
+              </div>
+
+              <!-- Campo único de busca inteligente -->
+              <div *ngIf="!selectedCustomer && !customerName" class="customer-search">
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Buscar cliente por nome, CPF ou telefone...</mat-label>
+                  <input matInput
+                         [(ngModel)]="customerSearchTerm"
+                         (ngModelChange)="onCustomerSearch($event)"
+                         [matAutocomplete]="customerAuto"
+                         placeholder="Digite para buscar ou criar cliente avulso">
+                  <mat-icon matPrefix>search</mat-icon>
+                  <button mat-icon-button
+                          matSuffix
+                          type="button"
+                          color="primary"
+                          (click)="openQuickCustomerDialog(); $event.stopPropagation()"
+                          matTooltip="Cadastrar Novo Cliente"
+                          aria-label="Cadastrar novo cliente">
                     <mat-icon>person_add</mat-icon>
                   </button>
-                  <button mat-icon-button 
-                          *ngIf="selectedCustomer"
-                          (click)="clearCustomer()"
-                          color="warn"
-                          matTooltip="Limpar cliente">
-                    <mat-icon>clear</mat-icon>
-                  </button>
-                </div>
-              </div>
-
-              <!-- Busca de Clientes -->
-              <div *ngIf="showCustomerSearch" class="customer-search">
-                <mat-form-field appearance="outline" class="full-width">
-                  <mat-label>Buscar cliente por nome, telefone, email...</mat-label>
-                  <input matInput 
-                         [(ngModel)]="customerSearchTerm"
-                         (input)="onCustomerSearch($event)"
-                         placeholder="Digite para buscar">
-                  <mat-icon matSuffix>search</mat-icon>
                 </mat-form-field>
 
-                <!-- Resultados da Busca -->
-                <div *ngIf="customerSearchResults.length > 0" class="customer-results">
-                  <div *ngFor="let customer of customerSearchResults" 
-                       class="customer-result"
-                       (click)="selectCustomer(customer)">
-                    <div class="customer-info">
-                      <span class="name">{{customer.name}}</span>
-                      <span class="email">{{customer.email}}</span>
-                      <span *ngIf="customer.phone" class="phone">{{customer.phone}}</span>
+                <mat-autocomplete #customerAuto="matAutocomplete"
+                                  (optionSelected)="selectCustomer($event.option.value)">
+                  <mat-option *ngFor="let customer of customerSearchResults" [value]="customer">
+                    <div class="customer-option">
+                      <span class="name">{{ customer.name }}</span>
+                      <span class="info">
+                        <span *ngIf="customer.phone">{{ customer.phone }}</span>
+                        <span *ngIf="!customer.phone && customer.email">{{ customer.email }}</span>
+                      </span>
                     </div>
-                    <mat-icon>add</mat-icon>
-                  </div>
-                </div>
-                
-                <!-- Opção para criar novo cliente -->
-                <div class="create-customer-option" *ngIf="customerSearchResults.length === 0 && customerSearchTerm.length >= 2">
-                  <div class="customer-result create-new" (click)="openQuickCustomerDialog()">
-                    <div class="customer-info">
-                      <mat-icon>person_add</mat-icon>
-                      <span class="name">Cadastrar novo cliente: "{{customerSearchTerm}}"</span>
-                    </div>
-                    <mat-icon>add</mat-icon>
-                  </div>
-                </div>
+                  </mat-option>
+
+                  <!-- Opção fixa para cliente avulso / rápido -->
+                  <mat-option *ngIf="customerSearchTerm && customerSearchTerm.length >= 2"
+                              (click)="useQuickCustomerName()">
+                    Usar "{{ customerSearchTerm }}" como nome no pedido (cliente avulso)
+                  </mat-option>
+                </mat-autocomplete>
               </div>
 
-              <!-- Cliente Selecionado -->
-              <div *ngIf="selectedCustomer" class="selected-customer">
+              <!-- Card de Cliente Selecionado (cadastrado ou avulso) -->
+              <div *ngIf="selectedCustomer || customerName" class="selected-customer">
                 <div class="customer-details">
                   <mat-icon>person</mat-icon>
                   <div class="customer-data">
-                    <span class="name">{{selectedCustomer.name}}</span>
-                    <span class="email">{{selectedCustomer.email}}</span>
-                    <span *ngIf="selectedCustomer.phone" class="phone">{{selectedCustomer.phone}}</span>
+                    <span class="name">
+                      {{ selectedCustomer?.name || customerName }}
+                    </span>
+                    <span class="email" *ngIf="selectedCustomer?.email">
+                      {{ selectedCustomer?.email }}
+                    </span>
+                    <span class="phone" *ngIf="selectedCustomer?.phone">
+                      {{ selectedCustomer?.phone }}
+                    </span>
+                    <span class="tag" *ngIf="!selectedCustomer && customerName">
+                      Cliente avulso
+                    </span>
                   </div>
                 </div>
-              </div>
-
-              <!-- Campos Manuais (quando não há cliente selecionado) -->
-              <div *ngIf="!selectedCustomer" class="manual-customer-fields">
-                <mat-form-field appearance="outline" class="full-width">
-                  <mat-label>Nome do Cliente (opcional)</mat-label>
-                  <input matInput [(ngModel)]="customerName">
-                  <mat-icon matSuffix>person</mat-icon>
-                </mat-form-field>
-
-                <mat-form-field appearance="outline" class="full-width">
-                  <mat-label>Telefone (opcional)</mat-label>
-                  <input matInput [(ngModel)]="customerPhone">
-                  <mat-icon matSuffix>phone</mat-icon>
-                </mat-form-field>
+                <button mat-icon-button
+                        type="button"
+                        (click)="clearCustomer()"
+                        color="warn"
+                        matTooltip="Remover cliente">
+                  <mat-icon>close</mat-icon>
+                </button>
               </div>
             </div>
 
@@ -324,7 +308,7 @@
               </p>
             </div>
 
-            <!-- Seleção de Endereço (apenas se Entrega estiver marcado) -->
+              <!-- Seleção de Endereço (apenas se Entrega estiver marcado) -->
             <div *ngIf="isPayOnDelivery" class="address-selection-section">
               <div class="address-header">
                 <h4>Endereço de Entrega</h4>
@@ -365,9 +349,15 @@
                 </mat-select>
               </mat-form-field>
               
-              <!-- Exibição do Frete -->
-              <div *ngIf="selectedAddressId && deliveryFee > 0" class="delivery-fee-display">
-                <div class="fee-info">
+              <!-- Exibição do Frete + Controle de Cobrança -->
+              <div *ngIf="selectedAddressId" class="delivery-fee-display">
+                <div class="fee-toggle">
+                  <mat-slide-toggle [(ngModel)]="isDeliveryFeeEnabled"
+                                    (change)="onDeliveryFeeToggleChange()">
+                    Cobrar Taxa de Entrega
+                  </mat-slide-toggle>
+                </div>
+                <div *ngIf="deliveryFee > 0" class="fee-info">
                   <mat-icon>local_shipping</mat-icon>
                   <div class="fee-details">
                     <span class="fee-label">Frete:</span>
