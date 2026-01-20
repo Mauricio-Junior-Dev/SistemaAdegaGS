@@ -169,21 +169,52 @@ private function compensateOrderFailure(Order $order, string $reason): void
     try {
         // Recarregar o pedido com todos os relacionamentos necessários
         $order->refresh();
-        $order->load(['items.product.parentProduct', 'items.combo.products']);
+        $order->load(['items.product.parentProduct', 'items.productBundle.groups.options.product', 'items.selections.product']);
         
         Log::info("Iniciando compensação manual para pedido #{$order->order_number}. Motivo: {$reason}");
         
         // Iterar pelos itens do pedido e estornar estoque
         foreach ($order->items as $item) {
-            if ($item->is_combo) {
+            // Suporte para bundles (nova estrutura)
+            if ($item->is_bundle && $item->productBundle) {
+                foreach ($item->selections as $selection) {
+                    $product = $selection->product;
+                    $quantity = $selection->quantity * $item->quantity;
+                    $saleType = $selection->sale_type;
+                    
+                    if ($saleType === 'garrafa') {
+                        $product->increment('current_stock', $quantity);
+                    } else {
+                        $garrafasDeduzidas = floor($quantity / ($product->doses_por_garrafa ?? 1));
+                        if ($garrafasDeduzidas > 0) {
+                            $product->increment('current_stock', $garrafasDeduzidas);
+                        }
+                        $product->update(['doses_vendidas' => 0]);
+                    }
+                    
+                    $unitPrice = $saleType === 'dose' ? ($product->dose_price ?? 0) : $product->price;
+                    $product->stockMovements()->create([
+                        'user_id' => Auth::id(),
+                        'type' => 'entrada',
+                        'quantity' => $saleType === 'garrafa' ? $quantity : ($garrafasDeduzidas ?? 0),
+                        'description' => "Compensação Manual Bundle ({$saleType}) - Pedido #" . $order->order_number . " - {$reason}",
+                        'unit_cost' => $unitPrice
+                    ]);
+                }
+            } elseif ($item->is_combo ?? false) {
+                // Fallback para combos antigos (não deve executar, mas mantido para segurança)
+                Log::warning("Item #{$item->id} do pedido #{$order->order_number} tem flag is_combo antiga. Ignorando.");
+                continue;
+            } else if (false) {
+                // Código antigo comentado
                 // Estornar produtos do combo
-                $combo = $item->combo;
+                $combo = $item->combo ?? null;
                 if (!$combo) {
                     Log::warning("Combo não encontrado para item #{$item->id} do pedido #{$order->order_number}");
                     continue;
                 }
                 
-                foreach ($combo->products as $comboProduct) {
+                foreach ($combo->products ?? [] as $comboProduct) {
                     $product = $comboProduct;
                     $quantity = $comboProduct->pivot->quantity * $item->quantity;
                     $saleType = $comboProduct->pivot->sale_type;

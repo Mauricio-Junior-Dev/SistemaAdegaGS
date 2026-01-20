@@ -49,6 +49,25 @@ Route::get('/test-no-auth', function () {
     return response()->json(['message' => 'Endpoint funcionando sem autenticação']);
 });
 
+// Rota de teste para Product Bundle (temporária)
+Route::get('/test-bundle', function () {
+    $bundle = \App\Models\ProductBundle::with([
+        'groups.options.product' => function ($query) {
+            $query->select('id', 'name', 'price', 'dose_price', 'current_stock', 'can_sell_by_dose');
+        }
+    ])
+    ->where('name', 'Kit Gin Tônica da Galera')
+    ->first();
+
+    if (!$bundle) {
+        return response()->json([
+            'error' => 'Bundle não encontrado. Execute o seeder: php artisan db:seed --class=ProductBundleSeeder'
+        ], 404);
+    }
+
+    return response()->json($bundle);
+});
+
 
 // Rotas protegidas
 Route::middleware('auth:sanctum')->group(function () {

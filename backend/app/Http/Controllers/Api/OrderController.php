@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
-use App\Models\Combo;
+use App\Models\ProductBundle;
 use App\Models\Address;
 use App\Models\User;
 use App\Models\DeliveryZone;
@@ -27,7 +27,8 @@ class OrderController extends Controller
         $query = Order::with([
             'user',
             'items.product',
-            'items.combo',
+            'items.productBundle.groups.options.product',
+            'items.selections.product',
             'delivery_address',
             'payment' => function ($query) {
                 // Garantir que received_amount e change_amount sejam selecionados explicitamente
@@ -120,7 +121,8 @@ class OrderController extends Controller
     {
         $query = Order::with([
             'items.product',
-            'items.combo',
+            'items.productBundle.groups.options.product',
+            'items.selections.product',
             'delivery_address',
             'payment' => function ($query) {
                 // Garantir que received_amount e change_amount sejam selecionados explicitamente
@@ -1118,7 +1120,8 @@ class OrderController extends Controller
         // Se for funcionário ou admin, pode ver qualquer pedido
         return response()->json($order->load([
             'items.product',
-            'items.combo',
+            'items.productBundle.groups.options.product',
+            'items.selections.product',
             'user',
             'delivery_address',
             'payment' => function ($query) {
@@ -1341,13 +1344,46 @@ class OrderController extends Controller
         if ($request->status === 'cancelled') {
             try {
                 // Carregar itens com relacionamentos necessários
-                $order->load(['items.product', 'items.combo.products']);
+                $order->load(['items.product', 'items.productBundle.groups.options.product', 'items.selections.product']);
                 
                 foreach ($order->items as $item) {
-                    if ($item->is_combo) {
+                    // Suporte para bundles (nova estrutura)
+                    if ($item->is_bundle && $item->productBundle) {
+                        // Estornar produtos do bundle através das seleções
+                        foreach ($item->selections as $selection) {
+                            $product = $selection->product;
+                            $quantity = $selection->quantity * $item->quantity;
+                            $saleType = $selection->sale_type;
+                            
+                            if ($saleType === 'garrafa') {
+                                $product->increment('current_stock', $quantity);
+                            } else {
+                                $garrafasDeduzidas = floor($quantity / ($product->doses_por_garrafa ?? 1));
+                                if ($garrafasDeduzidas > 0) {
+                                    $product->increment('current_stock', $garrafasDeduzidas);
+                                }
+                                $product->update(['doses_vendidas' => 0]);
+                            }
+                            
+                            $unitPrice = $saleType === 'dose' ? ($product->dose_price ?? 0) : $product->price;
+                            $product->stockMovements()->create([
+                                'user_id' => Auth::id(),
+                                'type' => 'entrada',
+                                'quantity' => $saleType === 'garrafa' ? $quantity : ($garrafasDeduzidas ?? 0),
+                                'description' => "Estorno Bundle ({$saleType}) - Pedido #" . $order->order_number . ' cancelado',
+                                'unit_cost' => $unitPrice
+                            ]);
+                        }
+                    } elseif ($item->is_combo ?? false) {
+                        // Fallback para combos antigos (se ainda existirem dados antigos)
+                        // Esta parte não deve ser executada, mas mantida para segurança
+                        continue;
+                    } else if (false) {
+                        // Código antigo comentado para referência
                         // Estornar produtos do combo
-                        $combo = $item->combo;
-                        foreach ($combo->products as $comboProduct) {
+                        $combo = $item->combo ?? null;
+                        if (!$combo) continue;
+                        foreach ($combo->products ?? [] as $comboProduct) {
                             $product = $comboProduct;
                             $quantity = $comboProduct->pivot->quantity * $item->quantity;
                             $saleType = $comboProduct->pivot->sale_type;
@@ -1434,7 +1470,8 @@ class OrderController extends Controller
             $order->refresh()->load([
                 'user',
                 'items.product',
-                'items.combo.products', // Carregar produtos do combo também
+                'items.productBundle.groups.options.product',
+                'items.selections.product',
                 'delivery_address',
                 'payment' => function ($query) {
                     $query->select(

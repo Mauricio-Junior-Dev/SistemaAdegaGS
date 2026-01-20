@@ -10,18 +10,20 @@ class OrderItem extends Model
     protected $fillable = [
         'order_id',
         'product_id',
-        'combo_id',
-        'is_combo',
+        'product_bundle_id',
+        'is_bundle',
         'quantity',
         'sale_type',
         'price',
         'subtotal',
+        'bundle_snapshot',
     ];
 
     protected $casts = [
         'price' => 'decimal:2',
         'subtotal' => 'decimal:2',
-        'is_combo' => 'boolean',
+        'is_bundle' => 'boolean',
+        'bundle_snapshot' => 'array',
     ];
 
     public function order(): BelongsTo
@@ -34,9 +36,14 @@ class OrderItem extends Model
         return $this->belongsTo(Product::class);
     }
 
-    public function combo(): BelongsTo
+    public function productBundle(): BelongsTo
     {
-        return $this->belongsTo(Combo::class);
+        return $this->belongsTo(ProductBundle::class, 'product_bundle_id');
+    }
+
+    public function selections()
+    {
+        return $this->hasMany(OrderItemSelection::class);
     }
 
     protected static function boot()
