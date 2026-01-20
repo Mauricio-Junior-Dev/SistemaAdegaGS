@@ -57,10 +57,10 @@ export class ComboCardComponent {
   getComboPrice(combo: Combo | ProductBundle): number {
     // Se for ProductBundle, usar base_price
     if ('base_price' in combo) {
-      return combo.base_price || 0;
+      return (combo as ProductBundle).base_price || 0;
     }
     // Se for Combo antigo, usar price
-    return combo.price || 0;
+    return (combo as Combo).price || 0;
   }
 
   getDiscountPercentage(combo: Combo | ProductBundle): number {

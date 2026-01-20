@@ -3,6 +3,7 @@ import { BehaviorSubject, Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { Product } from '../models/product.model';
 import { Combo } from '../models/combo.model';
+import { ProductBundle } from '../models/product-bundle.model';
 import { AuthService } from './auth.service';
 import { HttpClient } from '@angular/common/http';
 import { ToastrService } from 'ngx-toastr';
@@ -140,12 +141,17 @@ export class CartService {
     setTimeout(() => this.itemAdded$.next(false), 300);
   }
 
-  addComboToCart(combo: Combo, quantity: number = 1): void {
+  addComboToCart(combo: Combo | ProductBundle, quantity: number = 1): void {
     console.log('CartService.addComboToCart:', { combo, quantity });
     
     const currentState = this.cartState.value || this.initialState;
     const items = currentState.items || [];
     const existingItem = items.find(item => item.id === combo.id && item.isCombo);
+    
+    // Obter preço baseado no tipo
+    const price = 'base_price' in combo 
+      ? (combo as ProductBundle).base_price || 0
+      : (combo as Combo).price || 0;
     
     let updatedItems;
     if (existingItem) {
@@ -161,7 +167,7 @@ export class CartService {
         id: combo.id,
         combo,
         quantity,
-        price: combo.price,
+        price,
         isCombo: true
       };
       updatedItems = [...items, newItem];

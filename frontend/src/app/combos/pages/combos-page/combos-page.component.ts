@@ -6,6 +6,7 @@ import { ComboService } from '../../../core/services/combo.service';
 import { CartService } from '../../../core/services/cart.service';
 import { ComboCardComponent } from '../../../shared/components/combo-card/combo-card.component';
 import { Combo } from '../../../core/models/combo.model';
+import { ProductBundle } from '../../../core/models/product-bundle.model';
 
 @Component({
   selector: 'app-combos-page',
@@ -15,7 +16,7 @@ import { Combo } from '../../../core/models/combo.model';
   imports: [CommonModule, RouterModule, ComboCardComponent, FormsModule]
 })
 export class CombosPageComponent implements OnInit {
-  combos: Combo[] = [];
+  combos: (Combo | ProductBundle)[] = [];
   loading = true;
   error: string | null = null;
   searchTerm = '';
@@ -66,12 +67,12 @@ export class CombosPageComponent implements OnInit {
     this.loadCombos();
   }
 
-  onAddToCart(combo: Combo): void {
+  onAddToCart(combo: Combo | ProductBundle): void {
     // Adicionar combo ao carrinho
     this.cartService.addComboToCart(combo, 1);
   }
 
-  trackByComboId(index: number, combo: Combo): number {
+  trackByComboId(index: number, combo: Combo | ProductBundle): number {
     return combo.id;
   }
 }
