@@ -3,7 +3,7 @@ import { BehaviorSubject, Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { Product } from '../models/product.model';
 import { Combo } from '../models/combo.model';
-import { ProductBundle } from '../models/product-bundle.model';
+import { ProductBundle, BundleOption } from '../models/product-bundle.model';
 import { AuthService } from './auth.service';
 import { HttpClient } from '@angular/common/http';
 import { ToastrService } from 'ngx-toastr';
@@ -169,6 +169,89 @@ export class CartService {
         quantity,
         price,
         isCombo: true
+      };
+      updatedItems = [...items, newItem];
+    }
+
+    console.log('Updated items:', updatedItems);
+    const total = this.calculateTotal(updatedItems);
+    console.log('New total:', total);
+
+    const newState = {
+      ...currentState,
+      items: updatedItems,
+      total,
+      isOpen: true
+    };
+
+    this.cartState.next(newState);
+    this.saveCart();
+    
+    this.itemAdded$.next(true);
+    setTimeout(() => this.itemAdded$.next(false), 300);
+  }
+
+  /**
+   * Adiciona um ProductBundle ao carrinho com as seleções do usuário
+   */
+  addBundleToCart(
+    bundle: ProductBundle, 
+    quantity: number = 1, 
+    selections: { [groupId: number]: BundleOption[] } = {}
+  ): void {
+    console.log('CartService.addBundleToCart:', { bundle, quantity, selections });
+    
+    const currentState = this.cartState.value || this.initialState;
+    const items = currentState.items || [];
+    
+    // Calcular preço total (base_price + ajustes das seleções)
+    let totalPrice = bundle.base_price || 0;
+    Object.values(selections).forEach(selectedOptions => {
+      selectedOptions.forEach(option => {
+        totalPrice += option.price_adjustment || 0;
+      });
+    });
+    
+    // Verificar se já existe um item idêntico (mesmo bundle + mesmas seleções)
+    const existingItem = items.find(item => {
+      if (!item.isCombo || item.id !== bundle.id) {
+        return false;
+      }
+      
+      // Comparar seleções (simplificado: comparar por IDs das opções selecionadas)
+      const itemSelections = item.bundleSelections || {};
+      const itemSelectionIds = Object.values(itemSelections)
+        .flat()
+        .map(opt => opt.id)
+        .sort()
+        .join(',');
+      const newSelectionIds = Object.values(selections)
+        .flat()
+        .map(opt => opt.id)
+        .sort()
+        .join(',');
+      
+      return itemSelectionIds === newSelectionIds;
+    });
+    
+    let updatedItems;
+    if (existingItem) {
+      console.log('Updating existing bundle item with same selections');
+      updatedItems = items.map(item => 
+        item.id === bundle.id && item.isCombo && 
+        JSON.stringify(item.bundleSelections) === JSON.stringify(selections)
+          ? { ...item, quantity: item.quantity + quantity }
+          : item
+      );
+    } else {
+      console.log('Adding new bundle item with selections');
+      const newItem: CartItem = {
+        id: bundle.id,
+        combo: bundle,
+        quantity,
+        price: totalPrice,
+        isCombo: true,
+        bundleSelections: { ...selections } // Clonar seleções
       };
       updatedItems = [...items, newItem];
     }
