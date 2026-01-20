@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Combo;
+use App\Models\ProductBundle;
+use App\Models\BundleGroup;
+use App\Models\BundleOption;
 use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -15,7 +17,7 @@ class ComboController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = Combo::with(['products']);
+        $query = ProductBundle::with(['groups.options.product']);
 
         // Filtros
         if ($request->has('search') && $request->search) {
@@ -45,69 +47,104 @@ class ComboController extends Controller
 
         // Paginação
         $perPage = $request->get('per_page', 10);
-        $combos = $query->paginate($perPage);
+        $bundles = $query->paginate($perPage);
 
         return response()->json([
-            'data' => $combos->items(),
-            'total' => $combos->total(),
-            'current_page' => $combos->currentPage(),
-            'per_page' => $combos->perPage(),
-            'last_page' => $combos->lastPage()
+            'data' => $bundles->items(),
+            'total' => $bundles->total(),
+            'current_page' => $bundles->currentPage(),
+            'per_page' => $bundles->perPage(),
+            'last_page' => $bundles->lastPage()
         ]);
     }
 
-    public function show(Combo $combo): JsonResponse
+    public function show(ProductBundle $combo): JsonResponse
     {
-        $combo->load(['products']);
+        $combo->load(['groups.options.product']);
         return response()->json($combo);
     }
 
     public function store(Request $request): JsonResponse
     {
-        // Debug: log dos dados recebidos
-        \Log::info('Dados recebidos para criar combo:', $request->all());
-        \Log::info('Produtos recebidos:', $request->input('products', []));
+        // Normalizar dados do FormData (arrays aninhados podem vir como strings)
+        $this->normalizeFormData($request);
 
-        $request->validate([
-            'name' => 'required|string',
+        // Validação para nova estrutura (base_price e groups)
+        $validationRules = [
+            'name' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'price' => 'required|numeric|min:0',
+            'bundle_type' => 'nullable|in:combo,copao,custom',
+            'pricing_type' => 'required|in:fixed,calculated',
+            'base_price' => 'required_if:pricing_type,fixed|nullable|numeric|min:0',
             'original_price' => 'nullable|numeric|min:0',
             'discount_percentage' => 'nullable|numeric|min:0|max:100',
-            'barcode' => 'nullable|string|unique:combos,barcode',
+            'barcode' => 'nullable|string|unique:product_bundles,barcode',
             'is_active' => 'nullable|boolean',
             'featured' => 'nullable|boolean',
             'offers' => 'nullable|boolean',
             'popular' => 'nullable|boolean',
-            'products' => 'required|array',
-            'products.*.product_id' => 'required|integer|exists:products,id',
-            'products.*.quantity' => 'required|integer|min:1',
-            'products.*.sale_type' => 'required|in:dose,garrafa',
+            'groups' => 'required|array|min:1',
+            'groups.*.name' => 'required|string|max:255',
+            'groups.*.description' => 'nullable|string',
+            'groups.*.order' => 'nullable|integer|min:0',
+            'groups.*.is_required' => 'nullable|boolean',
+            'groups.*.min_selections' => 'required|integer|min:0',
+            'groups.*.max_selections' => 'required|integer|min:1',
+            'groups.*.selection_type' => 'required|in:single,multiple',
+            'groups.*.options' => 'required|array|min:1',
+            'groups.*.options.*.product_id' => 'required|integer|exists:products,id',
+            'groups.*.options.*.quantity' => 'required|integer|min:1',
+            'groups.*.options.*.sale_type' => 'required|in:dose,garrafa',
+            'groups.*.options.*.price_adjustment' => 'nullable|numeric',
+            'groups.*.options.*.order' => 'nullable|integer|min:0',
             'images' => 'nullable|array',
             'images.*' => 'image|mimes:jpeg,png,jpg,gif,webp|max:10240'
-        ], [
+        ];
+
+        // Compatibilidade: se vier com 'price' e 'products' (estrutura antiga), mapear
+        if ($request->has('price') && !$request->has('base_price')) {
+            $validationRules['price'] = 'required|numeric|min:0';
+            $validationRules['products'] = 'required|array|min:1';
+            $validationRules['products.*.product_id'] = 'required|integer|exists:products,id';
+            $validationRules['products.*.quantity'] = 'required|integer|min:1';
+            $validationRules['products.*.sale_type'] = 'required|in:dose,garrafa';
+        }
+
+        $request->validate($validationRules, [
             'images.*.image' => 'O arquivo deve ser uma imagem válida.',
             'images.*.max' => 'A imagem não pode ser maior que 10MB.',
             'images.*.mimes' => 'A imagem deve ser do tipo: jpg, jpeg, png, gif ou webp.',
-            'images.*.uploaded' => 'Falha no upload da imagem. O arquivo pode ser muito grande.'
+            'images.*.uploaded' => 'Falha no upload da imagem. O arquivo pode ser muito grande.',
+            'base_price.required_if' => 'O campo base_price é obrigatório quando pricing_type é fixed.',
+            'groups.required' => 'É necessário pelo menos um grupo.',
+            'groups.*.options.required' => 'Cada grupo deve ter pelo menos uma opção.',
         ]);
 
         try {
             DB::beginTransaction();
 
-            $combo = new Combo();
-            $combo->name = $request->name;
-            $combo->slug = Str::slug($request->name);
-            $combo->description = $request->description;
-            $combo->price = $request->price;
-            $combo->original_price = $request->original_price;
-            $combo->discount_percentage = $request->discount_percentage;
-            $combo->barcode = $request->barcode;
-            // Converter '1'/'0' para boolean quando vem via FormData
-            $combo->is_active = filter_var($request->input('is_active', true), FILTER_VALIDATE_BOOLEAN);
-            $combo->featured = filter_var($request->input('featured', false), FILTER_VALIDATE_BOOLEAN);
-            $combo->offers = filter_var($request->input('offers', false), FILTER_VALIDATE_BOOLEAN);
-            $combo->popular = filter_var($request->input('popular', false), FILTER_VALIDATE_BOOLEAN);
+            // Criar o bundle
+            $bundle = new ProductBundle();
+            $bundle->name = $request->name;
+            $bundle->slug = Str::slug($request->name);
+            $bundle->description = $request->description;
+            $bundle->bundle_type = $request->input('bundle_type', 'combo');
+            $bundle->pricing_type = $request->pricing_type;
+            
+            // Mapear price para base_price se necessário (compatibilidade)
+            if ($request->has('price') && !$request->has('base_price')) {
+                $bundle->base_price = $request->price;
+            } else {
+                $bundle->base_price = $request->base_price;
+            }
+            
+            $bundle->original_price = $request->original_price;
+            $bundle->discount_percentage = $request->discount_percentage;
+            $bundle->barcode = $request->barcode;
+            $bundle->is_active = filter_var($request->input('is_active', true), FILTER_VALIDATE_BOOLEAN);
+            $bundle->featured = filter_var($request->input('featured', false), FILTER_VALIDATE_BOOLEAN);
+            $bundle->offers = filter_var($request->input('offers', false), FILTER_VALIDATE_BOOLEAN);
+            $bundle->popular = filter_var($request->input('popular', false), FILTER_VALIDATE_BOOLEAN);
 
             // Processar imagens
             if ($request->hasFile('images')) {
@@ -115,74 +152,177 @@ class ComboController extends Controller
                 foreach ($request->file('images') as $image) {
                     $originalName = pathinfo($image->getClientOriginalName(), PATHINFO_FILENAME);
                     $extension = $image->getClientOriginalExtension();
-                    
-                    // Sanitiza: "Novos Planos.png" vira "novos-planos-1764184408.png"
                     $safeName = Str::slug($originalName) . '-' . time() . '-' . uniqid() . '.' . $extension;
-                    
-                    // Salva com o nome seguro
                     $path = $image->storeAs('combos', $safeName, 'public');
                     $images[] = Storage::url($path);
                 }
-                $combo->images = $images;
+                $bundle->images = $images;
             }
 
-            $combo->save();
+            $bundle->save();
 
-            // Adicionar produtos ao combo
-            foreach ($request->products as $productData) {
-                $combo->products()->attach($productData['product_id'], [
-                    'quantity' => $productData['quantity'],
-                    'sale_type' => $productData['sale_type']
-                ]);
+            // Processar grupos e opções
+            $groupsData = $request->input('groups', []);
+            
+            // Se vier com estrutura antiga (products), converter para grupos
+            if (empty($groupsData) && $request->has('products')) {
+                $groupsData = [
+                    [
+                        'name' => 'Produtos do Combo',
+                        'description' => '',
+                        'order' => 0,
+                        'is_required' => true,
+                        'min_selections' => 1,
+                        'max_selections' => count($request->products),
+                        'selection_type' => 'multiple',
+                        'options' => array_map(function($product) {
+                            return [
+                                'product_id' => $product['product_id'],
+                                'quantity' => $product['quantity'],
+                                'sale_type' => $product['sale_type'],
+                                'price_adjustment' => 0,
+                                'order' => 0
+                            ];
+                        }, $request->products)
+                    ]
+                ];
+            }
+
+            // Criar grupos e opções
+            foreach ($groupsData as $groupIndex => $groupData) {
+                // Validar dados do grupo
+                if (empty($groupData['name']) || !isset($groupData['options']) || !is_array($groupData['options']) || empty($groupData['options'])) {
+                    continue; // Pular grupos inválidos
+                }
+
+                $group = new BundleGroup();
+                $group->bundle_id = $bundle->id;
+                $group->name = $groupData['name'];
+                $group->description = $groupData['description'] ?? null;
+                $group->order = isset($groupData['order']) ? (int)$groupData['order'] : $groupIndex;
+                $group->is_required = filter_var($groupData['is_required'] ?? true, FILTER_VALIDATE_BOOLEAN);
+                $group->min_selections = isset($groupData['min_selections']) ? (int)$groupData['min_selections'] : 1;
+                $group->max_selections = isset($groupData['max_selections']) ? (int)$groupData['max_selections'] : 1;
+                $group->selection_type = $groupData['selection_type'] ?? 'single';
+                
+                if (!$group->save()) {
+                    throw new \Exception("Erro ao salvar grupo: {$groupData['name']}");
+                }
+
+                // Criar opções do grupo
+                foreach ($groupData['options'] as $optionIndex => $optionData) {
+                    // Validar dados da opção
+                    if (empty($optionData['product_id'])) {
+                        continue; // Pular opções inválidas
+                    }
+
+                    $option = new BundleOption();
+                    $option->group_id = $group->id;
+                    $option->product_id = (int)$optionData['product_id'];
+                    $option->quantity = isset($optionData['quantity']) ? (int)$optionData['quantity'] : 1;
+                    $option->sale_type = $optionData['sale_type'] ?? 'garrafa';
+                    $option->price_adjustment = isset($optionData['price_adjustment']) ? (float)$optionData['price_adjustment'] : 0;
+                    $option->order = isset($optionData['order']) ? (int)$optionData['order'] : $optionIndex;
+                    
+                    if (!$option->save()) {
+                        throw new \Exception("Erro ao salvar opção do grupo: {$group->name}");
+                    }
+                }
             }
 
             DB::commit();
 
-            return response()->json($combo->load(['products']), 201);
+            return response()->json($bundle->load(['groups.options.product']), 201);
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['error' => $e->getMessage()], 422);
+            \Log::error('Erro ao criar bundle:', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json([
+                'error' => 'Erro ao criar bundle',
+                'message' => $e->getMessage()
+            ], 422);
         }
     }
 
-    public function update(Request $request, Combo $combo): JsonResponse
+    public function update(Request $request, ProductBundle $combo): JsonResponse
     {
-        $request->validate([
-            'name' => 'required|string',
+        // Normalizar dados do FormData (arrays aninhados podem vir como strings)
+        $this->normalizeFormData($request);
+        
+        // Validação para nova estrutura (base_price e groups)
+        $validationRules = [
+            'name' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'price' => 'required|numeric|min:0',
+            'bundle_type' => 'nullable|in:combo,copao,custom',
+            'pricing_type' => 'required|in:fixed,calculated',
+            'base_price' => 'required_if:pricing_type,fixed|nullable|numeric|min:0',
             'original_price' => 'nullable|numeric|min:0',
             'discount_percentage' => 'nullable|numeric|min:0|max:100',
-            'barcode' => 'nullable|string|unique:combos,barcode,' . $combo->id,
+            'barcode' => 'nullable|string|unique:product_bundles,barcode,' . $combo->id,
             'is_active' => 'nullable|boolean',
             'featured' => 'nullable|boolean',
             'offers' => 'nullable|boolean',
             'popular' => 'nullable|boolean',
-            'products' => 'required|array',
-            'products.*.product_id' => 'required|integer|exists:products,id',
-            'products.*.quantity' => 'required|integer|min:1',
-            'products.*.sale_type' => 'required|in:dose,garrafa',
+            'groups' => 'required|array|min:1',
+            'groups.*.name' => 'required|string|max:255',
+            'groups.*.description' => 'nullable|string',
+            'groups.*.order' => 'nullable|integer|min:0',
+            'groups.*.is_required' => 'nullable|boolean',
+            'groups.*.min_selections' => 'required|integer|min:0',
+            'groups.*.max_selections' => 'required|integer|min:1',
+            'groups.*.selection_type' => 'required|in:single,multiple',
+            'groups.*.options' => 'required|array|min:1',
+            'groups.*.options.*.product_id' => 'required|integer|exists:products,id',
+            'groups.*.options.*.quantity' => 'required|integer|min:1',
+            'groups.*.options.*.sale_type' => 'required|in:dose,garrafa',
+            'groups.*.options.*.price_adjustment' => 'nullable|numeric',
+            'groups.*.options.*.order' => 'nullable|integer|min:0',
             'images' => 'nullable|array',
             'images.*' => 'image|mimes:jpeg,png,jpg,gif,webp|max:10240'
-        ], [
+        ];
+
+        // Compatibilidade: se vier com 'price' e 'products' (estrutura antiga), mapear
+        if ($request->has('price') && !$request->has('base_price')) {
+            $validationRules['price'] = 'required|numeric|min:0';
+            $validationRules['products'] = 'required|array|min:1';
+            $validationRules['products.*.product_id'] = 'required|integer|exists:products,id';
+            $validationRules['products.*.quantity'] = 'required|integer|min:1';
+            $validationRules['products.*.sale_type'] = 'required|in:dose,garrafa';
+        }
+
+        $request->validate($validationRules, [
             'images.*.image' => 'O arquivo deve ser uma imagem válida.',
             'images.*.max' => 'A imagem não pode ser maior que 10MB.',
             'images.*.mimes' => 'A imagem deve ser do tipo: jpg, jpeg, png, gif ou webp.',
-            'images.*.uploaded' => 'Falha no upload da imagem. O arquivo pode ser muito grande.'
+            'images.*.uploaded' => 'Falha no upload da imagem. O arquivo pode ser muito grande.',
+            'base_price.required_if' => 'O campo base_price é obrigatório quando pricing_type é fixed.',
+            'groups.required' => 'É necessário pelo menos um grupo.',
+            'groups.*.options.required' => 'Cada grupo deve ter pelo menos uma opção.',
         ]);
 
         try {
             DB::beginTransaction();
 
+            // Atualizar o bundle
             $combo->name = $request->name;
             $combo->slug = Str::slug($request->name);
             $combo->description = $request->description;
-            $combo->price = $request->price;
+            $combo->bundle_type = $request->input('bundle_type', 'combo');
+            $combo->pricing_type = $request->pricing_type;
+            
+            // Mapear price para base_price se necessário (compatibilidade)
+            if ($request->has('price') && !$request->has('base_price')) {
+                $combo->base_price = $request->price;
+            } else {
+                $combo->base_price = $request->base_price;
+            }
+            
             $combo->original_price = $request->original_price;
             $combo->discount_percentage = $request->discount_percentage;
             $combo->barcode = $request->barcode;
-            // Converter '1'/'0' para boolean quando vem via FormData
             $combo->is_active = filter_var($request->input('is_active', true), FILTER_VALIDATE_BOOLEAN);
             $combo->featured = filter_var($request->input('featured', false), FILTER_VALIDATE_BOOLEAN);
             $combo->offers = filter_var($request->input('offers', false), FILTER_VALIDATE_BOOLEAN);
@@ -202,11 +342,7 @@ class ComboController extends Controller
                 foreach ($request->file('images') as $image) {
                     $originalName = pathinfo($image->getClientOriginalName(), PATHINFO_FILENAME);
                     $extension = $image->getClientOriginalExtension();
-                    
-                    // Sanitiza: "Novos Planos.png" vira "novos-planos-1764184408.png"
                     $safeName = Str::slug($originalName) . '-' . time() . '-' . uniqid() . '.' . $extension;
-                    
-                    // Salva com o nome seguro
                     $path = $image->storeAs('combos', $safeName, 'public');
                     $images[] = Storage::url($path);
                 }
@@ -215,26 +351,99 @@ class ComboController extends Controller
 
             $combo->save();
 
-            // Atualizar produtos do combo
-            $combo->products()->detach();
-            foreach ($request->products as $productData) {
-                $combo->products()->attach($productData['product_id'], [
-                    'quantity' => $productData['quantity'],
-                    'sale_type' => $productData['sale_type']
-                ]);
+            // Remover grupos e opções antigas
+            $combo->groups()->each(function($group) {
+                $group->options()->delete();
+            });
+            $combo->groups()->delete();
+
+            // Processar grupos e opções
+            $groupsData = $request->input('groups', []);
+            
+            // Se vier com estrutura antiga (products), converter para grupos
+            if (empty($groupsData) && $request->has('products')) {
+                $groupsData = [
+                    [
+                        'name' => 'Produtos do Combo',
+                        'description' => '',
+                        'order' => 0,
+                        'is_required' => true,
+                        'min_selections' => 1,
+                        'max_selections' => count($request->products),
+                        'selection_type' => 'multiple',
+                        'options' => array_map(function($product) {
+                            return [
+                                'product_id' => $product['product_id'],
+                                'quantity' => $product['quantity'],
+                                'sale_type' => $product['sale_type'],
+                                'price_adjustment' => 0,
+                                'order' => 0
+                            ];
+                        }, $request->products)
+                    ]
+                ];
+            }
+
+            // Criar novos grupos e opções
+            foreach ($groupsData as $groupIndex => $groupData) {
+                // Validar dados do grupo
+                if (empty($groupData['name']) || !isset($groupData['options']) || !is_array($groupData['options']) || empty($groupData['options'])) {
+                    continue; // Pular grupos inválidos
+                }
+
+                $group = new BundleGroup();
+                $group->bundle_id = $combo->id;
+                $group->name = $groupData['name'];
+                $group->description = $groupData['description'] ?? null;
+                $group->order = isset($groupData['order']) ? (int)$groupData['order'] : $groupIndex;
+                $group->is_required = filter_var($groupData['is_required'] ?? true, FILTER_VALIDATE_BOOLEAN);
+                $group->min_selections = isset($groupData['min_selections']) ? (int)$groupData['min_selections'] : 1;
+                $group->max_selections = isset($groupData['max_selections']) ? (int)$groupData['max_selections'] : 1;
+                $group->selection_type = $groupData['selection_type'] ?? 'single';
+                
+                if (!$group->save()) {
+                    throw new \Exception("Erro ao salvar grupo: {$groupData['name']}");
+                }
+
+                // Criar opções do grupo
+                foreach ($groupData['options'] as $optionIndex => $optionData) {
+                    // Validar dados da opção
+                    if (empty($optionData['product_id'])) {
+                        continue; // Pular opções inválidas
+                    }
+
+                    $option = new BundleOption();
+                    $option->group_id = $group->id;
+                    $option->product_id = (int)$optionData['product_id'];
+                    $option->quantity = isset($optionData['quantity']) ? (int)$optionData['quantity'] : 1;
+                    $option->sale_type = $optionData['sale_type'] ?? 'garrafa';
+                    $option->price_adjustment = isset($optionData['price_adjustment']) ? (float)$optionData['price_adjustment'] : 0;
+                    $option->order = isset($optionData['order']) ? (int)$optionData['order'] : $optionIndex;
+                    
+                    if (!$option->save()) {
+                        throw new \Exception("Erro ao salvar opção do grupo: {$group->name}");
+                    }
+                }
             }
 
             DB::commit();
 
-            return response()->json($combo->load(['products']));
+            return response()->json($combo->load(['groups.options.product']));
 
         } catch (\Exception $e) {
             DB::rollBack();
-            return response()->json(['error' => $e->getMessage()], 422);
+            \Log::error('Erro ao atualizar bundle:', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json([
+                'error' => 'Erro ao atualizar bundle',
+                'message' => $e->getMessage()
+            ], 422);
         }
     }
 
-    public function destroy(Combo $combo): JsonResponse
+    public function destroy(ProductBundle $combo): JsonResponse
     {
         try {
             DB::beginTransaction();
@@ -247,8 +456,11 @@ class ComboController extends Controller
                 }
             }
 
-            // Remover relacionamentos com produtos
-            $combo->products()->detach();
+            // Remover grupos e opções (cascade)
+            $combo->groups()->each(function($group) {
+                $group->options()->delete();
+            });
+            $combo->groups()->delete();
 
             $combo->delete();
 
@@ -262,7 +474,7 @@ class ComboController extends Controller
         }
     }
 
-    public function toggleStatus(Combo $combo): JsonResponse
+    public function toggleStatus(ProductBundle $combo): JsonResponse
     {
         $combo->is_active = !$combo->is_active;
         $combo->save();
@@ -270,7 +482,7 @@ class ComboController extends Controller
         return response()->json($combo);
     }
 
-    public function uploadImage(Request $request, Combo $combo): JsonResponse
+    public function uploadImage(Request $request, ProductBundle $combo): JsonResponse
     {
         $request->validate([
             'image' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:10240'
@@ -301,7 +513,7 @@ class ComboController extends Controller
         return response()->json($combo);
     }
 
-    public function deleteImage(Request $request, Combo $combo): JsonResponse
+    public function deleteImage(Request $request, ProductBundle $combo): JsonResponse
     {
         $request->validate([
             'image_url' => 'required|string'
@@ -331,7 +543,7 @@ class ComboController extends Controller
             'barcode' => 'required|string'
         ]);
 
-        $exists = Combo::where('barcode', $request->barcode)->exists();
+        $exists = ProductBundle::where('barcode', $request->barcode)->exists();
         return response()->json(['available' => !$exists]);
     }
 
@@ -388,7 +600,7 @@ class ComboController extends Controller
 
     public function publicIndex(Request $request): JsonResponse
     {
-        $query = Combo::with(['products'])
+        $query = ProductBundle::with(['groups.options.product'])
             ->where('is_active', true);
 
         // Filtros
@@ -414,24 +626,105 @@ class ComboController extends Controller
 
         // Paginação
         $perPage = $request->get('per_page', 12);
-        $combos = $query->paginate($perPage);
+        $bundles = $query->paginate($perPage);
 
         return response()->json([
-            'data' => $combos->items(),
-            'total' => $combos->total(),
-            'current_page' => $combos->currentPage(),
-            'per_page' => $combos->perPage(),
-            'last_page' => $combos->lastPage()
+            'data' => $bundles->items(),
+            'total' => $bundles->total(),
+            'current_page' => $bundles->currentPage(),
+            'per_page' => $bundles->perPage(),
+            'last_page' => $bundles->lastPage()
         ]);
     }
 
-    public function publicShow(Combo $combo): JsonResponse
+    public function publicShow(ProductBundle $combo): JsonResponse
     {
         if (!$combo->is_active) {
-            return response()->json(['error' => 'Combo não encontrado'], 404);
+            return response()->json(['error' => 'Bundle não encontrado'], 404);
         }
 
-        $combo->load(['products']);
+        $combo->load(['groups.options.product']);
         return response()->json($combo);
+    }
+
+    /**
+     * Normaliza dados do FormData para garantir que arrays aninhados sejam processados corretamente
+     */
+    private function normalizeFormData(Request $request): void
+    {
+        // Se groups vier como string JSON, decodificar
+        if ($request->has('groups') && is_string($request->input('groups'))) {
+            $groups = json_decode($request->input('groups'), true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($groups)) {
+                $request->merge(['groups' => $groups]);
+            }
+        }
+
+        // Garantir que groups seja um array
+        if ($request->has('groups') && !is_array($request->input('groups'))) {
+            $request->merge(['groups' => []]);
+        }
+
+        // Normalizar cada grupo e suas opções
+        if ($request->has('groups') && is_array($request->input('groups'))) {
+            $groups = $request->input('groups');
+            $normalizedGroups = [];
+            
+            foreach ($groups as $index => $group) {
+                // Se o grupo não for um array, pular
+                if (!is_array($group)) {
+                    continue;
+                }
+                
+                $normalizedGroup = [
+                    'name' => $group['name'] ?? '',
+                    'description' => $group['description'] ?? null,
+                    'order' => isset($group['order']) ? (int)$group['order'] : $index,
+                    'is_required' => isset($group['is_required']) ? filter_var($group['is_required'], FILTER_VALIDATE_BOOLEAN) : true,
+                    'min_selections' => isset($group['min_selections']) ? (int)$group['min_selections'] : 1,
+                    'max_selections' => isset($group['max_selections']) ? (int)$group['max_selections'] : 1,
+                    'selection_type' => $group['selection_type'] ?? 'single',
+                    'options' => []
+                ];
+                
+                // Processar opções do grupo
+                if (isset($group['options'])) {
+                    // Se options vier como string JSON, decodificar
+                    if (is_string($group['options'])) {
+                        $options = json_decode($group['options'], true);
+                        if (json_last_error() === JSON_ERROR_NONE && is_array($options)) {
+                            $normalizedGroup['options'] = $options;
+                        }
+                    } elseif (is_array($group['options'])) {
+                        // Normalizar cada opção
+                        foreach ($group['options'] as $optIndex => $option) {
+                            if (!is_array($option)) {
+                                continue;
+                            }
+                            
+                            $normalizedOption = [
+                                'product_id' => isset($option['product_id']) ? (int)$option['product_id'] : null,
+                                'quantity' => isset($option['quantity']) ? (int)$option['quantity'] : 1,
+                                'sale_type' => $option['sale_type'] ?? 'garrafa',
+                                'price_adjustment' => isset($option['price_adjustment']) ? (float)$option['price_adjustment'] : 0,
+                                'order' => isset($option['order']) ? (int)$option['order'] : $optIndex
+                            ];
+                            
+                            // Só adicionar se tiver product_id válido
+                            if ($normalizedOption['product_id'] > 0) {
+                                $normalizedGroup['options'][] = $normalizedOption;
+                            }
+                        }
+                    }
+                }
+                
+                // Só adicionar grupo se tiver nome e pelo menos uma opção
+                if (!empty($normalizedGroup['name']) && !empty($normalizedGroup['options'])) {
+                    $normalizedGroups[] = $normalizedGroup;
+                }
+            }
+            
+            $request->merge(['groups' => $normalizedGroups]);
+        }
     }
 }

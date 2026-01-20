@@ -20,7 +20,7 @@ import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 
 import { ComboService } from '../../services/combo.service';
-import { Combo } from '../../../core/models/combo.model';
+import { ProductBundle, Combo } from '../../../core/models/product-bundle.model';
 import { PaginatedResponse } from '../../../core/models/pagination.model';
 
 @Component({
@@ -53,11 +53,11 @@ import { PaginatedResponse } from '../../../core/models/pagination.model';
 })
 export class CombosComponent implements OnInit {
   displayedColumns: string[] = [
-    'name', 'price', 'original_price', 'discount', 'products_count',
+    'name', 'pricing_type', 'base_price', 'groups_count',
     'status', 'featured', 'offers', 'popular', 'actions'
   ];
   
-  dataSource: Combo[] = [];
+  dataSource: ProductBundle[] = [];
   loading = false;
   totalItems = 0;
   pageSize = 10;
@@ -105,7 +105,7 @@ export class CombosComponent implements OnInit {
     }
     
     this.comboService.getCombos(params).subscribe({
-      next: (response: PaginatedResponse<Combo>) => {
+      next: (response: PaginatedResponse<ProductBundle>) => {
         this.dataSource = response.data;
         this.totalItems = response.total;
         this.loading = false;
@@ -143,53 +143,48 @@ export class CombosComponent implements OnInit {
     this.loadCombos();
   }
 
-  toggleStatus(combo: Combo): void {
-    this.comboService.toggleStatus(combo.id).subscribe({
-      next: (updatedCombo: Combo) => {
-        combo.is_active = updatedCombo.is_active;
+  toggleStatus(bundle: ProductBundle): void {
+    this.comboService.toggleStatus(bundle.id).subscribe({
+      next: (updatedBundle: ProductBundle) => {
+        bundle.is_active = updatedBundle.is_active;
         this.snackBar.open(
-          `Combo ${combo.is_active ? 'ativado' : 'desativado'} com sucesso`,
+          `Bundle ${bundle.is_active ? 'ativado' : 'desativado'} com sucesso`,
           'Fechar',
           { duration: 3000 }
         );
       },
       error: (error: any) => {
         console.error('Erro ao alterar status:', error);
-        this.snackBar.open('Erro ao alterar status do combo', 'Fechar', { duration: 3000 });
+        this.snackBar.open('Erro ao alterar status do bundle', 'Fechar', { duration: 3000 });
       }
     });
   }
 
-  deleteCombo(combo: Combo): void {
-    if (confirm(`Tem certeza que deseja excluir o combo "${combo.name}"?`)) {
-      this.comboService.deleteCombo(combo.id).subscribe({
+  deleteCombo(bundle: ProductBundle): void {
+    if (confirm(`Tem certeza que deseja excluir o bundle "${bundle.name}"?`)) {
+      this.comboService.deleteCombo(bundle.id).subscribe({
         next: () => {
-          this.snackBar.open('Combo excluído com sucesso', 'Fechar', { duration: 3000 });
+          this.snackBar.open('Bundle excluído com sucesso', 'Fechar', { duration: 3000 });
           this.loadCombos();
         },
         error: (error: any) => {
-          console.error('Erro ao excluir combo:', error);
-          this.snackBar.open('Erro ao excluir combo', 'Fechar', { duration: 3000 });
+          console.error('Erro ao excluir bundle:', error);
+          this.snackBar.open('Erro ao excluir bundle', 'Fechar', { duration: 3000 });
         }
       });
     }
   }
 
-  getDiscountText(combo: Combo): string {
-    if (combo.discount_percentage) {
-      return `${combo.discount_percentage}%`;
-    }
-    
-    if (combo.original_price && combo.original_price > combo.price) {
-      const discount = ((combo.original_price - combo.price) / combo.original_price) * 100;
-      return `${discount.toFixed(1)}%`;
-    }
-    
-    return '0%';
+  getPricingTypeLabel(bundle: ProductBundle): string {
+    return bundle.pricing_type === 'fixed' ? 'Fixo' : 'Calculado';
   }
 
-  getProductsCount(combo: Combo): number {
-    return combo.products?.length || 0;
+  getBasePrice(bundle: ProductBundle): number {
+    return bundle.base_price || 0;
+  }
+
+  getGroupsCount(bundle: ProductBundle): number {
+    return bundle.groups?.length || 0;
   }
 
   formatPrice(price: number): string {

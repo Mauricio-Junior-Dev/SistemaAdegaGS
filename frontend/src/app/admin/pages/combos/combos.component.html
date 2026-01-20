@@ -2,13 +2,13 @@
   <!-- Cabeçalho -->
   <div class="header">
     <div class="title-section">
-      <h1>Combos</h1>
-      <p>Gerencie os combos de produtos</p>
+      <h1>Product Bundles</h1>
+      <p>Gerencie os bundles de produtos (combos dinâmicos)</p>
     </div>
     <div class="actions-section">
       <button mat-raised-button color="primary" routerLink="/admin/combos/novo">
         <mat-icon>add</mat-icon>
-        Novo Combo
+        Novo Bundle
       </button>
     </div>
   </div>
@@ -18,7 +18,7 @@
     <mat-card-content>
       <div class="filters-row">
         <mat-form-field appearance="outline" class="search-field">
-          <mat-label>Buscar combos</mat-label>
+          <mat-label>Buscar bundles</mat-label>
           <input matInput [(ngModel)]="searchTerm" (keyup.enter)="onSearch()" placeholder="Nome ou código de barras">
           <mat-icon matSuffix>search</mat-icon>
         </mat-form-field>
@@ -63,56 +63,53 @@
           <!-- Nome -->
           <ng-container matColumnDef="name">
             <th mat-header-cell *matHeaderCellDef>Nome</th>
-            <td mat-cell *matCellDef="let combo">
+            <td mat-cell *matCellDef="let bundle">
               <div class="combo-name">
-                <strong>{{ combo.name }}</strong>
-                <div class="combo-description" *ngIf="combo.description">
-                  {{ combo.description | slice:0:50 }}{{ combo.description && combo.description.length > 50 ? '...' : '' }}
+                <strong>{{ bundle.name }}</strong>
+                <div class="combo-description" *ngIf="bundle.description">
+                  {{ bundle.description | slice:0:50 }}{{ bundle.description && bundle.description.length > 50 ? '...' : '' }}
+                </div>
+                <div class="bundle-type" *ngIf="bundle.bundle_type">
+                  <mat-chip class="bundle-type-chip">{{ bundle.bundle_type }}</mat-chip>
                 </div>
               </div>
             </td>
           </ng-container>
 
-          <!-- Preço -->
-          <ng-container matColumnDef="price">
-            <th mat-header-cell *matHeaderCellDef>Preço</th>
-            <td mat-cell *matCellDef="let combo">
-              <div class="price-info">
-                <div class="current-price">{{ formatPrice(combo.price) }}</div>
-                <div class="original-price" *ngIf="combo.original_price && combo.original_price > combo.price">
-                  {{ formatPrice(combo.original_price) }}
-                </div>
-              </div>
-            </td>
-          </ng-container>
-
-          <!-- Preço Original -->
-          <ng-container matColumnDef="original_price">
-            <th mat-header-cell *matHeaderCellDef>Preço Original</th>
-            <td mat-cell *matCellDef="let combo">
-              <span *ngIf="combo.original_price">{{ formatPrice(combo.original_price) }}</span>
-              <span *ngIf="!combo.original_price" class="no-price">-</span>
-            </td>
-          </ng-container>
-
-          <!-- Desconto -->
-          <ng-container matColumnDef="discount">
-            <th mat-header-cell *matHeaderCellDef>Desconto</th>
-            <td mat-cell *matCellDef="let combo">
-              <mat-chip *ngIf="combo.original_price && combo.original_price > combo.price" 
-                         [class]="'discount-chip'">
-                {{ getDiscountText(combo) }}
+          <!-- Tipo de Precificação -->
+          <ng-container matColumnDef="pricing_type">
+            <th mat-header-cell *matHeaderCellDef>Tipo de Precificação</th>
+            <td mat-cell *matCellDef="let bundle">
+              <mat-chip [class]="bundle.pricing_type === 'fixed' ? 'pricing-fixed' : 'pricing-calculated'">
+                {{ getPricingTypeLabel(bundle) }}
               </mat-chip>
-              <span *ngIf="!combo.original_price || combo.original_price <= combo.price">-</span>
             </td>
           </ng-container>
 
-          <!-- Produtos -->
-          <ng-container matColumnDef="products_count">
-            <th mat-header-cell *matHeaderCellDef>Produtos</th>
-            <td mat-cell *matCellDef="let combo">
-              <mat-chip class="products-chip">
-                {{ getProductsCount(combo) }} produto(s)
+          <!-- Preço Base -->
+          <ng-container matColumnDef="base_price">
+            <th mat-header-cell *matHeaderCellDef>Preço Base</th>
+            <td mat-cell *matCellDef="let bundle">
+              <div class="price-info">
+                <div class="current-price" *ngIf="bundle.pricing_type === 'fixed' && bundle.base_price">
+                  {{ formatPrice(bundle.base_price) }}
+                </div>
+                <span *ngIf="bundle.pricing_type === 'calculated'" class="calculated-price">
+                  Calculado
+                </span>
+                <span *ngIf="bundle.pricing_type === 'fixed' && !bundle.base_price" class="no-price">
+                  -
+                </span>
+              </div>
+            </td>
+          </ng-container>
+
+          <!-- Grupos -->
+          <ng-container matColumnDef="groups_count">
+            <th mat-header-cell *matHeaderCellDef>Grupos</th>
+            <td mat-cell *matCellDef="let bundle">
+              <mat-chip class="groups-chip">
+                {{ getGroupsCount(bundle) }} grupo(s)
               </mat-chip>
             </td>
           </ng-container>
@@ -120,9 +117,9 @@
           <!-- Status -->
           <ng-container matColumnDef="status">
             <th mat-header-cell *matHeaderCellDef>Status</th>
-            <td mat-cell *matCellDef="let combo">
-              <mat-chip [class]="combo.is_active ? 'status-active' : 'status-inactive'">
-                {{ combo.is_active ? 'Ativo' : 'Inativo' }}
+            <td mat-cell *matCellDef="let bundle">
+              <mat-chip [class]="bundle.is_active ? 'status-active' : 'status-inactive'">
+                {{ bundle.is_active ? 'Ativo' : 'Inativo' }}
               </mat-chip>
             </td>
           </ng-container>
@@ -130,52 +127,52 @@
           <!-- Destaque -->
           <ng-container matColumnDef="featured">
             <th mat-header-cell *matHeaderCellDef>Destaque</th>
-            <td mat-cell *matCellDef="let combo">
-              <mat-icon *ngIf="combo.featured" color="primary">star</mat-icon>
-              <mat-icon *ngIf="!combo.featured" color="disabled">star_border</mat-icon>
+            <td mat-cell *matCellDef="let bundle">
+              <mat-icon *ngIf="bundle.featured" color="primary">star</mat-icon>
+              <mat-icon *ngIf="!bundle.featured" color="disabled">star_border</mat-icon>
             </td>
           </ng-container>
 
           <!-- Ofertas -->
           <ng-container matColumnDef="offers">
             <th mat-header-cell *matHeaderCellDef>Ofertas</th>
-            <td mat-cell *matCellDef="let combo">
-              <mat-icon *ngIf="combo.offers" color="accent">local_offer</mat-icon>
-              <mat-icon *ngIf="!combo.offers" color="disabled">local_offer</mat-icon>
+            <td mat-cell *matCellDef="let bundle">
+              <mat-icon *ngIf="bundle.offers" color="accent">local_offer</mat-icon>
+              <mat-icon *ngIf="!bundle.offers" color="disabled">local_offer</mat-icon>
             </td>
           </ng-container>
 
           <!-- Popular -->
           <ng-container matColumnDef="popular">
             <th mat-header-cell *matHeaderCellDef>Popular</th>
-            <td mat-cell *matCellDef="let combo">
-              <mat-icon *ngIf="combo.popular" color="warn">whatshot</mat-icon>
-              <mat-icon *ngIf="!combo.popular" color="disabled">whatshot</mat-icon>
+            <td mat-cell *matCellDef="let bundle">
+              <mat-icon *ngIf="bundle.popular" color="warn">whatshot</mat-icon>
+              <mat-icon *ngIf="!bundle.popular" color="disabled">whatshot</mat-icon>
             </td>
           </ng-container>
 
           <!-- Ações -->
           <ng-container matColumnDef="actions">
             <th mat-header-cell *matHeaderCellDef>Ações</th>
-            <td mat-cell *matCellDef="let combo">
-              <button mat-icon-button [matMenuTriggerFor]="menu" [matMenuTriggerData]="{combo: combo}">
+            <td mat-cell *matCellDef="let bundle">
+              <button mat-icon-button [matMenuTriggerFor]="menu" [matMenuTriggerData]="{bundle: bundle}">
                 <mat-icon>more_vert</mat-icon>
               </button>
               <mat-menu #menu="matMenu">
-                <ng-template matMenuContent let-combo="combo">
-                  <button mat-menu-item [routerLink]="['/admin/combos', combo.id]">
+                <ng-template matMenuContent let-bundle="bundle">
+                  <button mat-menu-item [routerLink]="['/admin/combos', bundle.id]">
                     <mat-icon>visibility</mat-icon>
                     <span>Ver</span>
                   </button>
-                  <button mat-menu-item [routerLink]="['/admin/combos', combo.id, 'editar']">
+                  <button mat-menu-item [routerLink]="['/admin/combos', bundle.id, 'editar']">
                     <mat-icon>edit</mat-icon>
                     <span>Editar</span>
                   </button>
-                  <button mat-menu-item (click)="toggleStatus(combo)">
-                    <mat-icon>{{ combo.is_active ? 'visibility_off' : 'visibility' }}</mat-icon>
-                    <span>{{ combo.is_active ? 'Desativar' : 'Ativar' }}</span>
+                  <button mat-menu-item (click)="toggleStatus(bundle)">
+                    <mat-icon>{{ bundle.is_active ? 'visibility_off' : 'visibility' }}</mat-icon>
+                    <span>{{ bundle.is_active ? 'Desativar' : 'Ativar' }}</span>
                   </button>
-                  <button mat-menu-item (click)="deleteCombo(combo)" class="delete-action">
+                  <button mat-menu-item (click)="deleteCombo(bundle)" class="delete-action">
                     <mat-icon>delete</mat-icon>
                     <span>Excluir</span>
                   </button>
@@ -191,13 +188,13 @@
         <!-- Loading -->
         <div *ngIf="loading" class="loading-container">
           <mat-spinner diameter="50"></mat-spinner>
-          <p>Carregando combos...</p>
+          <p>Carregando bundles...</p>
         </div>
 
         <!-- Sem dados -->
         <div *ngIf="!loading && dataSource.length === 0" class="no-data">
           <mat-icon>inbox</mat-icon>
-          <p>Nenhum combo encontrado</p>
+          <p>Nenhum bundle encontrado</p>
         </div>
       </div>
 

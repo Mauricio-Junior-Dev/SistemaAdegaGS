@@ -1,10 +1,10 @@
 <div class="combo-form-container">
   <div class="form-header">
-    <h1>{{ isEdit ? 'Editar Combo' : 'Novo Combo' }}</h1>
-    <p>{{ isEdit ? 'Atualize as informações do combo' : 'Preencha as informações para criar um novo combo' }}</p>
+    <h1>{{ isEdit ? 'Editar Bundle' : 'Novo Bundle' }}</h1>
+    <p>{{ isEdit ? 'Atualize as informações do bundle' : 'Preencha as informações para criar um novo bundle' }}</p>
   </div>
 
-  <form [formGroup]="comboForm" (ngSubmit)="onSubmit()" class="combo-form">
+  <form [formGroup]="bundleForm" (ngSubmit)="onSubmit()" class="combo-form">
     <!-- Informações Básicas -->
     <mat-card class="form-section">
       <mat-card-header>
@@ -13,12 +13,12 @@
       <mat-card-content>
         <div class="form-row">
           <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Nome do Combo</mat-label>
-            <input matInput formControlName="name" placeholder="Ex: Combo Premium">
-            <mat-error *ngIf="comboForm.get('name')?.hasError('required')">
+            <mat-label>Nome do Bundle</mat-label>
+            <input matInput formControlName="name" placeholder="Ex: Kit Gin Tônica">
+            <mat-error *ngIf="bundleForm.get('name')?.hasError('required')">
               Nome é obrigatório
             </mat-error>
-            <mat-error *ngIf="comboForm.get('name')?.hasError('maxlength')">
+            <mat-error *ngIf="bundleForm.get('name')?.hasError('maxlength')">
               Nome deve ter no máximo 255 caracteres
             </mat-error>
           </mat-form-field>
@@ -27,7 +27,26 @@
         <div class="form-row">
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Descrição</mat-label>
-            <textarea matInput formControlName="description" rows="3" placeholder="Descreva o combo..."></textarea>
+            <textarea matInput formControlName="description" rows="3" placeholder="Descreva o bundle..."></textarea>
+          </mat-form-field>
+        </div>
+
+        <div class="form-row">
+          <mat-form-field appearance="outline">
+            <mat-label>Tipo de Bundle</mat-label>
+            <mat-select formControlName="bundle_type">
+              <mat-option value="combo">Combo</mat-option>
+              <mat-option value="copao">Copão</mat-option>
+              <mat-option value="custom">Personalizado</mat-option>
+            </mat-select>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Tipo de Precificação</mat-label>
+            <mat-select formControlName="pricing_type">
+              <mat-option value="fixed">Preço Fixo</mat-option>
+              <mat-option value="calculated">Preço Calculado</mat-option>
+            </mat-select>
           </mat-form-field>
         </div>
 
@@ -40,81 +59,130 @@
       </mat-card-content>
     </mat-card>
 
-    <!-- Produtos do Combo -->
+    <!-- Grupos de Escolha -->
     <mat-card class="form-section">
       <mat-card-header>
-        <mat-card-title>Produtos do Combo</mat-card-title>
-        <mat-card-subtitle>Adicione os produtos que compõem este combo</mat-card-subtitle>
+        <mat-card-title>Grupos de Escolha</mat-card-title>
+        <mat-card-subtitle>Configure os grupos de escolha e suas opções de produtos</mat-card-subtitle>
       </mat-card-header>
       <mat-card-content>
-        <!-- Campo de busca com autocomplete -->
-        <div class="search-section">
-          <mat-form-field appearance="outline" class="search-field-full">
-            <mat-label>Adicionar produto ao combo</mat-label>
-            <input matInput [formControl]="productSearchControl" [matAutocomplete]="auto"
-              placeholder="Digite o nome do produto...">
-            <mat-icon matSuffix>search</mat-icon>
-            <mat-autocomplete #auto="matAutocomplete" [displayWith]="displayProductName"
-              (optionSelected)="addProductFromAutocomplete($event.option.value)">
-              <mat-option *ngFor="let product of filteredProducts$ | async" [value]="product">
-                {{ product.name }} - {{ formatPrice(product.price) }}
-              </mat-option>
-            </mat-autocomplete>
-          </mat-form-field>
-        </div>
-
-        <!-- Tabela de produtos selecionados -->
-        <div class="selected-products-section" *ngIf="selectedProducts.length > 0">
-          <h3 class="section-subtitle">Produtos Selecionados</h3>
-          <table mat-table [dataSource]="dataSource" class="products-table">
-            <!-- Nome do Produto -->
-            <ng-container matColumnDef="name">
-              <th mat-header-cell *matHeaderCellDef>Nome do Produto</th>
-              <td mat-cell *matCellDef="let item">{{ item.product.name }}</td>
-            </ng-container>
-
-            <!-- Quantidade -->
-            <ng-container matColumnDef="quantity">
-              <th mat-header-cell *matHeaderCellDef>Quantidade</th>
-              <td mat-cell *matCellDef="let item; let i = index">
-                <input type="number" [value]="item.quantity"
-                  (change)="updateProductQuantity(i, $any($event.target).value)" min="1" class="quantity-input">
-              </td>
-            </ng-container>
-
-            <!-- Tipo de Venda -->
-            <ng-container matColumnDef="sale_type">
-              <th mat-header-cell *matHeaderCellDef>Tipo de Venda</th>
-              <td mat-cell *matCellDef="let item; let i = index">
-                <mat-form-field appearance="outline" class="sale-type-select">
-                  <mat-select [value]="item.sale_type" (selectionChange)="updateProductSaleType(i, $event.value)">
-                    <mat-option value="garrafa">Unidade/Garrafa</mat-option>
-                    <mat-option value="dose">Dose</mat-option>
-                  </mat-select>
-                </mat-form-field>
-              </td>
-            </ng-container>
-
-            <!-- Ações -->
-            <ng-container matColumnDef="actions">
-              <th mat-header-cell *matHeaderCellDef>Ação</th>
-              <td mat-cell *matCellDef="let item; let i = index">
-                <button type="button" mat-icon-button color="warn" (click)="removeProduct(i)"
-                  matTooltip="Remover produto">
+        <!-- Lista de Grupos -->
+        <div formArrayName="groups">
+          <div *ngFor="let group of groupsFormArray.controls; let groupIndex = index" [formGroupName]="groupIndex" class="group-card">
+            <mat-card class="group-item">
+              <mat-card-header>
+                <mat-card-title>
+                  <mat-form-field appearance="outline" class="group-name-field">
+                    <mat-label>Nome do Grupo</mat-label>
+                    <input matInput formControlName="name" placeholder="Ex: Escolha seu Gin">
+                    <mat-error *ngIf="group.get('name')?.hasError('required')">
+                      Nome do grupo é obrigatório
+                    </mat-error>
+                  </mat-form-field>
+                </mat-card-title>
+                <button type="button" mat-icon-button color="warn" (click)="removeGroup(groupIndex)" matTooltip="Remover grupo">
                   <mat-icon>delete</mat-icon>
                 </button>
-              </td>
-            </ng-container>
+              </mat-card-header>
+              <mat-card-content>
+                <div class="form-row">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Descrição</mat-label>
+                    <textarea matInput formControlName="description" rows="2" placeholder="Descrição do grupo (opcional)"></textarea>
+                  </mat-form-field>
+                </div>
 
-            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-            <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
-          </table>
+                <div class="form-row">
+                  <mat-checkbox formControlName="is_required">Obrigatório</mat-checkbox>
+                  
+                  <mat-form-field appearance="outline">
+                    <mat-label>Tipo de Seleção</mat-label>
+                    <mat-select formControlName="selection_type">
+                      <mat-option value="single">Única</mat-option>
+                      <mat-option value="multiple">Múltipla</mat-option>
+                    </mat-select>
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline">
+                    <mat-label>Mínimo</mat-label>
+                    <input matInput type="number" formControlName="min_selections" min="0">
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline">
+                    <mat-label>Máximo</mat-label>
+                    <input matInput type="number" formControlName="max_selections" min="1">
+                  </mat-form-field>
+                </div>
+
+                <!-- Opções do Grupo -->
+                <div class="options-section">
+                  <h4>Opções de Produtos</h4>
+                  <div formArrayName="options">
+                    <div *ngFor="let option of getGroupOptionsFormArray(groupIndex).controls; let optionIndex = index" 
+                         [formGroupName]="optionIndex" class="option-item">
+                      <mat-form-field appearance="outline" class="product-search-field">
+                        <mat-label>Produto</mat-label>
+                        <input matInput 
+                               [formControl]="getProductSearchControl(groupIndex)"
+                               [matAutocomplete]="autoOption"
+                               placeholder="Buscar produto...">
+                        <mat-icon matSuffix>search</mat-icon>
+                        <mat-autocomplete #autoOption="matAutocomplete" 
+                                         [displayWith]="displayProductName"
+                                         (optionSelected)="getGroupOptionsFormArray(groupIndex).at(optionIndex).patchValue({product_id: $event.option.value.id})">
+                          <mat-option *ngFor="let product of getFilteredProducts$(groupIndex) | async" [value]="product">
+                            {{ product.name }} - {{ formatPrice(product.price) }}
+                          </mat-option>
+                        </mat-autocomplete>
+                      </mat-form-field>
+
+                      <mat-form-field appearance="outline">
+                        <mat-label>Quantidade</mat-label>
+                        <input matInput type="number" formControlName="quantity" min="1">
+                      </mat-form-field>
+
+                      <mat-form-field appearance="outline">
+                        <mat-label>Tipo de Venda</mat-label>
+                        <mat-select formControlName="sale_type">
+                          <mat-option value="garrafa">Garrafa</mat-option>
+                          <mat-option value="dose">Dose</mat-option>
+                        </mat-select>
+                      </mat-form-field>
+
+                      <mat-form-field appearance="outline">
+                        <mat-label>Ajuste de Preço</mat-label>
+                        <input matInput type="number" formControlName="price_adjustment" step="0.01" min="0">
+                        <span matPrefix>R$&nbsp;</span>
+                      </mat-form-field>
+
+                      <button type="button" mat-icon-button color="warn" 
+                              (click)="removeOptionFromGroup(groupIndex, optionIndex)" 
+                              matTooltip="Remover opção">
+                        <mat-icon>delete</mat-icon>
+                      </button>
+                    </div>
+                  </div>
+
+                  <button type="button" mat-button color="primary" (click)="addOptionToGroup(groupIndex)">
+                    <mat-icon>add</mat-icon>
+                    Adicionar Opção
+                  </button>
+                </div>
+              </mat-card-content>
+            </mat-card>
+          </div>
         </div>
 
-        <!-- Mensagem quando não há produtos -->
-        <div class="no-products-message" *ngIf="selectedProducts.length === 0">
+        <!-- Botão para adicionar novo grupo -->
+        <button type="button" mat-raised-button color="primary" (click)="addGroup()" class="add-group-button">
+          <mat-icon>add</mat-icon>
+          Adicionar Grupo
+        </button>
+
+        <!-- Mensagem quando não há grupos -->
+        <div class="no-groups-message" *ngIf="groupsFormArray.length === 0">
           <mat-icon>info</mat-icon>
-          <p>Nenhum produto adicionado. Use o campo de busca acima para adicionar produtos ao combo.</p>
+          <p>Nenhum grupo adicionado. Clique em "Adicionar Grupo" para começar.</p>
         </div>
       </mat-card-content>
     </mat-card>
@@ -123,51 +191,49 @@
     <mat-card class="form-section">
       <mat-card-header>
         <mat-card-title>Preços e Descontos</mat-card-title>
-        <mat-card-subtitle>Configure os preços e descontos do combo</mat-card-subtitle>
+        <mat-card-subtitle>Configure os preços e descontos do bundle</mat-card-subtitle>
       </mat-card-header>
       <mat-card-content>
-        <div class="price-calculation" *ngIf="originalPrice > 0">
+        <div class="price-calculation" *ngIf="originalPrice > 0 && bundleForm.get('pricing_type')?.value === 'calculated'">
           <div class="price-info">
             <div class="price-item">
-              <span class="price-label">Preço Original:</span>
+              <span class="price-label">Preço Original (Calculado):</span>
               <span class="price-value">{{ formatPrice(originalPrice) }}</span>
             </div>
-            <div class="price-item" *ngIf="discountAmount > 0">
+            <div class="price-item" *ngIf="bundleForm.get('discount_percentage')?.value > 0">
               <span class="price-label">Desconto:</span>
-              <span class="price-value discount">{{ formatPrice(discountAmount) }}</span>
-            </div>
-            <div class="price-item total">
-              <span class="price-label">Preço Final:</span>
-              <span class="price-value">{{ formatPrice(calculatedPrice) }}</span>
+              <span class="price-value discount">
+                {{ bundleForm.get('discount_percentage')?.value }}%
+              </span>
             </div>
           </div>
         </div>
 
-        <div class="form-row">
+        <div class="form-row" *ngIf="bundleForm.get('pricing_type')?.value === 'fixed'">
           <mat-form-field appearance="outline" class="price-field">
-            <mat-label>Preço de Venda</mat-label>
-            <input matInput type="number" formControlName="price" step="0.01" min="0" required>
+            <mat-label>Preço Base</mat-label>
+            <input matInput type="number" formControlName="base_price" step="0.01" min="0">
             <span matPrefix>R$&nbsp;</span>
-            <mat-error *ngIf="comboForm.get('price')?.hasError('required')">
-              Preço é obrigatório
+            <mat-error *ngIf="bundleForm.get('base_price')?.hasError('required')">
+              Preço base é obrigatório para precificação fixa
             </mat-error>
-            <mat-error *ngIf="comboForm.get('price')?.hasError('min')">
+            <mat-error *ngIf="bundleForm.get('base_price')?.hasError('min')">
               Preço deve ser maior que zero
             </mat-error>
           </mat-form-field>
 
           <mat-form-field appearance="outline" class="price-field">
             <mat-label>Preço Original</mat-label>
-            <input matInput type="number" formControlName="original_price" step="0.01" min="0"
-              (input)="calculatePrice()">
+            <input matInput type="number" formControlName="original_price" step="0.01" min="0">
             <span matPrefix>R$&nbsp;</span>
-            <mat-hint>Calculado automaticamente pela soma dos produtos</mat-hint>
+            <mat-hint *ngIf="bundleForm.get('pricing_type')?.value === 'calculated'">
+              Calculado automaticamente pela soma das opções selecionadas
+            </mat-hint>
           </mat-form-field>
 
           <mat-form-field appearance="outline" class="discount-field">
             <mat-label>Desconto (%)</mat-label>
-            <input matInput type="number" formControlName="discount_percentage" step="0.01" min="0" max="100"
-              (input)="calculatePrice()">
+            <input matInput type="number" formControlName="discount_percentage" step="0.01" min="0" max="100">
             <span matSuffix>%</span>
           </mat-form-field>
         </div>
@@ -177,15 +243,15 @@
     <!-- Imagens -->
     <mat-card class="form-section">
       <mat-card-header>
-        <mat-card-title>Imagens do Combo</mat-card-title>
-        <mat-card-subtitle>Adicione imagens para o combo (máximo 5 imagens)</mat-card-subtitle>
+        <mat-card-title>Imagens do Bundle</mat-card-title>
+        <mat-card-subtitle>Adicione imagens para o bundle (máximo 5 imagens)</mat-card-subtitle>
       </mat-card-header>
       <mat-card-content>
         <div class="images-section">
           <!-- Preview das imagens existentes (modo edição) -->
           <div *ngIf="isEdit && existingImages.length > 0" class="existing-images">
             <div *ngFor="let imageUrl of existingImages; let i = index" class="image-preview">
-              <img [src]="imageUrl" alt="Imagem do combo">
+              <img [src]="imageUrl" alt="Imagem do bundle">
               <button type="button" mat-icon-button color="warn" (click)="removeExistingImage(i)"
                 matTooltip="Remover imagem">
                 <mat-icon>delete</mat-icon>
@@ -229,7 +295,7 @@
       <mat-card-content>
         <div class="checkbox-group">
           <mat-checkbox formControlName="is_active">
-            Combo Ativo
+            Bundle Ativo
           </mat-checkbox>
           <mat-checkbox formControlName="featured">
             Em Destaque
@@ -253,7 +319,7 @@
         [disabled]="loading">
         <mat-spinner *ngIf="loading" diameter="20"></mat-spinner>
         <mat-icon *ngIf="!loading">{{ isEdit ? 'save' : 'add' }}</mat-icon>
-        {{ isEdit ? 'Atualizar' : 'Criar' }} Combo
+        {{ isEdit ? 'Atualizar' : 'Criar' }} Bundle
       </button>
     </div>
   </form>

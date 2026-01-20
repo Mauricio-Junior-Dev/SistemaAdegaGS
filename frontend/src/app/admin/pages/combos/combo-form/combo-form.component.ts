@@ -14,13 +14,18 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
-import { MatTableModule, MatTableDataSource } from '@angular/material/table';
 import { Router, ActivatedRoute } from '@angular/router';
 import { Subject, Observable, of } from 'rxjs';
 import { startWith, map, debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
 
 import { ComboService } from '../../../services/combo.service';
-import { Combo, ComboFormData, ComboFormDataForBackend, Product } from '../../../../core/models/combo.model';
+import { 
+  ProductBundle, 
+  ProductBundleFormData, 
+  BundleGroupFormData,
+  BundleOptionFormData,
+  Product 
+} from '../../../../core/models/product-bundle.model';
 import { AuthService } from '../../../../core/services/auth.service';
 
 @Component({
@@ -42,43 +47,25 @@ import { AuthService } from '../../../../core/services/auth.service';
     MatChipsModule,
     MatTooltipModule,
     MatDialogModule,
-    MatAutocompleteModule,
-    MatTableModule
+    MatAutocompleteModule
   ],
   templateUrl: './combo-form.component.html',
   styleUrls: ['./combo-form.component.css']
 })
 export class ComboFormComponent implements OnInit, OnDestroy {
-  comboForm!: FormGroup;
+  bundleForm!: FormGroup;
   products: Product[] = [];
   loading = false;
   isEdit = false;
-  comboId?: number;
-  calculatedPrice = 0;
+  bundleId?: number;
   originalPrice = 0;
-  discountAmount = 0;
   selectedImages: File[] = [];
   existingImages: string[] = [];
   imagePreviewUrls: string[] = []; // URLs de preview para evitar NG0100
 
-  // Novo sistema de busca e seleção
-  productSearchControl = new FormControl('');
-  filteredProducts$!: Observable<Product[]>;
-  selectedProducts: Array<{
-    product: Product;
-    quantity: number;
-    sale_type: 'garrafa' | 'dose';
-  }> = [];
-  
-  // DataSource para a tabela do Angular Material
-  dataSource = new MatTableDataSource<{
-    product: Product;
-    quantity: number;
-    sale_type: 'garrafa' | 'dose';
-  }>([]);
-  
-  // Colunas da tabela
-  displayedColumns: string[] = ['name', 'quantity', 'sale_type', 'actions'];
+  // Sistema de busca de produtos para opções
+  productSearchControls: Map<number, FormControl> = new Map(); // groupIndex -> FormControl
+  filteredProducts$: Map<number, Observable<Product[]>> = new Map(); // groupIndex -> Observable
 
   private comboService = inject(ComboService);
   private router = inject(Router);
@@ -92,6 +79,16 @@ export class ComboFormComponent implements OnInit, OnDestroy {
     this.initializeForm();
   }
 
+  // Getter para facilitar acesso ao FormArray de grupos
+  get groupsFormArray(): FormArray {
+    return this.bundleForm.get('groups') as FormArray;
+  }
+
+  // Getter para facilitar acesso ao FormArray de opções de um grupo
+  getGroupOptionsFormArray(groupIndex: number): FormArray {
+    return this.groupsFormArray.at(groupIndex).get('options') as FormArray;
+  }
+
   ngOnInit(): void {
     // Verificar se o usuário está logado e é admin
     console.log('Usuário logado:', this.authService.getUser());
@@ -103,14 +100,14 @@ export class ComboFormComponent implements OnInit, OnDestroy {
     // Verificar se é edição
     this.route.params.subscribe(params => {
       if (params['id']) {
-        this.comboId = +params['id'];
+        this.bundleId = +params['id'];
         this.isEdit = true;
-        this.loadCombo();
+        this.loadBundle();
       }
     });
 
     // Monitorar mudanças no formulário para debug
-    this.comboForm.statusChanges.subscribe(status => {
+    this.bundleForm.statusChanges.subscribe(status => {
       console.log('Status do formulário mudou para:', status);
       if (status === 'INVALID') {
         console.log('Formulário inválido. Erros:', this.getFormErrors());
@@ -119,25 +116,115 @@ export class ComboFormComponent implements OnInit, OnDestroy {
   }
 
   initializeForm(): void {
-    this.comboForm = this.fb.group({
+    this.bundleForm = this.fb.group({
       name: ['', [Validators.required, Validators.maxLength(255)]],
       description: [''],
-      price: [0, [Validators.required, Validators.min(0.01)]],
+      bundle_type: ['combo', [Validators.required]],
+      pricing_type: ['fixed', [Validators.required]],
+      base_price: [0, [Validators.min(0)]],
       original_price: [0, [Validators.min(0)]],
       discount_percentage: [0, [Validators.min(0), Validators.max(100)]],
       barcode: [''],
       is_active: [true],
       featured: [false],
       offers: [false],
-      popular: [false]
+      popular: [false],
+      groups: this.fb.array([]) // FormArray de grupos
     });
 
-    // Inicializar autocomplete com array vazio
-    this.filteredProducts$ = of([]);
+    // Adicionar validação condicional para base_price quando pricing_type é 'fixed'
+    this.bundleForm.get('pricing_type')?.valueChanges.subscribe(pricingType => {
+      const basePriceControl = this.bundleForm.get('base_price');
+      if (pricingType === 'fixed') {
+        basePriceControl?.setValidators([Validators.required, Validators.min(0.01)]);
+      } else {
+        basePriceControl?.clearValidators();
+      }
+      basePriceControl?.updateValueAndValidity();
+    });
   }
 
-  setupProductAutocomplete(): void {
-    this.filteredProducts$ = this.productSearchControl.valueChanges.pipe(
+  /**
+   * Cria um FormGroup para um novo grupo
+   */
+  createGroupFormGroup(): FormGroup {
+    return this.fb.group({
+      name: ['', [Validators.required]],
+      description: [''],
+      order: [0],
+      is_required: [true],
+      min_selections: [1, [Validators.required, Validators.min(0)]],
+      max_selections: [1, [Validators.required, Validators.min(1)]],
+      selection_type: ['single', [Validators.required]],
+      options: this.fb.array([]) // FormArray de opções
+    });
+  }
+
+  /**
+   * Cria um FormGroup para uma nova opção
+   */
+  createOptionFormGroup(): FormGroup {
+    return this.fb.group({
+      product_id: [null, [Validators.required]],
+      quantity: [1, [Validators.required, Validators.min(1)]],
+      sale_type: ['garrafa', [Validators.required]],
+      price_adjustment: [0, [Validators.min(0)]],
+      order: [0]
+    });
+  }
+
+  /**
+   * Adiciona um novo grupo ao formulário
+   */
+  addGroup(): void {
+    const groupForm = this.createGroupFormGroup();
+    this.groupsFormArray.push(groupForm);
+    
+    const groupIndex = this.groupsFormArray.length - 1;
+    this.setupProductAutocompleteForGroup(groupIndex);
+  }
+
+  /**
+   * Remove um grupo do formulário
+   */
+  removeGroup(groupIndex: number): void {
+    this.groupsFormArray.removeAt(groupIndex);
+    this.productSearchControls.delete(groupIndex);
+    this.filteredProducts$.delete(groupIndex);
+  }
+
+  /**
+   * Adiciona uma nova opção a um grupo
+   */
+  addOptionToGroup(groupIndex: number, product?: Product): void {
+    const optionsFormArray = this.getGroupOptionsFormArray(groupIndex);
+    const optionForm = this.createOptionFormGroup();
+    
+    if (product) {
+      optionForm.patchValue({
+        product_id: product.id
+      });
+    }
+    
+    optionsFormArray.push(optionForm);
+  }
+
+  /**
+   * Remove uma opção de um grupo
+   */
+  removeOptionFromGroup(groupIndex: number, optionIndex: number): void {
+    const optionsFormArray = this.getGroupOptionsFormArray(groupIndex);
+    optionsFormArray.removeAt(optionIndex);
+  }
+
+  /**
+   * Configura o autocomplete de produtos para um grupo específico
+   */
+  setupProductAutocompleteForGroup(groupIndex: number): void {
+    const searchControl = new FormControl('');
+    this.productSearchControls.set(groupIndex, searchControl);
+    
+    const filtered$ = searchControl.valueChanges.pipe(
       startWith(''),
       debounceTime(300),
       distinctUntilChanged(),
@@ -155,74 +242,28 @@ export class ComboFormComponent implements OnInit, OnDestroy {
         );
       })
     );
-  }
-
-  // Novo método para adicionar produto via autocomplete
-  addProductFromAutocomplete(product: Product): void {
-    // Verificar se o produto já foi adicionado
-    const existingIndex = this.selectedProducts.findIndex(
-      item => item.product.id === product.id
-    );
-
-    if (existingIndex >= 0) {
-      // Produto já existe, apenas aumentar quantidade
-      this.selectedProducts[existingIndex].quantity += 1;
-      this.snackBar.open(
-        `Quantidade de "${product.name}" aumentada para ${this.selectedProducts[existingIndex].quantity}`,
-        'Fechar',
-        { duration: 2000 }
-      );
-    } else {
-      // Adicionar novo produto
-      this.selectedProducts.push({
-        product: product,
-        quantity: 1,
-        sale_type: 'garrafa'
-      });
-    }
-
-    // Atualizar o dataSource com uma nova referência do array para forçar a detecção de mudanças
-    this.dataSource.data = [...this.selectedProducts];
     
-    // Limpar campo de busca
-    this.productSearchControl.setValue('');
-    
-    // Recalcular preço original automaticamente
-    this.calculateOriginalPrice();
-    // Recalcular preço final
-    this.calculatePrice();
+    this.filteredProducts$.set(groupIndex, filtered$);
   }
 
-  removeProduct(index: number): void {
-    this.selectedProducts.splice(index, 1);
-    // Atualizar o dataSource com uma nova referência do array
-    this.dataSource.data = [...this.selectedProducts];
-    // Recalcular preço original automaticamente
-    this.calculateOriginalPrice();
-    // Recalcular preço final
-    this.calculatePrice();
-  }
-
-  updateProductQuantity(index: number, quantity: number): void {
-    if (quantity >= 1) {
-      this.selectedProducts[index].quantity = quantity;
-      // Atualizar o dataSource para refletir a mudança
-      this.dataSource.data = [...this.selectedProducts];
-      // Recalcular preço original automaticamente
-      this.calculateOriginalPrice();
-      // Recalcular preço final
-      this.calculatePrice();
+  /**
+   * Obtém o FormControl de busca para um grupo
+   */
+  getProductSearchControl(groupIndex: number): FormControl {
+    if (!this.productSearchControls.has(groupIndex)) {
+      this.setupProductAutocompleteForGroup(groupIndex);
     }
+    return this.productSearchControls.get(groupIndex)!;
   }
 
-  updateProductSaleType(index: number, saleType: 'garrafa' | 'dose'): void {
-    this.selectedProducts[index].sale_type = saleType;
-    // Atualizar o dataSource para refletir a mudança
-    this.dataSource.data = [...this.selectedProducts];
-    // Recalcular preço original automaticamente
-    this.calculateOriginalPrice();
-    // Recalcular preço final
-    this.calculatePrice();
+  /**
+   * Obtém o Observable filtrado para um grupo
+   */
+  getFilteredProducts$(groupIndex: number): Observable<Product[]> {
+    if (!this.filteredProducts$.has(groupIndex)) {
+      this.setupProductAutocompleteForGroup(groupIndex);
+    }
+    return this.filteredProducts$.get(groupIndex)!;
   }
 
   displayProductName(product: Product | null): string {
@@ -233,8 +274,6 @@ export class ComboFormComponent implements OnInit, OnDestroy {
     this.comboService.getProducts().subscribe({
       next: (products) => {
         this.products = products;
-        // Reconfigurar autocomplete após carregar produtos
-        this.setupProductAutocomplete();
       },
       error: (error: any) => {
         console.error('Erro ao carregar produtos:', error);
@@ -243,91 +282,125 @@ export class ComboFormComponent implements OnInit, OnDestroy {
     });
   }
 
-  loadCombo(): void {
-    if (!this.comboId) return;
+  loadBundle(): void {
+    if (!this.bundleId) return;
 
     this.loading = true;
-    this.comboService.getCombo(this.comboId).subscribe({
-      next: (combo: Combo) => {
-        this.populateForm(combo);
+    this.comboService.getCombo(this.bundleId).subscribe({
+      next: (bundle: ProductBundle) => {
+        this.populateForm(bundle);
         this.loading = false;
       },
       error: (error: any) => {
-        console.error('Erro ao carregar combo:', error);
-        this.snackBar.open('Erro ao carregar combo', 'Fechar', { duration: 3000 });
+        console.error('Erro ao carregar bundle:', error);
+        this.snackBar.open('Erro ao carregar bundle', 'Fechar', { duration: 3000 });
         this.loading = false;
       }
     });
   }
 
-  populateForm(combo: Combo): void {
+  populateForm(bundle: ProductBundle): void {
     console.log('=== DEBUG POPULATE FORM ===');
-    console.log('Combo recebido:', combo);
-    console.log('Combo.products:', combo.products);
+    console.log('Bundle recebido:', bundle);
+    console.log('Bundle.groups:', bundle.groups);
     
-    this.comboForm.patchValue({
-      name: combo.name,
-      description: combo.description,
-      price: combo.price || 0.01, // Garantir que o preço seja maior que 0
-      original_price: combo.original_price || 0,
-      discount_percentage: combo.discount_percentage || 0,
-      barcode: combo.barcode || '',
-      is_active: combo.is_active !== undefined ? combo.is_active : true,
-      featured: combo.featured || false,
-      offers: combo.offers || false,
-      popular: combo.popular || false
+    // Primeiro, limpar todos os FormArrays e controles de busca
+    while (this.groupsFormArray.length > 0) {
+      this.groupsFormArray.removeAt(0);
+    }
+    this.productSearchControls.clear();
+    this.filteredProducts$.clear();
+
+    // Aplicar valores básicos do bundle
+    this.bundleForm.patchValue({
+      name: bundle.name || '',
+      description: bundle.description || '',
+      bundle_type: bundle.bundle_type || 'combo',
+      pricing_type: bundle.pricing_type || 'fixed',
+      base_price: bundle.base_price !== undefined && bundle.base_price !== null ? bundle.base_price : 0,
+      original_price: bundle.original_price !== undefined && bundle.original_price !== null ? bundle.original_price : 0,
+      discount_percentage: bundle.discount_percentage !== undefined && bundle.discount_percentage !== null ? bundle.discount_percentage : 0,
+      barcode: bundle.barcode || '',
+      is_active: bundle.is_active !== undefined ? bundle.is_active : true,
+      featured: bundle.featured || false,
+      offers: bundle.offers || false,
+      popular: bundle.popular || false
     });
 
     // Carregar imagens existentes
-    if (combo.images && Array.isArray(combo.images)) {
-      this.existingImages = combo.images;
+    if (bundle.images && Array.isArray(bundle.images)) {
+      this.existingImages = bundle.images;
     } else {
       this.existingImages = [];
     }
 
-    // Limpar produtos selecionados
-    this.selectedProducts = [];
-    this.dataSource.data = [];
+    // Recriar grupos e opções do bundle
+    if (bundle.groups && Array.isArray(bundle.groups) && bundle.groups.length > 0) {
+      console.log('Adicionando grupos ao formulário...', bundle.groups);
+      
+      bundle.groups.forEach((group, groupIndex) => {
+        // Criar FormGroup para o grupo
+        const groupForm = this.createGroupFormGroup();
+        
+        // Aplicar valores do grupo
+        groupForm.patchValue({
+          name: group.name || '',
+          description: group.description || '',
+          order: group.order !== undefined ? group.order : groupIndex,
+          is_required: group.is_required !== undefined ? group.is_required : true,
+          min_selections: group.min_selections !== undefined ? group.min_selections : 1,
+          max_selections: group.max_selections !== undefined ? group.max_selections : 1,
+          selection_type: group.selection_type || 'single'
+        });
 
-    // Adicionar produtos do combo ao novo sistema
-    if (combo.products && combo.products.length > 0) {
-      console.log('Adicionando produtos ao formulário...');
-      combo.products.forEach((product, index) => {
-        console.log(`Produto ${index}:`, product);
+        // Obter FormArray de opções do grupo
+        const optionsFormArray = groupForm.get('options') as FormArray;
         
-        // Para relação many-to-many com pivot, os dados estão em product.pivot
-        const productId = product.id || product.product_id;
-        const quantity = product.pivot?.quantity || product.quantity || 1;
-        const saleType = (product.pivot?.sale_type || product.sale_type || 'garrafa') as 'garrafa' | 'dose';
-        
-        console.log(`Produto ${index} - ID: ${productId}, Quantidade: ${quantity}, Tipo: ${saleType}`);
-        
-        // Encontrar o produto completo na lista de produtos carregados
-        const fullProduct = this.products.find(p => p.id === productId);
-        if (fullProduct) {
-          this.selectedProducts.push({
-            product: fullProduct,
-            quantity: quantity,
-            sale_type: saleType
+        // Limpar opções existentes (se houver)
+        while (optionsFormArray.length > 0) {
+          optionsFormArray.removeAt(0);
+        }
+
+        // Recriar opções do grupo
+        if (group.options && Array.isArray(group.options) && group.options.length > 0) {
+          console.log(`Adicionando ${group.options.length} opções ao grupo ${groupIndex}...`);
+          
+          group.options.forEach((option, optionIndex) => {
+            // Criar FormGroup para a opção
+            const optionForm = this.createOptionFormGroup();
+            
+            // Aplicar valores da opção
+            optionForm.patchValue({
+              product_id: option.product_id !== undefined && option.product_id !== null ? option.product_id : null,
+              quantity: option.quantity !== undefined ? option.quantity : 1,
+              sale_type: option.sale_type || 'garrafa',
+              price_adjustment: option.price_adjustment !== undefined ? option.price_adjustment : 0,
+              order: option.order !== undefined ? option.order : optionIndex
+            });
+            
+            // Adicionar opção ao FormArray
+            optionsFormArray.push(optionForm);
           });
         }
-      });
-      
-      // Atualizar o dataSource após adicionar todos os produtos
-      this.dataSource.data = [...this.selectedProducts];
-    }
 
-    // Calcular preço apenas se há produtos válidos
-    if (this.selectedProducts.length > 0) {
-      this.calculateOriginalPrice();
-      this.calculatePrice();
+        // Adicionar grupo ao FormArray principal
+        this.groupsFormArray.push(groupForm);
+        
+        // Configurar autocomplete para este grupo (usando o índice correto)
+        this.setupProductAutocompleteForGroup(groupIndex);
+      });
     }
 
     // Debug: verificar estado do formulário após popular
-    console.log('Formulário após popular:', this.comboForm.valid);
+    console.log('Formulário após popular:', this.bundleForm.valid);
     console.log('Erros do formulário:', this.getFormErrors());
-    console.log('Valor do formulário:', this.comboForm.value);
-    console.log('Produtos selecionados:', this.selectedProducts);
+    console.log('Valor do formulário:', this.bundleForm.value);
+    console.log('Grupos:', this.groupsFormArray.length);
+    console.log('Grupos detalhados:', this.groupsFormArray.controls.map((g, i) => ({
+      index: i,
+      name: g.get('name')?.value,
+      optionsCount: (g.get('options') as FormArray).length
+    })));
   }
 
   /**
@@ -337,69 +410,41 @@ export class ComboFormComponent implements OnInit, OnDestroy {
    * (para não sobrescrever edições manuais do usuário)
    */
   calculateOriginalPrice(): void {
-    if (this.selectedProducts.length === 0) {
-      this.comboForm.get('original_price')?.setValue(0, { emitEvent: false });
-      this.originalPrice = 0;
-      return;
-    }
-
-    // Calcular soma simples: produto.price * quantidade
-    let totalOriginalPrice = 0;
-    this.selectedProducts.forEach(item => {
-      const productPrice = item.product.price || 0;
-      totalOriginalPrice += productPrice * item.quantity;
-    });
-
-    // Verificar o valor atual no formulário
-    const currentOriginalPrice = this.comboForm.get('original_price')?.value || 0;
+    // Para bundles com pricing_type 'calculated', calcular baseado nos grupos
+    const pricingType = this.bundleForm.get('pricing_type')?.value;
     
-    // Só atualizar se:
-    // 1. O valor atual for 0 (não foi definido)
-    // 2. O valor atual for igual ao valor calculado anteriormente (não foi editado manualmente)
-    // Isso permite que o usuário edite manualmente sem ser sobrescrito
-    if (currentOriginalPrice === 0 || Math.abs(currentOriginalPrice - this.originalPrice) < 0.01) {
-      this.comboForm.get('original_price')?.setValue(totalOriginalPrice, { emitEvent: false });
-    }
-    
-    this.originalPrice = totalOriginalPrice;
-  }
-
-  calculatePrice(): void {
-    if (this.selectedProducts.length === 0) {
-      this.originalPrice = 0;
-      this.calculatedPrice = 0;
-      this.discountAmount = 0;
-      return;
-    }
-
-    // Converter selectedProducts para o formato esperado pelo backend
-    const productsForCalculation = this.selectedProducts.map(item => ({
-      product_id: item.product.id,
-      quantity: item.quantity,
-      sale_type: item.sale_type
-    }));
-
-    this.comboService.calculatePrice(productsForCalculation).subscribe({
-      next: (calculation) => {
-        this.originalPrice = calculation.total_original_price;
-        this.calculatedPrice = calculation.final_price;
-        this.discountAmount = calculation.discount_amount;
-        
-        // Atualizar preço original no formulário se não foi definido manualmente
-        // Mas respeitar se o usuário já editou manualmente
-        const currentOriginalPrice = this.comboForm.get('original_price')?.value || 0;
-        if (currentOriginalPrice === 0 || currentOriginalPrice === this.originalPrice) {
-          this.comboForm.patchValue({ original_price: this.originalPrice });
-        }
-      },
-      error: (error: any) => {
-        console.error('Erro ao calcular preço:', error);
-        this.originalPrice = 0;
-        this.calculatedPrice = 0;
-        this.discountAmount = 0;
+    if (pricingType === 'calculated') {
+      // Calcular baseado nas opções selecionadas nos grupos
+      let totalOriginalPrice = 0;
+      
+      this.groupsFormArray.controls.forEach((groupControl) => {
+        const optionsArray = groupControl.get('options') as FormArray;
+        optionsArray.controls.forEach((optionControl) => {
+          const productId = optionControl.get('product_id')?.value;
+          const quantity = optionControl.get('quantity')?.value || 1;
+          const priceAdjustment = optionControl.get('price_adjustment')?.value || 0;
+          
+          if (productId) {
+            const product = this.products.find(p => p.id === productId);
+            if (product) {
+              const productPrice = product.price || 0;
+              totalOriginalPrice += (productPrice + priceAdjustment) * quantity;
+            }
+          }
+        });
+      });
+      
+      const currentOriginalPrice = this.bundleForm.get('original_price')?.value || 0;
+      if (currentOriginalPrice === 0 || Math.abs(currentOriginalPrice - this.originalPrice) < 0.01) {
+        this.bundleForm.get('original_price')?.setValue(totalOriginalPrice, { emitEvent: false });
       }
-    });
+      this.originalPrice = totalOriginalPrice;
+    } else {
+      // Para pricing_type 'fixed', não calcular automaticamente
+      this.originalPrice = this.bundleForm.get('original_price')?.value || 0;
+    }
   }
+
 
   /**
    * Encontra o primeiro campo inválido na tela e faz scroll até ele
@@ -437,21 +482,21 @@ export class ComboFormComponent implements OnInit, OnDestroy {
   onSubmit(): void {
     // Debug: sempre mostrar os dados, mesmo se o formulário não for válido
     console.log('=== DEBUG SUBMIT ===');
-    console.log('Formulário válido:', this.comboForm.valid);
-    console.log('Valor completo do formulário:', this.comboForm.value);
-    console.log('Produtos selecionados:', this.selectedProducts);
+    console.log('Formulário válido:', this.bundleForm.valid);
+    console.log('Valor completo do formulário:', this.bundleForm.value);
+    console.log('Grupos:', this.groupsFormArray.length);
     console.log('Erros do formulário:', this.getFormErrors());
     
-    // Verificar se o formulário é válido e se há produtos selecionados
-    const isValid = this.comboForm.valid && this.hasValidProducts();
+    // Verificar se o formulário é válido e se há grupos com opções
+    const isValid = this.bundleForm.valid && this.hasValidGroups();
     
     if (!isValid) {
       // Marcar todos os campos como tocados
-      this.comboForm.markAllAsTouched();
+      this.bundleForm.markAllAsTouched();
       
       // Mostrar mensagem de erro
       this.snackBar.open(
-        'Verifique os campos obrigatórios',
+        'Verifique os campos obrigatórios e grupos',
         'Fechar',
         { duration: 3000 }
       );
@@ -465,35 +510,51 @@ export class ComboFormComponent implements OnInit, OnDestroy {
     // Se válido, prosseguir com o envio
     this.loading = true;
     
-    // Converter selectedProducts para o formato esperado pelo backend
-    const productsData = this.selectedProducts.map(item => ({
-      product_id: item.product.id,
-      quantity: item.quantity,
-      sale_type: item.sale_type
-    }));
+    // Converter grupos para o formato esperado pelo backend
+    const groupsData: BundleGroupFormData[] = this.groupsFormArray.controls.map((groupControl, groupIndex) => {
+      const optionsArray = groupControl.get('options') as FormArray;
+      const options: BundleOptionFormData[] = optionsArray.controls.map((optionControl, optionIndex) => ({
+        product_id: optionControl.get('product_id')?.value,
+        quantity: optionControl.get('quantity')?.value || 1,
+        sale_type: optionControl.get('sale_type')?.value || 'garrafa',
+        price_adjustment: optionControl.get('price_adjustment')?.value || 0,
+        order: optionControl.get('order')?.value || optionIndex
+      }));
 
-    const comboData: ComboFormData = {
-      ...this.comboForm.value,
-      price: Number(this.comboForm.value.price),
-      original_price: this.comboForm.value.original_price ? Number(this.comboForm.value.original_price) : undefined,
-      discount_percentage: this.comboForm.value.discount_percentage ? Number(this.comboForm.value.discount_percentage) : undefined,
-      products: productsData,
+      return {
+        name: groupControl.get('name')?.value,
+        description: groupControl.get('description')?.value,
+        order: groupControl.get('order')?.value || groupIndex,
+        is_required: groupControl.get('is_required')?.value || false,
+        min_selections: groupControl.get('min_selections')?.value || 1,
+        max_selections: groupControl.get('max_selections')?.value || 1,
+        selection_type: groupControl.get('selection_type')?.value || 'single',
+        options: options
+      };
+    });
+
+    const bundleData: ProductBundleFormData = {
+      ...this.bundleForm.value,
+      base_price: this.bundleForm.value.base_price ? Number(this.bundleForm.value.base_price) : undefined,
+      original_price: this.bundleForm.value.original_price ? Number(this.bundleForm.value.original_price) : undefined,
+      discount_percentage: this.bundleForm.value.discount_percentage ? Number(this.bundleForm.value.discount_percentage) : undefined,
+      groups: groupsData,
       images: this.selectedImages.length > 0 ? this.selectedImages : undefined
     };
 
     // Debug: log dos dados que serão enviados
-    console.log('Dados do formulário (convertidos):', comboData);
-    console.log('Produtos (convertidos):', comboData.products);
+    console.log('Dados do formulário (convertidos):', bundleData);
+    console.log('Grupos (convertidos):', bundleData.groups);
     console.log('Imagens selecionadas:', this.selectedImages.length);
 
     const operation = this.isEdit 
-      ? this.comboService.updateCombo(this.comboId!, comboData)
-      : this.comboService.createCombo(comboData);
+      ? this.comboService.updateCombo(this.bundleId!, bundleData)
+      : this.comboService.createCombo(bundleData);
 
     operation.subscribe({
-      next: (combo: Combo) => {
+      next: (bundle: ProductBundle) => {
         this.snackBar.open(
-          `Combo ${this.isEdit ? 'atualizado' : 'criado'} com sucesso!`,
+          `Bundle ${this.isEdit ? 'atualizado' : 'criado'} com sucesso!`,
           'Fechar',
           { duration: 3000 }
         );
@@ -505,7 +566,7 @@ export class ComboFormComponent implements OnInit, OnDestroy {
         console.error('Status:', error.status);
         console.error('Status Text:', error.statusText);
         
-        let errorMessage = 'Erro ao salvar combo';
+        let errorMessage = 'Erro ao salvar bundle';
         if (error.error && error.error.message) {
           errorMessage = error.error.message;
           console.error('Mensagem de erro:', error.error.message);
@@ -524,34 +585,64 @@ export class ComboFormComponent implements OnInit, OnDestroy {
   }
 
   markFormGroupTouched(): void {
-    Object.keys(this.comboForm.controls).forEach(key => {
-      const control = this.comboForm.get(key);
+    Object.keys(this.bundleForm.controls).forEach(key => {
+      const control = this.bundleForm.get(key);
       control?.markAsTouched();
+    });
+    
+    // Marcar grupos e opções como tocados também
+    this.groupsFormArray.controls.forEach((groupControl) => {
+      const groupFormGroup = groupControl as FormGroup;
+      Object.keys(groupFormGroup.controls).forEach(key => {
+        const control = groupFormGroup.get(key);
+        control?.markAsTouched();
+      });
+      
+      const optionsArray = groupFormGroup.get('options') as FormArray;
+      optionsArray.controls.forEach((optionControl) => {
+        const optionFormGroup = optionControl as FormGroup;
+        Object.keys(optionFormGroup.controls).forEach(key => {
+          const control = optionFormGroup.get(key);
+          control?.markAsTouched();
+        });
+      });
     });
   }
 
   getFormErrors(): any {
     const errors: any = {};
-    Object.keys(this.comboForm.controls).forEach(key => {
-      const control = this.comboForm.get(key);
+    Object.keys(this.bundleForm.controls).forEach(key => {
+      const control = this.bundleForm.get(key);
       if (control && control.errors) {
         errors[key] = control.errors;
       }
     });
     
-    // Verificar se há produtos selecionados
-    if (this.selectedProducts.length === 0) {
-      errors['products'] = { required: true };
+    // Verificar se há grupos válidos
+    if (this.groupsFormArray.length === 0) {
+      errors['groups'] = { required: true };
+    } else {
+      this.groupsFormArray.controls.forEach((groupControl, groupIndex) => {
+        const optionsArray = groupControl.get('options') as FormArray;
+        if (optionsArray.length === 0) {
+          errors[`groups.${groupIndex}.options`] = { required: true };
+        }
+      });
     }
     
     return errors;
   }
 
-  hasValidProducts(): boolean {
-    return this.selectedProducts.length > 0 && 
-           this.selectedProducts.every(item => 
-             item.product && item.quantity >= 1 && item.sale_type
-           );
+  hasValidGroups(): boolean {
+    if (this.groupsFormArray.length === 0) {
+      return false;
+    }
+    
+    // Verificar se cada grupo tem pelo menos uma opção
+    return this.groupsFormArray.controls.every((groupControl) => {
+      const optionsArray = groupControl.get('options') as FormArray;
+      return optionsArray.length > 0;
+    });
   }
 
   getProductName(productId: number): string {

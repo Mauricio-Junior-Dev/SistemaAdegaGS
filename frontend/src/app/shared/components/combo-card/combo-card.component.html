@@ -20,7 +20,7 @@
     <h3 class="combo-title" [title]="combo.name">{{ combo.name }}</h3>
     
     <!-- Itens do Combo (Resumido) -->
-    <div class="combo-items" *ngIf="combo.products && combo.products.length > 0">
+    <div class="combo-items" *ngIf="getComboItemsSummary()">
       <span class="items-text">{{ getComboItemsSummary() }}</span>
     </div>
   </div>
@@ -28,11 +28,11 @@
   <!-- Footer com Preços e Botão -->
   <div class="card-footer">
     <div class="price-block">
-      <span class="old-price" *ngIf="combo.original_price && combo.original_price > combo.price">
+      <span class="old-price" *ngIf="combo.original_price && combo.original_price > getComboPrice(combo)">
         {{ formatPrice(combo.original_price) }}
       </span>
       <span class="current-price">
-        {{ formatPrice(combo.price) }}
+        {{ formatPrice(getComboPrice(combo)) }}
       </span>
     </div>
     <button mat-icon-button 
