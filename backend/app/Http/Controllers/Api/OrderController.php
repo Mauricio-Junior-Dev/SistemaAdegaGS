@@ -88,6 +88,20 @@ class OrderController extends Controller
             return response()->json(['error' => 'Não autorizado'], 403);
         }
 
+        // Busca por termo (ID do pedido ou nome do cliente)
+        if ($request->has('search') && !empty($request->search)) {
+            $searchTerm = $request->search;
+            $query->where(function($q) use ($searchTerm) {
+                // Buscar por ID do pedido ou order_number
+                $q->where('id', 'like', "%{$searchTerm}%")
+                  ->orWhere('order_number', 'like', "%{$searchTerm}%")
+                  // Buscar por nome do cliente
+                  ->orWhereHas('user', function($userQuery) use ($searchTerm) {
+                      $userQuery->where('name', 'like', "%{$searchTerm}%");
+                  });
+            });
+        }
+
         // Paginação: usar per_page da requisição ou padrão de 20
         $perPage = min($request->get('per_page', 20), 100); // Máximo de 100 por página
         $orders = $query->orderBy('created_at', 'desc')->paginate($perPage);

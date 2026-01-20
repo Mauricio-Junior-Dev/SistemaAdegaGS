@@ -27,8 +27,8 @@
             <mat-form-field appearance="outline" class="search-field">
               <mat-label>Buscar pedidos...</mat-label>
               <input matInput 
-                     [(ngModel)]="searchTerm"
-                     (ngModelChange)="onSearchChange($event)"
+                     [value]="searchTerm"
+                     (input)="onSearchChange($any($event.target).value)"
                      placeholder="Número do pedido ou nome do cliente">
               <mat-icon matSuffix *ngIf="!searching && !searchTerm">search</mat-icon>
               <mat-spinner matSuffix *ngIf="searching" diameter="20"></mat-spinner>
@@ -58,7 +58,7 @@
               </ng-template>
               <div class="tab-content">
                 <div class="table-container">
-                  <table mat-table [dataSource]="pedidosNovos" class="orders-table">
+                  <table mat-table [dataSource]="pedidosNovosFiltrados || pedidosNovos" class="orders-table">
           <!-- ID -->
           <ng-container matColumnDef="id">
             <th mat-header-cell *matHeaderCellDef>Pedido</th>
@@ -200,9 +200,10 @@
                   </table>
                 </div>
                 <!-- Empty State -->
-                <div *ngIf="pedidosNovos.length === 0 && !loading" class="empty-state">
+                <div *ngIf="(pedidosNovosFiltrados || pedidosNovos).length === 0 && !loading" class="empty-state">
                   <mat-icon>receipt_long</mat-icon>
-                  <p>Nenhum novo pedido no momento.</p>
+                  <p *ngIf="!searchTerm">Nenhum novo pedido no momento.</p>
+                  <p *ngIf="searchTerm">Nenhum pedido encontrado com o termo "{{searchTerm}}".</p>
                 </div>
               </div>
             </mat-tab>
@@ -221,7 +222,7 @@
               </ng-template>
               <div class="tab-content">
                 <div class="table-container">
-                  <table mat-table [dataSource]="pedidosEmPreparo" class="orders-table">
+                  <table mat-table [dataSource]="pedidosEmPreparoFiltrados || pedidosEmPreparo" class="orders-table">
                   <!-- Reutilizar as mesmas definições de colunas -->
                   <ng-container matColumnDef="id">
                     <th mat-header-cell *matHeaderCellDef>Pedido</th>
@@ -333,9 +334,10 @@
                   </table>
                 </div>
                 <!-- Empty State -->
-                <div *ngIf="pedidosEmPreparo.length === 0 && !loading" class="empty-state">
+                <div *ngIf="(pedidosEmPreparoFiltrados || pedidosEmPreparo).length === 0 && !loading" class="empty-state">
                   <mat-icon>restaurant</mat-icon>
-                  <p>Nenhum pedido em preparo no momento.</p>
+                  <p *ngIf="!searchTerm">Nenhum pedido em preparo no momento.</p>
+                  <p *ngIf="searchTerm">Nenhum pedido encontrado com o termo "{{searchTerm}}".</p>
                 </div>
               </div>
             </mat-tab>
@@ -354,7 +356,7 @@
               </ng-template>
               <div class="tab-content">
                 <div class="table-container">
-                  <table mat-table [dataSource]="pedidosEmEntrega" class="orders-table">
+                  <table mat-table [dataSource]="pedidosEmEntregaFiltrados || pedidosEmEntrega" class="orders-table">
                   <!-- Reutilizar as mesmas definições de colunas -->
                   <ng-container matColumnDef="id">
                     <th mat-header-cell *matHeaderCellDef>Pedido</th>
@@ -466,9 +468,10 @@
                   </table>
                 </div>
                 <!-- Empty State -->
-                <div *ngIf="pedidosEmEntrega.length === 0 && !loading" class="empty-state">
+                <div *ngIf="(pedidosEmEntregaFiltrados || pedidosEmEntrega).length === 0 && !loading" class="empty-state">
                   <mat-icon>local_shipping</mat-icon>
-                  <p>Nenhum pedido em entrega no momento.</p>
+                  <p *ngIf="!searchTerm">Nenhum pedido em entrega no momento.</p>
+                  <p *ngIf="searchTerm">Nenhum pedido encontrado com o termo "{{searchTerm}}".</p>
                 </div>
               </div>
             </mat-tab>

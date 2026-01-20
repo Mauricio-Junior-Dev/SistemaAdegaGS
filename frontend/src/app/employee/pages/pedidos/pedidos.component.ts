@@ -76,11 +76,18 @@ export class PedidosComponent implements OnInit, OnDestroy {
   searchTerm = '';
   searching = false;
   
+  // Controle de Abas
+  currentTabIndex = 0; // 0: Novos, 1: Em Preparo, 2: Em Entrega, 3: Concluídos
+  
   // Paginação de Concluídos
   totalConcluidos = 0;
   pageSizeConcluidos = 10;
   pageIndexConcluidos = 0;
   
+  // Armazenamento de dados filtrados para busca visual
+  pedidosNovosFiltrados: Order[] = [];
+  pedidosEmPreparoFiltrados: Order[] = [];
+  pedidosEmEntregaFiltrados: Order[] = [];
   
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   private destroy$ = new Subject<void>();
@@ -95,29 +102,50 @@ export class PedidosComponent implements OnInit, OnDestroy {
     private printService: PrintService
   ) {
     // Configurar busca com debounce
+    // IMPORTANTE: Esta busca é apenas para a visualização na tela
+    // O OrderPollingService continua funcionando independentemente em background
     this.searchSubject.pipe(
-      debounceTime(800), // Aumentado para 800ms para dar tempo de digitar
-      distinctUntilChanged(),
+      debounceTime(500),
+      // Permitir transições para string vazia (resetar busca)
+      distinctUntilChanged((prev, curr) => {
+        // Se ambos forem vazios (após trim), considerar iguais
+        const prevClean = (prev || '').trim();
+        const currClean = (curr || '').trim();
+        return prevClean === currClean;
+      }),
       takeUntil(this.destroy$)
     ).subscribe(() => {
       this.currentPage = 0;
+      this.pageIndexConcluidos = 0;
       this.searching = true;
-      this.loadOrders();
+      // Sempre chama applySearchFilter, mesmo quando vazio (para resetar)
+      this.applySearchFilter();
     });
   }
 
   ngOnInit(): void {
+    // Inicializar listas filtradas (sincronizadas com as originais quando não há busca)
+    this.pedidosNovosFiltrados = [];
+    this.pedidosEmPreparoFiltrados = [];
+    this.pedidosEmEntregaFiltrados = [];
+    
     // Conectar o componente ao Observable do OrderPollingService
     // O componente agora está 'escutando' o serviço
     this.pedidos$ = this.orderPollingService.pendingOrders$;
     
     // Subscrever ao Observable para atualizar a lista local quando houver mudanças
     // Esta subscrição será sempre ativa e atualizará todas as listas filtradas para o Kanban
+    // CRÍTICO: Esta é a busca de monitoramento que roda em background independentemente
+    // NUNCA deve ser afetada pela busca visual ou filtros da interface
     this.pollingSub = this.orderPollingService.pendingOrders$.subscribe(
       (pedidosRecebidos: Order[]) => {
         this.pedidos = pedidosRecebidos;
         this.pedidosTodos = pedidosRecebidos;
         this.filtrarPedidosPorStatus();
+        // Reaplicar filtro de busca se houver termo digitado
+        if (this.searchTerm) {
+          this.applySearchFilter();
+        }
         this.loading = false;
       }
     );
@@ -138,8 +166,28 @@ export class PedidosComponent implements OnInit, OnDestroy {
 
   loadConcluidos(page: number = 1, size: number = 10): void {
     this.concluidosLoading = true;
-    this.orderService.fetchOrders({ status: 'completed', per_page: size, page: page })
-      .pipe(finalize(() => this.concluidosLoading = false))
+    
+    // Parâmetros de busca - inclui termo de busca se houver
+    const params: any = {
+      status: 'completed',
+      per_page: size,
+      page: page
+    };
+    
+    // Aplicar termo de busca se existir e não for vazio (busca visual independente do monitoramento)
+    const hasSearchTerm = this.searchTerm && this.searchTerm.trim().length > 0;
+    if (hasSearchTerm) {
+      params.search = this.searchTerm.trim();
+    }
+    
+    this.orderService.fetchOrders(params)
+      .pipe(
+        finalize(() => {
+          this.concluidosLoading = false;
+          // Garantir que o spinner de busca também seja desativado
+          this.searching = false;
+        })
+      )
       .subscribe({
         next: (response: OrderResponse) => {
           // Garantir que response.data existe e é um array
@@ -154,6 +202,8 @@ export class PedidosComponent implements OnInit, OnDestroy {
           this.pedidosConcluidos = [];
           this.totalConcluidos = 0;
           this.snackBar.open('Não foi possível carregar os pedidos concluídos.', 'Fechar', { duration: 3000 });
+          // O finalize já garante que searching seja false, mas garantimos aqui também por segurança
+          this.searching = false;
         }
       });
   }
@@ -169,10 +219,22 @@ export class PedidosComponent implements OnInit, OnDestroy {
     // Aba "Concluídos" é o índice 3 (0: Novos, 1: Em Preparo, 2: Em Entrega, 3: Concluídos)
     const CONCLUIDOS_TAB_INDEX = 3;
     
-    if (event.index === CONCLUIDOS_TAB_INDEX && !this.concluidosLoaded) {
+    // Atualizar índice da aba atual (para manter contexto)
+    // IMPORTANTE: Isso NÃO afeta o OrderPollingService que continua monitorando em background
+    this.currentTabIndex = event.index;
+    
+    if (event.index === CONCLUIDOS_TAB_INDEX) {
       // Lazy Loading: carregar na primeira vez que a aba é acessada
-      this.concluidosLoaded = true;
-      this.loadConcluidos(1, this.pageSizeConcluidos);
+      // OU recarregar se houver termo de busca (para aplicar o filtro)
+      if (!this.concluidosLoaded || this.searchTerm) {
+        this.concluidosLoaded = true;
+        this.loadConcluidos(1, this.pageSizeConcluidos);
+      }
+    } else {
+      // Para outras abas, reaplicar filtro de busca se houver termo
+      if (this.searchTerm) {
+        this.applySearchFilter();
+      }
     }
   }
 
@@ -191,58 +253,101 @@ export class PedidosComponent implements OnInit, OnDestroy {
     this.pedidosEmEntrega = this.pedidosTodos.filter(
       p => p.status === 'delivering'
     );
-  }
-
-  loadOrders(): void {
-    this.loading = true;
     
-    const params = {
-      page: this.currentPage + 1,
-      per_page: this.pageSize,
-      status: this.selectedStatus === 'all' ? undefined : this.selectedStatus,
-      search: this.searchTerm || undefined
+    // Sincronizar listas filtradas com as originais
+    // Se houver termo de busca, applySearchFilter() será chamado explicitamente depois
+    const hasSearchTerm = this.searchTerm && this.searchTerm.trim().length > 0;
+    if (!hasSearchTerm) {
+      // Se não há busca, sincronizar listas filtradas com originais
+      this.pedidosNovosFiltrados = [...this.pedidosNovos];
+      this.pedidosEmPreparoFiltrados = [...this.pedidosEmPreparo];
+      this.pedidosEmEntregaFiltrados = [...this.pedidosEmEntrega];
+    }
+    // Nota: Se há busca, não chamamos applySearchFilter aqui para evitar recursão
+    // O applySearchFilter será chamado explicitamente quando necessário
+  }
+  
+  /**
+   * Aplica o filtro de busca visual nas listas locais (abas 0-2)
+   * Para a aba 3 (Concluídos), a busca é feita via HTTP no loadConcluidos
+   * 
+   * CRÍTICO: Esta função NÃO afeta o OrderPollingService que continua buscando
+   * pedidos novos em background independentemente
+   */
+  applySearchFilter(): void {
+    // Verificar se há termo de busca (após trim)
+    const hasSearchTerm = this.searchTerm && this.searchTerm.trim().length > 0;
+    
+    if (!hasSearchTerm) {
+      // Sem busca: resetar e usar listas originais completas
+      // Garantir que as listas originais estejam atualizadas primeiro
+      // (sem chamar applySearchFilter novamente, para evitar recursão)
+      
+      // Atualizar listas por status (sem aplicar busca)
+      this.pedidosNovos = this.pedidosTodos.filter(
+        p => p.status === 'pending' || p.status === 'processing'
+      );
+      this.pedidosEmPreparo = this.pedidosTodos.filter(
+        p => p.status === 'preparing'
+      );
+      this.pedidosEmEntrega = this.pedidosTodos.filter(
+        p => p.status === 'delivering'
+      );
+      
+      // Resetar listas filtradas para mostrar todos os pedidos (sem filtro)
+      this.pedidosNovosFiltrados = [...this.pedidosNovos];
+      this.pedidosEmPreparoFiltrados = [...this.pedidosEmPreparo];
+      this.pedidosEmEntregaFiltrados = [...this.pedidosEmEntrega];
+      
+      // Se estiver na aba de Concluídos, recarregar sem parâmetro de busca
+      if (this.currentTabIndex === 3) {
+        this.loadConcluidos(this.pageIndexConcluidos + 1, this.pageSizeConcluidos);
+      } else {
+        this.searching = false;
+      }
+      return;
+    }
+    
+    const searchLower = this.searchTerm.toLowerCase().trim();
+    
+    // Função auxiliar para verificar se um pedido corresponde à busca
+    const matchesSearch = (order: Order): boolean => {
+      // Buscar por ID do pedido
+      const orderId = String(order.id || '').toLowerCase();
+      const orderNumber = String(order.order_number || '').toLowerCase();
+      
+      // Buscar por nome do cliente
+      const customerName = (order.user?.name || order.customer_name || '').toLowerCase();
+      
+      // Buscar por email do cliente
+      const customerEmail = (order.user?.email || '').toLowerCase();
+      
+      // Buscar por telefone do cliente
+      const customerPhone = (order.user?.phone || order.customer_phone || '').toLowerCase();
+      
+      return orderId.includes(searchLower) ||
+             orderNumber.includes(searchLower) ||
+             customerName.includes(searchLower) ||
+             customerEmail.includes(searchLower) ||
+             customerPhone.includes(searchLower);
     };
-
-
-    this.orderService.fetchOrders(params).subscribe({
-      next: (response: OrderResponse) => {
-        
-        this.orders = response.data;
-        this.totalItems = response.total;
-        this.loading = false;
-        this.searching = false;
-        
-      },
-      error: (error: Error) => {
-        console.error('Erro ao carregar pedidos:', error);
-        this.snackBar.open('Erro ao carregar pedidos', 'Fechar', { duration: 3000 });
-        this.loading = false;
-        this.searching = false;
-      }
-    });
-  }
-
-
-  onStatusFilterChange(status: OrderStatus | 'all'): void {
-    this.selectedStatus = status;
-    this.currentPage = 0;
     
-    // Se mudar para 'pending' ou 'processing', usar os dados do Observable do OrderPollingService
-    // O Observable já atualiza automaticamente através da subscription no ngOnInit
-    if (status === 'pending' || status === 'processing') {
-      // Filtrar pedidos de acordo com o status selecionado
-      if (status === 'pending') {
-        this.orders = this.pedidos.filter(order => order.status === 'pending');
-      } else if (status === 'processing') {
-        this.orders = this.pedidos.filter(order => order.status === 'processing');
-      }
-      this.totalItems = this.orders.length;
-      this.loading = false;
+    // Aplicar filtro nas listas locais
+    this.pedidosNovosFiltrados = this.pedidosNovos.filter(matchesSearch);
+    this.pedidosEmPreparoFiltrados = this.pedidosEmPreparo.filter(matchesSearch);
+    this.pedidosEmEntregaFiltrados = this.pedidosEmEntrega.filter(matchesSearch);
+    
+    // Se estiver na aba de Concluídos, recarregar via HTTP
+    if (this.currentTabIndex === 3) {
+      this.loadConcluidos(this.pageIndexConcluidos + 1, this.pageSizeConcluidos);
     } else {
-      // Para outros status, usar busca HTTP tradicional
-      this.loadOrders();
+      this.searching = false;
     }
   }
+
+  // Método removido: loadOrders() não é mais necessário
+  // A busca visual agora é feita via applySearchFilter() que funciona com as abas
+  // O monitoramento em background continua independente via OrderPollingService
 
   onSearchChange(value: string): void {
     this.searchTerm = value;
@@ -252,14 +357,22 @@ export class PedidosComponent implements OnInit, OnDestroy {
   clearSearch(): void {
     this.searchTerm = '';
     this.currentPage = 0;
-    this.loadOrders();
+    this.pageIndexConcluidos = 0;
+    
+    // Limpar filtros e restaurar listas originais
+    this.pedidosNovosFiltrados = this.pedidosNovos;
+    this.pedidosEmPreparoFiltrados = this.pedidosEmPreparo;
+    this.pedidosEmEntregaFiltrados = this.pedidosEmEntrega;
+    
+    // Se estiver na aba de Concluídos, recarregar sem busca
+    if (this.currentTabIndex === 3) {
+      this.loadConcluidos(1, this.pageSizeConcluidos);
+    }
   }
 
-  onPageChange(event: PageEvent): void {
-    this.currentPage = event.pageIndex;
-    this.pageSize = event.pageSize;
-    this.loadOrders();
-  }
+  // Método onPageChange removido - não é mais necessário
+  // As abas 0-2 usam dados do OrderPollingService (sem paginação visual)
+  // A aba 3 (Concluídos) usa onConcluidosPageChange para sua própria paginação
 
   showDetails(order: Order): void {
     this.dialog.open(OrderDetailsDialogComponent, {
@@ -455,34 +568,9 @@ Pagamento: ${paymentMethodLabel}${hasChange ? `\nTroco: ${this.formatCurrency(ch
 
     dialogRef.afterClosed().subscribe((newStatus?: OrderStatus) => {
       if (newStatus) {
-        this.orderService.updateOrderStatus(order.id, newStatus).subscribe({
-          next: (updatedOrder) => {
-            // Atualizar o objeto order com os dados do servidor
-            Object.assign(order, updatedOrder);
-
-            // Se o filtro for 'pending' ou 'processing', atualizar a lista local manualmente
-            // pois a subscrição atualizará automaticamente na próxima verificação do OrderPollingService
-            if (this.selectedStatus === 'pending' || this.selectedStatus === 'processing') {
-              // Remover o pedido atualizado da lista se mudou de status
-              this.orders = this.orders.filter(o => o.id !== order.id);
-              // Se o novo status corresponde ao filtro atual, adicionar de volta
-              if (updatedOrder.status === this.selectedStatus) {
-                this.orders.push(updatedOrder);
-                // Ordenar por data de criação (mais recentes primeiro)
-                this.orders.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-              }
-              this.totalItems = this.orders.length;
-            } else {
-              // Para outros status, usar busca HTTP tradicional
-              this.loadOrders();
-            }
-            this.snackBar.open('Status atualizado com sucesso', 'Fechar', { duration: 3000 });
-          },
-          error: (error: Error) => {
-            console.error('Erro ao atualizar status:', error);
-            this.snackBar.open('Erro ao atualizar status', 'Fechar', { duration: 3000 });
-          }
-        });
+        // Usar o método quickUpdateStatus que já gerencia tudo corretamente
+        // incluindo atualização das listas e filtros
+        this.quickUpdateStatus(order, newStatus);
       }
     });
   }
