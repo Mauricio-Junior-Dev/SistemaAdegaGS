@@ -7,6 +7,8 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatCardModule } from '@angular/material/card';
+import { MatSelectModule } from '@angular/material/select';
+import { MatFormFieldModule } from '@angular/material/form-field';
 import { ComboService } from '../../../core/services/combo.service';
 import { CartService } from '../../../core/services/cart.service';
 import { Combo } from '../../../core/models/combo.model';
@@ -26,7 +28,9 @@ import { environment } from '../../../../environments/environment';
     MatButtonModule,
     MatRadioModule,
     MatCheckboxModule,
-    MatCardModule
+    MatCardModule,
+    MatSelectModule,
+    MatFormFieldModule
   ]
 })
 export class ComboDetailComponent implements OnInit {
@@ -224,6 +228,28 @@ export class ComboDetailComponent implements OnInit {
   }
   
   /**
+   * Obtém a imagem do produto selecionado em um grupo
+   */
+  getSelectedProductImage(group: BundleGroup): string {
+    const selected = this.getSelectedOption(group);
+    if (selected && selected.product) {
+      return this.getProductImage(selected.product);
+    }
+    return '/assets/images/no-image.jpg';
+  }
+  
+  /**
+   * Manipula mudança no dropdown (mat-select)
+   */
+  onDropdownChange(group: BundleGroup, option: BundleOption | null): void {
+    if (option) {
+      this.onRadioSelect(group, option);
+    } else {
+      this.onRadioSelect(group, null);
+    }
+  }
+  
+  /**
    * Verifica se uma opção está selecionada
    */
   isOptionSelected(group: BundleGroup, option: BundleOption): boolean {
@@ -379,6 +405,10 @@ export class ComboDetailComponent implements OnInit {
   }
 
   getProductImage(product: any): string {
+    if (!product) {
+      return '/assets/images/no-image.jpg';
+    }
+    
     const imageUrl = product.image_url || product.images?.[0];
     if (!imageUrl) {
       return '/assets/images/no-image.jpg';

@@ -342,16 +342,14 @@ export class ComboFormComponent implements OnInit, OnDestroy {
         // Criar FormGroup para o grupo
         const groupForm = this.createGroupFormGroup();
         
-        // Aplicar valores do grupo
-        groupForm.patchValue({
-          name: group.name || '',
-          description: group.description || '',
-          order: group.order !== undefined ? group.order : groupIndex,
-          is_required: group.is_required !== undefined ? group.is_required : true,
-          min_selections: group.min_selections !== undefined ? group.min_selections : 1,
-          max_selections: group.max_selections !== undefined ? group.max_selections : 1,
-          selection_type: group.selection_type || 'single'
-        });
+        // Aplicar valores do grupo DIRETAMENTE (não usar patchValue para garantir que funcione)
+        groupForm.get('name')?.setValue(group.name || '');
+        groupForm.get('description')?.setValue(group.description || '');
+        groupForm.get('order')?.setValue(group.order !== undefined ? group.order : groupIndex);
+        groupForm.get('is_required')?.setValue(group.is_required !== undefined ? group.is_required : true);
+        groupForm.get('min_selections')?.setValue(group.min_selections !== undefined ? group.min_selections : 1);
+        groupForm.get('max_selections')?.setValue(group.max_selections !== undefined ? group.max_selections : 1);
+        groupForm.get('selection_type')?.setValue(group.selection_type || 'single');
 
         // Obter FormArray de opções do grupo
         const optionsFormArray = groupForm.get('options') as FormArray;
@@ -369,14 +367,12 @@ export class ComboFormComponent implements OnInit, OnDestroy {
             // Criar FormGroup para a opção
             const optionForm = this.createOptionFormGroup();
             
-            // Aplicar valores da opção
-            optionForm.patchValue({
-              product_id: option.product_id !== undefined && option.product_id !== null ? option.product_id : null,
-              quantity: option.quantity !== undefined ? option.quantity : 1,
-              sale_type: option.sale_type || 'garrafa',
-              price_adjustment: option.price_adjustment !== undefined ? option.price_adjustment : 0,
-              order: option.order !== undefined ? option.order : optionIndex
-            });
+            // Aplicar valores da opção DIRETAMENTE (não usar patchValue aqui)
+            optionForm.get('product_id')?.setValue(option.product_id !== undefined && option.product_id !== null ? option.product_id : null);
+            optionForm.get('quantity')?.setValue(option.quantity !== undefined ? option.quantity : 1);
+            optionForm.get('sale_type')?.setValue(option.sale_type || 'garrafa');
+            optionForm.get('price_adjustment')?.setValue(option.price_adjustment !== undefined ? option.price_adjustment : 0);
+            optionForm.get('order')?.setValue(option.order !== undefined ? option.order : optionIndex);
             
             // Adicionar opção ao FormArray
             optionsFormArray.push(optionForm);
@@ -386,8 +382,8 @@ export class ComboFormComponent implements OnInit, OnDestroy {
         // Adicionar grupo ao FormArray principal
         this.groupsFormArray.push(groupForm);
         
-        // Configurar autocomplete para este grupo (usando o índice correto)
-        this.setupProductAutocompleteForGroup(groupIndex);
+        // Configurar autocomplete para este grupo (usando o índice correto - após adicionar ao array)
+        this.setupProductAutocompleteForGroup(this.groupsFormArray.length - 1);
       });
     }
 

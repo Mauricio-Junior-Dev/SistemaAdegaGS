@@ -61,66 +61,100 @@
         </div>
       </div>
 
-      <!-- Grupos de Escolha (ProductBundle) -->
+      <!-- Grupos de Escolha (ProductBundle) - Layout Configurador -->
       <div *ngIf="isProductBundle(bundle) && bundle.groups && bundle.groups.length > 0" class="combo-groups-section">
         <h2 class="section-title">
           <mat-icon>tune</mat-icon>
           <span>Personalize seu Combo</span>
         </h2>
         
-        <div *ngFor="let group of bundle.groups" class="group-card">
-          <mat-card>
-            <mat-card-header>
-              <mat-card-title>
-                {{ group.name }}
-                <span *ngIf="group.is_required" class="required-badge">*</span>
-              </mat-card-title>
-              <mat-card-subtitle>
-                {{ getGroupInstruction(group) }}
-                <span *ngIf="getGroupValidationMessage(group)" class="validation-message">
-                  {{ getGroupValidationMessage(group) }}
-                </span>
-              </mat-card-subtitle>
+        <div *ngFor="let group of bundle.groups" class="configurator-card">
+          <mat-card class="group-configurator-card">
+            <!-- Header do Card -->
+            <mat-card-header class="group-header">
+              <div class="header-content">
+                <mat-card-title class="group-title">
+                  {{ group.name }}
+                  <span *ngIf="group.is_required" class="required-badge">*</span>
+                </mat-card-title>
+                <mat-card-subtitle class="group-subtitle">
+                  {{ getGroupInstruction(group) }}
+                  <span *ngIf="getGroupValidationMessage(group)" class="validation-message">
+                    {{ getGroupValidationMessage(group) }}
+                  </span>
+                </mat-card-subtitle>
+              </div>
             </mat-card-header>
-            <mat-card-content>
+            
+            <mat-card-content class="group-content">
               <p *ngIf="group.description" class="group-description">{{ group.description }}</p>
               
-              <!-- Seleção Única (Radio) -->
-              <mat-radio-group 
-                *ngIf="group.selection_type === 'single' || group.max_selections === 1"
-                [(ngModel)]="singleSelections[group.id]"
-                (change)="onRadioSelect(group, $event.value)">
-                <div *ngFor="let option of group.options" class="option-item">
-                  <mat-radio-button [value]="option">
-                    <div class="option-content">
-                      <span class="option-name">{{ option.product?.name || 'Produto' }}</span>
-                      <span *ngIf="option.price_adjustment > 0" class="option-adjustment">
-                        (+ {{ formatPrice(option.price_adjustment) }})
-                      </span>
-                      <span *ngIf="option.quantity > 1" class="option-quantity">
-                        ({{ option.quantity }}x)
-                      </span>
+              <!-- Layout Configurador: Imagem Grande + Dropdown -->
+              <div class="configurator-layout">
+                <!-- Imagem Grande do Produto Selecionado -->
+                <div class="product-image-container">
+                  <div class="product-image-wrapper">
+                    <img 
+                      [src]="getSelectedProductImage(group)" 
+                      [alt]="getSelectedOption(group)?.product?.name || 'Selecione um produto'"
+                      class="product-large-image"
+                      onerror="this.src='/assets/images/no-image.jpg'">
+                    <div *ngIf="!getSelectedOption(group)" class="placeholder-overlay">
+                      <mat-icon class="placeholder-icon">help_outline</mat-icon>
+                      <span class="placeholder-text">Selecione uma opção</span>
                     </div>
-                  </mat-radio-button>
+                  </div>
                 </div>
-              </mat-radio-group>
-              
-              <!-- Seleção Múltipla (Checkbox) -->
-              <div *ngIf="group.selection_type === 'multiple' && group.max_selections > 1" class="options-checkbox-group">
-                <div *ngFor="let option of group.options" class="option-item">
-                  <mat-checkbox 
-                    [checked]="isOptionSelected(group, option)"
-                    (change)="onCheckboxSelect(group, option, $event.checked)">
-                    <div class="option-content">
-                      <span class="option-name">{{ option.product?.name || 'Produto' }}</span>
-                      <span *ngIf="option.price_adjustment > 0" class="option-adjustment">
-                        (+ {{ formatPrice(option.price_adjustment) }})
+                
+                <!-- Dropdown Estiloso -->
+                <div class="dropdown-container">
+                  <mat-form-field appearance="outline" class="product-select-field">
+                    <mat-label>{{ group.name }}</mat-label>
+                    <mat-select 
+                      [value]="getSelectedOption(group)"
+                      (selectionChange)="onDropdownChange(group, $event.value)"
+                      [required]="group.is_required">
+                      <mat-option [value]="null" *ngIf="!group.is_required">
+                        <span class="option-placeholder">Nenhuma seleção</span>
+                      </mat-option>
+                      <mat-option *ngFor="let option of group.options" [value]="option" class="product-option">
+                        <div class="option-row">
+                          <img 
+                            [src]="getProductImage(option.product || {})" 
+                            [alt]="option.product?.name"
+                            class="option-avatar"
+                            onerror="this.src='/assets/images/no-image.jpg'">
+                          <div class="option-info">
+                            <span class="option-name">{{ option.product?.name || 'Produto' }}</span>
+                            <span *ngIf="option.price_adjustment > 0" class="option-adjustment">
+                              + {{ formatPrice(option.price_adjustment) }}
+                            </span>
+                            <span *ngIf="option.quantity > 1" class="option-quantity">
+                              ({{ option.quantity }}x)
+                            </span>
+                          </div>
+                        </div>
+                      </mat-option>
+                    </mat-select>
+                    <mat-select-trigger>
+                      <div *ngIf="getSelectedOption(group)" class="select-trigger-content">
+                        <img 
+                          [src]="getProductImage(getSelectedOption(group)!.product || {})" 
+                          [alt]="getSelectedOption(group)!.product?.name"
+                          class="trigger-avatar"
+                          onerror="this.src='/assets/images/no-image.jpg'">
+                        <span class="trigger-text">
+                          {{ getSelectedOption(group)!.product?.name || 'Produto' }}
+                          <span *ngIf="getSelectedOption(group)!.price_adjustment > 0" class="trigger-adjustment">
+                            (+ {{ formatPrice(getSelectedOption(group)!.price_adjustment) }})
+                          </span>
+                        </span>
+                      </div>
+                      <span *ngIf="!getSelectedOption(group)" class="select-placeholder">
+                        Selecione uma opção
                       </span>
-                      <span *ngIf="option.quantity > 1" class="option-quantity">
-                        ({{ option.quantity }}x)
-                      </span>
-                    </div>
-                  </mat-checkbox>
+                    </mat-select-trigger>
+                  </mat-form-field>
                 </div>
               </div>
             </mat-card-content>
