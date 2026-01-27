@@ -7,7 +7,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
-import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { ToastrService } from 'ngx-toastr';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatBadgeModule } from '@angular/material/badge';
@@ -60,7 +60,6 @@ interface CartItem {
     MatInputModule,
     MatFormFieldModule,
     MatDialogModule,
-    MatSnackBarModule,
     MatAutocompleteModule,
     MatChipsModule,
     MatBadgeModule,
@@ -132,7 +131,7 @@ export class CaixaComponent implements OnInit, OnDestroy {
     private stockService: StockService,
     private orderService: OrderService,
     private dialog: MatDialog,
-    private snackBar: MatSnackBar,
+    private toastr: ToastrService,
     private settingsService: SettingsService,
     private deliveryZoneService: DeliveryZoneService,
     private addressService: AddressService,
@@ -168,7 +167,11 @@ export class CaixaComponent implements OnInit, OnDestroy {
 
   openSangriaDialog(): void {
     if (!this.cashStatus) {
-      this.snackBar.open('Caixa não está aberto', 'Fechar', { duration: 3000 });
+      this.toastr.warning('Caixa não está aberto', '', {
+        toastClass: 'modern-toast-notification',
+        positionClass: 'toast-bottom-center',
+        timeOut: 3000
+      });
       return;
     }
 
@@ -190,10 +193,18 @@ export class CaixaComponent implements OnInit, OnDestroy {
           if (this.cashStatus) {
             this.cashStatus.current_amount = Math.max(0, this.cashStatus.current_amount - result.amount);
           }
-          this.snackBar.open('Sangria registrada com sucesso', 'Fechar', { duration: 3000 });
+          this.toastr.success('Sangria registrada com sucesso', '', {
+            toastClass: 'modern-toast-notification',
+            positionClass: 'toast-bottom-center',
+            timeOut: 3000
+          });
         },
         error: () => {
-          this.snackBar.open('Erro ao registrar sangria', 'Fechar', { duration: 3000 });
+          this.toastr.error('Erro ao registrar sangria', '', {
+            toastClass: 'modern-toast-notification',
+            positionClass: 'toast-bottom-center',
+            timeOut: 3000
+          });
         }
       });
     });
@@ -223,7 +234,11 @@ export class CaixaComponent implements OnInit, OnDestroy {
         },
         error: error => {
           console.error('Erro ao carregar status do caixa:', error);
-          this.snackBar.open('Erro ao carregar status do caixa', 'Fechar', { duration: 3000 });
+          this.toastr.error('Erro ao carregar status do caixa', '', {
+            toastClass: 'modern-toast-notification',
+            positionClass: 'toast-bottom-center',
+            timeOut: 3000
+          });
           this.loading = false;
         }
       });
@@ -248,12 +263,20 @@ export class CaixaComponent implements OnInit, OnDestroy {
             next: status => {
               this.cashStatus = status;
               this.loading = false;
-              this.snackBar.open('Caixa aberto com sucesso', 'Fechar', { duration: 3000 });
+              this.toastr.success('Caixa aberto com sucesso', '', {
+                toastClass: 'modern-toast-notification',
+                positionClass: 'toast-bottom-center',
+                timeOut: 3000
+              });
             },
             error: error => {
               console.error('Erro ao abrir caixa:', error);
               this.loading = false;
-              this.snackBar.open('Erro ao abrir caixa', 'Fechar', { duration: 3000 });
+              this.toastr.error('Erro ao abrir caixa', '', {
+                toastClass: 'modern-toast-notification',
+                positionClass: 'toast-bottom-center',
+                timeOut: 3000
+              });
             }
           });
       });
@@ -273,7 +296,11 @@ export class CaixaComponent implements OnInit, OnDestroy {
         },
         error: error => {
           console.error('Erro ao buscar produtos:', error);
-          this.snackBar.open('Erro ao buscar produtos', 'Fechar', { duration: 3000 });
+          this.toastr.error('Erro ao buscar produtos', '', {
+            toastClass: 'modern-toast-notification',
+            positionClass: 'toast-bottom-center',
+            timeOut: 3000
+          });
         }
       });
   }
@@ -287,7 +314,11 @@ export class CaixaComponent implements OnInit, OnDestroy {
         },
         error: error => {
           console.error('Erro ao buscar clientes:', error);
-          this.snackBar.open('Erro ao buscar clientes: ' + error.message, 'Fechar', { duration: 3000 });
+          this.toastr.error('Erro ao buscar clientes: ' + error.message, '', {
+            toastClass: 'modern-toast-notification',
+            positionClass: 'toast-bottom-center',
+            timeOut: 3000
+          });
         }
       });
   }
@@ -418,7 +449,11 @@ export class CaixaComponent implements OnInit, OnDestroy {
         },
         error: (error) => {
           console.error('Erro ao buscar endereço:', error);
-          this.snackBar.open('Erro ao buscar dados do endereço', 'Fechar', { duration: 3000 });
+          this.toastr.error('Erro ao buscar dados do endereço', '', {
+            toastClass: 'modern-toast-notification',
+            positionClass: 'toast-bottom-center',
+            timeOut: 3000
+          });
         }
       });
   }
@@ -441,9 +476,17 @@ export class CaixaComponent implements OnInit, OnDestroy {
           this.loadingDeliveryFee = false;
           this.updateTotal();
           if (error.status === 404) {
-            this.snackBar.open('Infelizmente, ainda não atendemos este CEP.', 'Fechar', { duration: 5000 });
+            this.toastr.warning('Infelizmente, ainda não atendemos este CEP.', '', {
+              toastClass: 'modern-toast-notification',
+              positionClass: 'toast-bottom-center',
+              timeOut: 5000
+            });
           } else {
-            this.snackBar.open('Erro ao calcular frete. Tente novamente.', 'Fechar', { duration: 3000 });
+            this.toastr.error('Erro ao calcular frete. Tente novamente.', '', {
+              toastClass: 'modern-toast-notification',
+              positionClass: 'toast-bottom-center',
+              timeOut: 3000
+            });
           }
         }
       });
@@ -462,7 +505,11 @@ export class CaixaComponent implements OnInit, OnDestroy {
       this.isDeliveryFeeEnabled = true;
       // Se marcou, verificar se tem cliente selecionado
       if (!this.selectedCustomer) {
-        this.snackBar.open('Selecione um cliente antes de marcar "Pagamento na Entrega"', 'Fechar', { duration: 3000 });
+        this.toastr.warning('Selecione um cliente antes de marcar "Pagamento na Entrega"', '', {
+          toastClass: 'modern-toast-notification',
+          positionClass: 'toast-bottom-center',
+          timeOut: 3000
+        });
         // Desmarcar o checkbox
         setTimeout(() => {
           this.isPayOnDelivery = false;
@@ -481,7 +528,11 @@ export class CaixaComponent implements OnInit, OnDestroy {
   
   openNewAddressDialog(): void {
     if (!this.selectedCustomer) {
-      this.snackBar.open('Selecione um cliente antes de adicionar endereço', 'Fechar', { duration: 3000 });
+      this.toastr.warning('Selecione um cliente antes de adicionar endereço', '', {
+        toastClass: 'modern-toast-notification',
+        positionClass: 'toast-bottom-center',
+        timeOut: 3000
+      });
       return;
     }
     
@@ -503,11 +554,19 @@ export class CaixaComponent implements OnInit, OnDestroy {
               if (this.isPayOnDelivery && this.selectedAddressId) {
                 this.calculateDeliveryFee(this.selectedAddressId);
               }
-              this.snackBar.open('Endereço cadastrado e selecionado com sucesso!', 'Fechar', { duration: 3000 });
+              this.toastr.success('Endereço cadastrado e selecionado com sucesso!', '', {
+                toastClass: 'modern-toast-notification',
+                positionClass: 'toast-bottom-center',
+                timeOut: 3000
+              });
             },
             error: (error) => {
               console.error('Erro ao recarregar endereços:', error);
-              this.snackBar.open('Endereço cadastrado, mas houve erro ao recarregar a lista', 'Fechar', { duration: 3000 });
+              this.toastr.warning('Endereço cadastrado, mas houve erro ao recarregar a lista', '', {
+                toastClass: 'modern-toast-notification',
+                positionClass: 'toast-bottom-center',
+                timeOut: 3000
+              });
             }
           });
         }
@@ -548,7 +607,11 @@ export class CaixaComponent implements OnInit, OnDestroy {
       if (customer) {
         // Selecionar o cliente criado automaticamente
         this.selectCustomer(customer);
-        this.snackBar.open('Cliente criado e selecionado com sucesso!', 'Fechar', { duration: 3000 });
+        this.toastr.success('Cliente criado e selecionado com sucesso!', '', {
+          toastClass: 'modern-toast-notification',
+          positionClass: 'toast-bottom-center',
+          timeOut: 3000
+        });
       }
     });
   }
@@ -592,11 +655,17 @@ export class CaixaComponent implements OnInit, OnDestroy {
     // Verificar disponibilidade baseada no tipo de venda
     if (this.saleType === 'garrafa') {
       if (this.selectedProduct.current_stock <= 0) {
-        this.snackBar.open('Produto sem estoque disponível', 'Fechar', { duration: 3000 });
+        this.toastr.warning('Produto sem estoque disponível', 'Estoque Insuficiente', {
+          toastClass: 'modern-toast-notification',
+          timeOut: 3000
+        });
         return;
       }
       if (this.quantity > this.selectedProduct.current_stock) {
-        this.snackBar.open('Quantidade excede o estoque disponível', 'Fechar', { duration: 3000 });
+        this.toastr.warning(`Quantidade excede o estoque disponível. Restam apenas ${this.selectedProduct.current_stock} unidades.`, 'Estoque Insuficiente', {
+          toastClass: 'modern-toast-notification',
+          timeOut: 3000
+        });
         return;
       }
     } else {
@@ -605,7 +674,10 @@ export class CaixaComponent implements OnInit, OnDestroy {
       const garrafasNecessarias = Math.ceil(dosesNecessarias / this.selectedProduct.doses_por_garrafa);
       
       if (this.selectedProduct.current_stock < garrafasNecessarias) {
-        this.snackBar.open(`Produto não possui garrafas suficientes para as doses solicitadas (necessário: ${garrafasNecessarias} garrafas)`, 'Fechar', { duration: 3000 });
+        this.toastr.warning(`Produto não possui garrafas suficientes para as doses solicitadas (necessário: ${garrafasNecessarias} garrafas)`, 'Estoque Insuficiente', {
+          toastClass: 'modern-toast-notification',
+          timeOut: 3000
+        });
         return;
       }
     }
@@ -628,14 +700,20 @@ export class CaixaComponent implements OnInit, OnDestroy {
       // Verificar novamente a disponibilidade
       if (this.saleType === 'garrafa') {
         if (newQuantity > this.selectedProduct.current_stock) {
-          this.snackBar.open('Quantidade excede o estoque disponível', 'Fechar', { duration: 3000 });
+          this.toastr.warning(`Quantidade excede o estoque disponível. Restam apenas ${this.selectedProduct.current_stock} unidades.`, 'Estoque Insuficiente', {
+            toastClass: 'modern-toast-notification',
+            timeOut: 3000
+          });
           return;
         }
       } else {
         const dosesNecessarias = newQuantity;
         const garrafasNecessarias = Math.ceil(dosesNecessarias / this.selectedProduct.doses_por_garrafa);
         if (this.selectedProduct.current_stock < garrafasNecessarias) {
-          this.snackBar.open(`Quantidade excede as garrafas disponíveis para conversão`, 'Fechar', { duration: 3000 });
+          this.toastr.warning(`Quantidade excede as garrafas disponíveis para conversão`, 'Estoque Insuficiente', {
+            toastClass: 'modern-toast-notification',
+            timeOut: 3000
+          });
           return;
         }
       }
@@ -742,7 +820,11 @@ export class CaixaComponent implements OnInit, OnDestroy {
 
   selectPaymentMethod(method: PaymentMethod): void {
     if (!this.cartItems.length) {
-      this.snackBar.open('Adicione produtos ao carrinho', 'Fechar', { duration: 3000 });
+      this.toastr.warning('Adicione produtos ao carrinho', '', {
+        toastClass: 'modern-toast-notification',
+        positionClass: 'toast-bottom-center',
+        timeOut: 3000
+      });
       return;
     }
     this.selectedPaymentMethod = method;
@@ -756,13 +838,21 @@ export class CaixaComponent implements OnInit, OnDestroy {
 
   confirmAndFinalizeSale(): void {
     if (!this.selectedPaymentMethod) {
-      this.snackBar.open('Selecione um método de pagamento', 'Fechar', { duration: 3000 });
+      this.toastr.warning('Selecione um método de pagamento', '', {
+        toastClass: 'modern-toast-notification',
+        positionClass: 'toast-bottom-center',
+        timeOut: 3000
+      });
       return;
     }
 
     // Validação adicional para dinheiro
     if (this.selectedPaymentMethod === 'dinheiro' && this.receivedAmount < this.total) {
-      this.snackBar.open('Valor recebido insuficiente', 'Fechar', { duration: 3000 });
+      this.toastr.warning('Valor recebido insuficiente', '', {
+        toastClass: 'modern-toast-notification',
+        positionClass: 'toast-bottom-center',
+        timeOut: 3000
+      });
       return;
     }
 
@@ -846,12 +936,20 @@ export class CaixaComponent implements OnInit, OnDestroy {
       const key = map[paymentMethod];
       const pm = this.settings.accepted_payment_methods.find(m => m.method === key);
       if (pm && pm.enabled === false) {
-        this.snackBar.open('Forma de pagamento desabilitada nas configurações', 'Fechar', { duration: 3000 });
+        this.toastr.warning('Forma de pagamento desabilitada nas configurações', '', {
+          toastClass: 'modern-toast-notification',
+          positionClass: 'toast-bottom-center',
+          timeOut: 3000
+        });
         return;
       }
     }
     if (!this.cartItems.length) {
-      this.snackBar.open('Adicione produtos ao carrinho', 'Fechar', { duration: 3000 });
+      this.toastr.warning('Adicione produtos ao carrinho', '', {
+        toastClass: 'modern-toast-notification',
+        positionClass: 'toast-bottom-center',
+        timeOut: 3000
+      });
       return;
     }
 
@@ -860,13 +958,21 @@ export class CaixaComponent implements OnInit, OnDestroy {
       if (this.selectedCustomer) {
         // Verificar se cliente tem endereços cadastrados
         if (!this.selectedCustomer.addresses || this.selectedCustomer.addresses.length === 0) {
-          this.snackBar.open('Cliente selecionado não possui endereço cadastrado. Por favor, cadastre um endereço antes de gerar o pedido de entrega.', 'Fechar', { duration: 5000 });
+          this.toastr.warning('Cliente selecionado não possui endereço cadastrado. Por favor, cadastre um endereço antes de gerar o pedido de entrega.', '', {
+            toastClass: 'modern-toast-notification',
+            positionClass: 'toast-bottom-center',
+            timeOut: 5000
+          });
           return;
         }
       } else {
         // Se não há cliente selecionado, verificar se tem dados mínimos para criar endereço
         if (!this.customerName || !this.customerPhone) {
-          this.snackBar.open('Para pedidos de entrega, é necessário selecionar um cliente cadastrado ou informar nome e telefone do cliente.', 'Fechar', { duration: 5000 });
+          this.toastr.warning('Para pedidos de entrega, é necessário selecionar um cliente cadastrado ou informar nome e telefone do cliente.', '', {
+            toastClass: 'modern-toast-notification',
+            positionClass: 'toast-bottom-center',
+            timeOut: 5000
+          });
           return;
         }
       }
@@ -875,18 +981,30 @@ export class CaixaComponent implements OnInit, OnDestroy {
     // Validar entrega antes de continuar
     if (this.isPayOnDelivery) {
       if (!this.selectedCustomer) {
-        this.snackBar.open('Para pedidos de entrega, é necessário selecionar um cliente cadastrado.', 'Fechar', { duration: 5000 });
+        this.toastr.warning('Para pedidos de entrega, é necessário selecionar um cliente cadastrado.', '', {
+          toastClass: 'modern-toast-notification',
+          positionClass: 'toast-bottom-center',
+          timeOut: 5000
+        });
         return;
       }
       
       if (!this.selectedAddressId) {
-        this.snackBar.open('Selecione um endereço de entrega para continuar.', 'Fechar', { duration: 5000 });
+        this.toastr.warning('Selecione um endereço de entrega para continuar.', '', {
+          toastClass: 'modern-toast-notification',
+          positionClass: 'toast-bottom-center',
+          timeOut: 5000
+        });
         return;
       }
 
       // Validar que o frete foi calculado (pode ser 0 se for frete grátis)
       if (this.deliveryFee === null || this.deliveryFee === undefined) {
-        this.snackBar.open('Aguarde o cálculo do frete antes de finalizar.', 'Fechar', { duration: 3000 });
+        this.toastr.warning('Aguarde o cálculo do frete antes de finalizar.', '', {
+          toastClass: 'modern-toast-notification',
+          positionClass: 'toast-bottom-center',
+          timeOut: 3000
+        });
         return;
       }
     }
@@ -896,7 +1014,11 @@ export class CaixaComponent implements OnInit, OnDestroy {
     
     if (isCashPayment) {
       if (this.receivedAmount < this.total) {
-        this.snackBar.open('Valor recebido insuficiente', 'Fechar', { duration: 3000 });
+        this.toastr.warning('Valor recebido insuficiente', '', {
+        toastClass: 'modern-toast-notification',
+        positionClass: 'toast-bottom-center',
+        timeOut: 3000
+      });
         return;
       }
       this.changeAmount = this.receivedAmount - this.total;
@@ -955,13 +1077,21 @@ export class CaixaComponent implements OnInit, OnDestroy {
               });
           } else {
             // Se for entrega, apenas mostrar confirmação
-            this.snackBar.open('Pedido de entrega gerado com sucesso!', 'Fechar', { duration: 3000 });
+            this.toastr.success('Pedido de entrega gerado com sucesso!', '', {
+              toastClass: 'modern-toast-notification',
+              positionClass: 'toast-bottom-center',
+              timeOut: 3000
+            });
             this.showPrintConfirmation(response, paymentMethod);
           }
         },
         error: (error: Error) => {
           console.error('Erro ao finalizar venda:', error);
-          this.snackBar.open(error.message || 'Erro ao finalizar venda', 'Fechar', { duration: 3000 });
+          this.toastr.error(error.message || 'Erro ao finalizar venda', '', {
+            toastClass: 'modern-toast-notification',
+            positionClass: 'toast-bottom-center',
+            timeOut: 3000
+          });
         }
       });
   }
@@ -1196,7 +1326,11 @@ export class CaixaComponent implements OnInit, OnDestroy {
       }
     } catch (error) {
       console.error('Erro ao imprimir:', error);
-      this.snackBar.open('Erro ao imprimir comprovante', 'Fechar', { duration: 3000 });
+      this.toastr.error('Erro ao imprimir comprovante', '', {
+        toastClass: 'modern-toast-notification',
+        positionClass: 'toast-bottom-center',
+        timeOut: 3000
+      });
     }
   }
 
@@ -1312,11 +1446,19 @@ export class CaixaComponent implements OnInit, OnDestroy {
           // Mostrar relatório de fechamento
           this.showClosingReport(report);
           
-          this.snackBar.open('Caixa fechado com sucesso', 'Fechar', { duration: 3000 });
+          this.toastr.success('Caixa fechado com sucesso', '', {
+            toastClass: 'modern-toast-notification',
+            positionClass: 'toast-bottom-center',
+            timeOut: 3000
+          });
         },
         error: (error) => {
           console.error('Erro ao fechar caixa:', error);
-          this.snackBar.open('Erro ao fechar caixa', 'Fechar', { duration: 3000 });
+          this.toastr.error('Erro ao fechar caixa', '', {
+            toastClass: 'modern-toast-notification',
+            positionClass: 'toast-bottom-center',
+            timeOut: 3000
+          });
           this.loading = false;
         }
       });
@@ -1355,7 +1497,10 @@ export class CaixaComponent implements OnInit, OnDestroy {
           // Verificar disponibilidade
           if (item.sale_type === 'garrafa') {
             if (newQuantity > item.product.current_stock) {
-              this.snackBar.open(`Quantidade excede o estoque disponível para ${item.product.name}`, 'Fechar', { duration: 3000 });
+              this.toastr.warning(`Quantidade excede o estoque disponível para ${item.product.name}. Restam apenas ${item.product.current_stock} unidades.`, 'Estoque Insuficiente', {
+                toastClass: 'modern-toast-notification',
+                timeOut: 3000
+              });
               return;
             }
           } else {
@@ -1363,7 +1508,10 @@ export class CaixaComponent implements OnInit, OnDestroy {
             const dosesNecessarias = newQuantity;
             const garrafasNecessarias = Math.ceil(dosesNecessarias / (item.product.doses_por_garrafa || 1));
             if (item.product.current_stock < garrafasNecessarias) {
-              this.snackBar.open(`Produto não possui garrafas suficientes para as doses solicitadas de ${item.product.name}`, 'Fechar', { duration: 3000 });
+              this.toastr.warning(`Produto não possui garrafas suficientes para as doses solicitadas de ${item.product.name}`, 'Estoque Insuficiente', {
+                toastClass: 'modern-toast-notification',
+                timeOut: 3000
+              });
               return;
             }
           }
@@ -1375,11 +1523,17 @@ export class CaixaComponent implements OnInit, OnDestroy {
           // Verificar disponibilidade antes de adicionar
           if (item.sale_type === 'garrafa') {
             if (item.product.current_stock <= 0) {
-              this.snackBar.open(`${item.product.name} sem estoque disponível`, 'Fechar', { duration: 3000 });
+              this.toastr.warning(`${item.product.name} sem estoque disponível`, 'Estoque Insuficiente', {
+                toastClass: 'modern-toast-notification',
+                timeOut: 3000
+              });
               return;
             }
             if (item.quantity > item.product.current_stock) {
-              this.snackBar.open(`Quantidade excede o estoque disponível para ${item.product.name}`, 'Fechar', { duration: 3000 });
+              this.toastr.warning(`Quantidade excede o estoque disponível para ${item.product.name}. Restam apenas ${item.product.current_stock} unidades.`, 'Estoque Insuficiente', {
+                toastClass: 'modern-toast-notification',
+                timeOut: 3000
+              });
               return;
             }
           } else {
@@ -1387,7 +1541,10 @@ export class CaixaComponent implements OnInit, OnDestroy {
             const dosesNecessarias = item.quantity;
             const garrafasNecessarias = Math.ceil(dosesNecessarias / (item.product.doses_por_garrafa || 1));
             if (item.product.current_stock < garrafasNecessarias) {
-              this.snackBar.open(`Produto não possui garrafas suficientes para as doses solicitadas de ${item.product.name}`, 'Fechar', { duration: 3000 });
+              this.toastr.warning(`Produto não possui garrafas suficientes para as doses solicitadas de ${item.product.name}`, 'Estoque Insuficiente', {
+                toastClass: 'modern-toast-notification',
+                timeOut: 3000
+              });
               return;
             }
           }
@@ -1402,7 +1559,11 @@ export class CaixaComponent implements OnInit, OnDestroy {
       });
 
       this.updateTotal();
-      this.snackBar.open('Copão adicionado ao carrinho!', 'Fechar', { duration: 3000 });
+      this.toastr.success('Copão adicionado ao carrinho!', '', {
+        toastClass: 'modern-toast-notification',
+        positionClass: 'toast-bottom-center',
+        timeOut: 3000
+      });
     });
   }
 

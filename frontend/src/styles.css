@@ -20,11 +20,12 @@
 }
 
 /* Container Individual do Toast - Estilo Moderno */
-#toast-container.toast-bottom-center > div.modern-toast-notification {
-  background-color: #ffffff;
+#toast-container.toast-bottom-center > div.modern-toast-notification,
+#toast-container > div.modern-toast-notification {
+  background-color: #ffffff !important;
   border-radius: 12px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.1);
-  border: none;
+  border: none !important;
   padding: 0;
   margin: 0 0 12px 0;
   min-height: auto;
@@ -45,6 +46,21 @@
   align-items: center;
   width: 100%;
   gap: 12px;
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Remover qualquer background ou borda padrão do toastr */
+#toast-container > div.modern-toast-notification {
+  background-image: none !important;
+  background: #ffffff !important;
+}
+
+/* Garantir que não há elementos de fundo estranhos */
+#toast-container > div.modern-toast-notification::before,
+#toast-container > div.modern-toast-notification::after {
+  display: none !important;
+  content: none !important;
 }
 
 /* Borda Lateral Esquerda por Tipo */

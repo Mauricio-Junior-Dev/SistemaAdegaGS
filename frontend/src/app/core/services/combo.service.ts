@@ -3,6 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { Combo } from '../models/combo.model';
+import { ProductBundle } from '../models/product-bundle.model';
 
 export interface PaginatedResponse<T> {
   current_page: number;
@@ -40,9 +41,9 @@ export class ComboService {
     return this.http.get<PaginatedResponse<Combo>>(`${this.apiUrl}/combos`, { params });
   }
 
-  // Obter combo por ID (público)
-  getCombo(id: number): Observable<Combo> {
-    return this.http.get<Combo>(`${this.apiUrl}/combos/${id}`);
+  // Obter combo por ID (público) - Retorna ProductBundle
+  getCombo(id: number): Observable<ProductBundle> {
+    return this.http.get<ProductBundle>(`${this.apiUrl}/combos/${id}`);
   }
 
   // Obter combos em destaque

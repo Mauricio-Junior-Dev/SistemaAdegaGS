@@ -28,14 +28,16 @@ export class ProductCardComponent {
     event.preventDefault();
     event.stopPropagation();
     
-    // Verificar se é um combo adaptado (category_id === 0 e não tem doses_por_garrafa)
-    // Se for combo, apenas emitir evento para o componente pai tratar
-    const isCombo = this.product.category_id === 0 && 
-                    (this.product as any).doses_por_garrafa === 0 && 
-                    this.product.current_stock === 999;
+    // Verificar se é um combo/bundle (category_id === 0 e não tem doses_por_garrafa)
+    // OU se tem a propriedade groups (ProductBundle)
+    const isCombo = this.isCombo();
+    const isBundle = (this.product as any).groups !== undefined || 
+                     (this.product as any).bundle_type !== undefined;
     
-    if (isCombo) {
-      // Para combos, apenas emitir evento - o componente pai vai tratar
+    if (isCombo || isBundle) {
+      // Para combos/bundles, redirecionar para a página de detalhes
+      // O routerLink no card já faz isso, mas garantimos aqui também
+      // Não adicionar ao carrinho diretamente - o usuário precisa escolher as opções
       this.addToCart.emit(this.product);
       return;
     }

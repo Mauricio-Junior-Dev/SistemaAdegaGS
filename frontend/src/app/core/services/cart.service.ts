@@ -94,7 +94,9 @@ export class CartService {
 
     if (newQuantity > product.current_stock) {
       this.toastr.warning(`Estoque máximo atingido para este produto. Restam apenas ${product.current_stock} unidades.`, 'Estoque Insuficiente', {
-        toastClass: 'modern-toast-notification'
+        toastClass: 'modern-toast-notification',
+        positionClass: 'toast-bottom-center',
+        timeOut: 3000
       });
       return;
     }
@@ -204,13 +206,25 @@ export class CartService {
     const currentState = this.cartState.value || this.initialState;
     const items = currentState.items || [];
     
-    // Calcular preço total (base_price + ajustes das seleções)
-    let totalPrice = bundle.base_price || 0;
+    // Calcular preço total seguindo a mesma lógica do componente
+    // Preço base: se for fixed, usar base_price; se calculated, começar de 0
+    let totalPrice = 0;
+    if (bundle.pricing_type === 'fixed') {
+      totalPrice = parseFloat(String(bundle.base_price || 0));
+    } else {
+      // Para calculated, o preço é calculado apenas pelas opções
+      totalPrice = 0;
+    }
+    
+    // Somar price_adjustment de todas as opções selecionadas
     Object.values(selections).forEach(selectedOptions => {
       selectedOptions.forEach(option => {
-        totalPrice += option.price_adjustment || 0;
+        totalPrice += parseFloat(String(option.price_adjustment || 0));
       });
     });
+    
+    // Garantir que totalPrice é um número válido
+    totalPrice = isNaN(totalPrice) ? 0 : totalPrice;
     
     // Verificar se já existe um item idêntico (mesmo bundle + mesmas seleções)
     const existingItem = items.find(item => {
@@ -303,7 +317,9 @@ export class CartService {
     if (item && item.product && !item.isCombo) {
       if (quantity > item.product.current_stock) {
         this.toastr.warning(`Estoque máximo atingido para este produto. Restam apenas ${item.product.current_stock} unidades.`, 'Estoque Insuficiente', {
-          toastClass: 'modern-toast-notification'
+          toastClass: 'modern-toast-notification',
+          positionClass: 'toast-bottom-center',
+          timeOut: 3000
         });
         return;
       }

@@ -148,16 +148,28 @@ export class ComboFormComponent implements OnInit, OnDestroy {
    * Cria um FormGroup para um novo grupo
    */
   createGroupFormGroup(): FormGroup {
-    return this.fb.group({
+    const newIndex = this.groupsFormArray.length;
+    const groupForm = this.fb.group({
       name: ['', [Validators.required]],
       description: [''],
-      order: [0],
+      order: [newIndex, [Validators.min(0)]],
       is_required: [true],
       min_selections: [1, [Validators.required, Validators.min(0)]],
       max_selections: [1, [Validators.required, Validators.min(1)]],
       selection_type: ['single', [Validators.required]],
       options: this.fb.array([]) // FormArray de opções
     });
+
+    // Marcar o grupo como não tocado e não sujo inicialmente
+    // Isso evita que o formulário fique inválido ao adicionar grupos vazios
+    groupForm.markAsUntouched();
+    groupForm.markAsPristine();
+    
+    // Desabilitar validação até que o usuário interaja com o campo
+    // A validação será reativada quando o campo for tocado
+    groupForm.get('name')?.setErrors(null);
+    
+    return groupForm;
   }
 
   /**
@@ -178,10 +190,18 @@ export class ComboFormComponent implements OnInit, OnDestroy {
    */
   addGroup(): void {
     const groupForm = this.createGroupFormGroup();
+    
+    // Adicionar ao array sem disparar validação imediata
     this.groupsFormArray.push(groupForm);
     
     const groupIndex = this.groupsFormArray.length - 1;
     this.setupProductAutocompleteForGroup(groupIndex);
+    
+    // Atualizar o order do novo grupo para o índice correto (sem emitir eventos)
+    groupForm.patchValue({ order: groupIndex }, { emitEvent: false, onlySelf: true });
+    
+    // Forçar detecção de mudanças para atualizar a UI
+    this.cdr.detectChanges();
   }
 
   /**
@@ -483,12 +503,20 @@ export class ComboFormComponent implements OnInit, OnDestroy {
     console.log('Grupos:', this.groupsFormArray.length);
     console.log('Erros do formulário:', this.getFormErrors());
     
+    // Marcar todos os campos como tocados para mostrar erros
+    this.bundleForm.markAllAsTouched();
+    this.groupsFormArray.controls.forEach(groupControl => {
+      groupControl.markAllAsTouched();
+      const optionsArray = groupControl.get('options') as FormArray;
+      optionsArray.controls.forEach(optionControl => {
+        optionControl.markAllAsTouched();
+      });
+    });
+    
     // Verificar se o formulário é válido e se há grupos com opções
     const isValid = this.bundleForm.valid && this.hasValidGroups();
     
     if (!isValid) {
-      // Marcar todos os campos como tocados
-      this.bundleForm.markAllAsTouched();
       
       // Mostrar mensagem de erro
       this.snackBar.open(

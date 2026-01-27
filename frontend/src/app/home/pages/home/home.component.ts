@@ -145,15 +145,24 @@ export class HomeComponent implements OnInit, AfterViewInit {
   }
 
   addToCart(product: Product): void {
+    // Verificar se é um bundle (ProductBundle) - tem groups ou bundle_type
+    const isBundle = (product as any).groups !== undefined || 
+                     (product as any).bundle_type !== undefined;
+    
+    if (isBundle) {
+      // Para bundles, redirecionar para a página de detalhes
+      // O usuário precisa escolher as opções antes de adicionar ao carrinho
+      this.router.navigate(['/combos', product.id]);
+      return;
+    }
+    
     // Verificar se é um combo adaptado (category_id === 0 e não tem doses_por_garrafa)
     if (product.category_id === 0 && product.doses_por_garrafa === 0 && product.current_stock === 999) {
-      // É um combo, buscar o combo original
-      const combo = this.featuredCombos.find(c => c.id === product.id);
-      if (combo) {
-        this.cartService.addComboToCart(combo, 1);
-        return;
-      }
+      // É um combo antigo, redirecionar para detalhes também
+      this.router.navigate(['/combos', product.id]);
+      return;
     }
+    
     // Para produtos normais, o product-card já adiciona diretamente
     // Este método só é chamado para combos ou casos especiais
     // Não adicionar novamente para evitar duplicação

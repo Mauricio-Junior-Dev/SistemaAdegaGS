@@ -8,7 +8,8 @@
 
     <!-- Error State -->
     <div *ngIf="error" class="error-message">
-      {{ error }}
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ error }}</span>
     </div>
 
     <!-- Combo Detail -->
@@ -22,226 +23,186 @@
         <span>{{ bundle.name }}</span>
       </nav>
 
-      <!-- Layout Desktop: Grid 2 Colunas (Imagem + Informações) -->
-      <div class="combo-main-layout">
-        <!-- Coluna Esquerda: Imagem -->
-        <div class="combo-image-column">
-          <div class="combo-hero-section">
-            <div *ngIf="getDiscountPercentage(bundle) > 0" class="discount-badge">
-              -{{ getDiscountPercentage(bundle) }}%
-            </div>
-            <div class="combo-image-wrapper">
-              <img [src]="getComboImage(bundle)" [alt]="bundle.name" class="combo-hero-image">
-            </div>
+      <!-- Header do Produto -->
+      <div class="combo-header">
+        <div class="combo-image-section">
+          <div *ngIf="getDiscountPercentage(bundle) > 0" class="discount-badge">
+            -{{ getDiscountPercentage(bundle) }}%
           </div>
+          <img [src]="getBundleImage(bundle)" [alt]="bundle.name" class="combo-image">
         </div>
 
-        <!-- Coluna Direita: Informações -->
-        <div class="combo-info-column">
-          <div class="combo-header-section">
-            <h1 class="combo-title">{{ bundle.name }}</h1>
-            
-            <div class="combo-price-section">
-              <div *ngIf="getOriginalPrice(bundle) && getOriginalPrice(bundle) > displayedPrice" class="original-price-large">
-                {{ formatPrice(getOriginalPrice(bundle)) }}
-              </div>
-              <div class="current-price-large">
-                {{ formatPrice(displayedPrice * quantity) }}
-              </div>
-              <div *ngIf="getOriginalPrice(bundle) && getOriginalPrice(bundle) > displayedPrice" class="savings-badge">
-                <mat-icon>savings</mat-icon>
-                <span>Economize {{ formatPrice((getOriginalPrice(bundle) - displayedPrice) * quantity) }}</span>
-              </div>
+        <div class="combo-info-section">
+          <h1 class="combo-title">{{ bundle.name }}</h1>
+          
+          <div class="combo-price-section">
+            <div *ngIf="bundle.original_price && bundle.original_price > (bundle.base_price || 0)" class="original-price">
+              {{ formatPrice(bundle.original_price) }}
             </div>
-
-            <p *ngIf="bundle.description" class="combo-description-large">
-              {{ bundle.description }}
-            </p>
+            <div class="current-price">
+              {{ formatPrice(displayedPrice) }}
+            </div>
+            <div *ngIf="bundle.original_price && bundle.original_price > (bundle.base_price || 0)" class="savings-badge">
+              <mat-icon>savings</mat-icon>
+              <span>Economize {{ formatPrice(bundle.original_price - (bundle.base_price || 0)) }}</span>
+            </div>
           </div>
+
+          <p *ngIf="bundle.description" class="combo-description">
+            {{ bundle.description }}
+          </p>
         </div>
       </div>
 
-      <!-- Grupos de Escolha (ProductBundle) - Layout Configurador -->
-      <div *ngIf="isProductBundle(bundle) && bundle.groups && bundle.groups.length > 0" class="combo-groups-section">
-        <h2 class="section-title">
-          <mat-icon>tune</mat-icon>
-          <span>Personalize seu Combo</span>
-        </h2>
-        
-        <div *ngFor="let group of bundle.groups" class="configurator-card">
-          <mat-card class="group-configurator-card">
-            <!-- Header do Card -->
-            <mat-card-header class="group-header">
-              <div class="header-content">
-                <mat-card-title class="group-title">
-                  {{ group.name }}
-                  <span *ngIf="group.is_required" class="required-badge">*</span>
-                </mat-card-title>
-                <mat-card-subtitle class="group-subtitle">
-                  {{ getGroupInstruction(group) }}
-                  <span *ngIf="getGroupValidationMessage(group)" class="validation-message">
-                    {{ getGroupValidationMessage(group) }}
-                  </span>
-                </mat-card-subtitle>
-              </div>
-            </mat-card-header>
+      <!-- Grupos de Opção (Accordion) -->
+      <div *ngIf="bundle.groups && bundle.groups.length > 0" class="groups-section">
+        <mat-accordion class="groups-accordion">
+          <mat-expansion-panel 
+            *ngFor="let group of bundle.groups; trackBy: trackByGroupId"
+            [expanded]="isPanelExpanded(group)"
+            class="group-panel"
+            [class.required]="group.is_required"
+            [class.invalid]="!isGroupValid(group)">
             
-            <mat-card-content class="group-content">
+            <!-- Header do Painel -->
+            <mat-expansion-panel-header class="panel-header">
+              <mat-panel-title class="panel-title">
+                <div class="title-content">
+                  <span class="group-name">{{ group.name }}</span>
+                  <mat-chip *ngIf="group.is_required" class="required-chip">Obrigatório</mat-chip>
+                  <mat-chip *ngIf="!group.is_required" class="optional-chip">Opcional</mat-chip>
+                </div>
+              </mat-panel-title>
+              <mat-panel-description class="panel-description">
+                <span class="instruction-text">{{ getGroupInstruction(group) }}</span>
+                <span *ngIf="getGroupValidationMessage(group)" class="validation-error">
+                  {{ getGroupValidationMessage(group) }}
+                </span>
+              </mat-panel-description>
+            </mat-expansion-panel-header>
+
+            <!-- Conteúdo do Painel -->
+            <div class="panel-content">
               <p *ngIf="group.description" class="group-description">{{ group.description }}</p>
               
-              <!-- Layout Configurador: Imagem Grande + Dropdown -->
-              <div class="configurator-layout">
-                <!-- Imagem Grande do Produto Selecionado -->
-                <div class="product-image-container">
-                  <div class="product-image-wrapper">
+              <!-- Lista de Opções -->
+              <div class="options-list">
+                <div 
+                  *ngFor="let option of group.options; trackBy: trackByOptionId" 
+                  class="option-item"
+                  [class.selected]="isOptionSelected(group, option)"
+                  (click)="onOptionItemClick(group, option, $event)">
+                  <!-- Miniatura -->
+                  <div class="option-thumbnail">
                     <img 
-                      [src]="getSelectedProductImage(group)" 
-                      [alt]="getSelectedOption(group)?.product?.name || 'Selecione um produto'"
-                      class="product-large-image"
-                      onerror="this.src='/assets/images/no-image.jpg'">
-                    <div *ngIf="!getSelectedOption(group)" class="placeholder-overlay">
-                      <mat-icon class="placeholder-icon">help_outline</mat-icon>
-                      <span class="placeholder-text">Selecione uma opção</span>
+                      [src]="getProductImage(option.product)" 
+                      [alt]="option.product?.name || 'Produto'"
+                      class="thumbnail-image"
+                      onerror="this.src='assets/images/no-image.jpg'">
+                  </div>
+
+                  <!-- Texto -->
+                  <div class="option-info">
+                    <div class="option-name">{{ option.product?.name || 'Produto' }}</div>
+                    <div class="option-meta">
+                      <span *ngIf="group.max_selections > 1" class="max-selections">
+                        Máx {{ group.max_selections }}
+                      </span>
+                      <span *ngIf="option.price_adjustment > 0" class="price-adjustment">
+                        + {{ formatPrice(option.price_adjustment) }}
+                      </span>
+                    </div>
+                  </div>
+
+                  <!-- Controle (Direita) -->
+                  <div class="option-control" (click)="$event.stopPropagation()">
+                    <!-- Radio Button (max_selections == 1) -->
+                    <mat-radio-button
+                      *ngIf="group.max_selections === 1"
+                      [value]="option"
+                      [checked]="getSelectedOption(group)?.id === option.id"
+                      (change)="onRadioSelect(group, option)"
+                      class="option-radio">
+                    </mat-radio-button>
+
+                    <!-- Checkbox ou Contador (max_selections > 1) -->
+                    <div *ngIf="group.max_selections > 1" class="quantity-control">
+                      <button 
+                        mat-icon-button
+                        type="button"
+                        (click)="onQuantityChange(group, option, -1); $event.stopPropagation()"
+                        [disabled]="getOptionQuantity(group, option) === 0"
+                        class="quantity-btn">
+                        <mat-icon>remove</mat-icon>
+                      </button>
+                      <span class="quantity-display">{{ getOptionQuantity(group, option) }}</span>
+                      <button 
+                        mat-icon-button
+                        type="button"
+                        (click)="onQuantityChange(group, option, 1); $event.stopPropagation()"
+                        [disabled]="!canSelectMore(group)"
+                        class="quantity-btn">
+                        <mat-icon>add</mat-icon>
+                      </button>
                     </div>
                   </div>
                 </div>
-                
-                <!-- Dropdown Estiloso -->
-                <div class="dropdown-container">
-                  <mat-form-field appearance="outline" class="product-select-field">
-                    <mat-label>{{ group.name }}</mat-label>
-                    <mat-select 
-                      [value]="getSelectedOption(group)"
-                      (selectionChange)="onDropdownChange(group, $event.value)"
-                      [required]="group.is_required">
-                      <mat-option [value]="null" *ngIf="!group.is_required">
-                        <span class="option-placeholder">Nenhuma seleção</span>
-                      </mat-option>
-                      <mat-option *ngFor="let option of group.options" [value]="option" class="product-option">
-                        <div class="option-row">
-                          <img 
-                            [src]="getProductImage(option.product || {})" 
-                            [alt]="option.product?.name"
-                            class="option-avatar"
-                            onerror="this.src='/assets/images/no-image.jpg'">
-                          <div class="option-info">
-                            <span class="option-name">{{ option.product?.name || 'Produto' }}</span>
-                            <span *ngIf="option.price_adjustment > 0" class="option-adjustment">
-                              + {{ formatPrice(option.price_adjustment) }}
-                            </span>
-                            <span *ngIf="option.quantity > 1" class="option-quantity">
-                              ({{ option.quantity }}x)
-                            </span>
-                          </div>
-                        </div>
-                      </mat-option>
-                    </mat-select>
-                    <mat-select-trigger>
-                      <div *ngIf="getSelectedOption(group)" class="select-trigger-content">
-                        <img 
-                          [src]="getProductImage(getSelectedOption(group)!.product || {})" 
-                          [alt]="getSelectedOption(group)!.product?.name"
-                          class="trigger-avatar"
-                          onerror="this.src='/assets/images/no-image.jpg'">
-                        <span class="trigger-text">
-                          {{ getSelectedOption(group)!.product?.name || 'Produto' }}
-                          <span *ngIf="getSelectedOption(group)!.price_adjustment > 0" class="trigger-adjustment">
-                            (+ {{ formatPrice(getSelectedOption(group)!.price_adjustment) }})
-                          </span>
-                        </span>
-                      </div>
-                      <span *ngIf="!getSelectedOption(group)" class="select-placeholder">
-                        Selecione uma opção
-                      </span>
-                    </mat-select-trigger>
-                  </mat-form-field>
-                </div>
-              </div>
-            </mat-card-content>
-          </mat-card>
-        </div>
-      </div>
-
-      <!-- Lista de Itens do Combo (Produtos Inclusos) -->
-      <div class="combo-products-section">
-        <h2 class="section-title">
-          <mat-icon>inventory_2</mat-icon>
-          <span>Produtos Inclusos</span>
-        </h2>
-        <div class="products-grid">
-          <div *ngFor="let item of getAllIncludedProducts()" class="product-card-item">
-            <div class="product-image-wrapper">
-              <img [src]="getProductImage(item.product)" 
-                   [alt]="getProductName(item.product)" 
-                   class="product-thumbnail"
-                   onerror="this.src='/assets/images/no-image.jpg'">
-            </div>
-            <div class="product-info-wrapper">
-              <h3 class="product-name">{{ getProductName(item.product) }}</h3>
-              <div class="product-quantity-badge">
-                <mat-icon>shopping_cart</mat-icon>
-                <span>{{ getProductQuantity(item) }} {{ getProductUnit(item) }}</span>
               </div>
             </div>
-            <div class="product-price-wrapper">
-              <span class="product-unit-price">{{ formatPrice(getProductPrice(item.product)) }}</span>
-            </div>
-          </div>
-        </div>
+          </mat-expansion-panel>
+        </mat-accordion>
       </div>
 
-      <!-- Controles de Quantidade (Desktop) -->
-      <div class="combo-actions-desktop">
-        <div class="quantity-controls">
-          <label for="quantity">Quantidade:</label>
-          <div class="quantity-input">
-            <button (click)="decrementQuantity()" type="button" class="quantity-btn" [disabled]="quantity <= 1">
-              <mat-icon>remove</mat-icon>
-            </button>
-            <input 
-              type="number" 
-              id="quantity"
-              [(ngModel)]="quantity" 
-              min="1" 
-              class="quantity-field"
-              readonly>
-            <button (click)="incrementQuantity()" type="button" class="quantity-btn">
-              <mat-icon>add</mat-icon>
-            </button>
-          </div>
-        </div>
-        <button 
-          (click)="onAddToCart()" 
-          class="add-to-cart-btn-large"
-          [disabled]="!canAddToCart()">
-          <mat-icon>add_shopping_cart</mat-icon>
-          <span>Adicionar ao Carrinho</span>
-        </button>
-        <div *ngIf="!canAddToCart()" class="validation-hint">
-          Complete todas as seleções obrigatórias para adicionar ao carrinho
-        </div>
+      <!-- Campo de Observações -->
+      <div class="observations-section">
+        <mat-form-field appearance="outline" class="observations-field">
+          <mat-label>Observações (opcional)</mat-label>
+          <textarea 
+            matInput 
+            [(ngModel)]="observations"
+            placeholder="Ex: Sem gelo, sem açúcar, etc."
+            rows="3"
+            maxlength="500"></textarea>
+          <mat-hint>{{ observations.length }}/500</mat-hint>
+        </mat-form-field>
       </div>
     </div>
   </div>
 
-  <!-- Rodapé Fixo (Mobile) -->
-  <div class="combo-actions-mobile" *ngIf="!loading && !error && bundle">
-    <div class="quantity-controls-mobile">
-      <button (click)="decrementQuantity()" type="button" class="quantity-btn-mobile" [disabled]="quantity <= 1">
-        <mat-icon>remove</mat-icon>
-      </button>
-      <span class="quantity-display">{{ quantity }}</span>
-      <button (click)="incrementQuantity()" type="button" class="quantity-btn-mobile">
-        <mat-icon>add</mat-icon>
+  <!-- Barra Fixa (Rodapé) -->
+  <div class="fixed-footer" *ngIf="!loading && !error && bundle">
+    <div class="footer-content">
+      <div class="quantity-control-footer">
+        <button 
+          mat-icon-button
+          (click)="decrementQuantity()" 
+          [disabled]="quantity <= 1"
+          class="footer-btn">
+          <mat-icon>remove</mat-icon>
+        </button>
+        <span class="quantity-value">{{ quantity }}</span>
+        <button 
+          mat-icon-button
+          (click)="incrementQuantity()"
+          class="footer-btn">
+          <mat-icon>add</mat-icon>
+        </button>
+      </div>
+
+      <div class="price-section">
+        <div class="price-label">Total</div>
+        <div class="price-value">{{ formatPrice(getTotalPrice()) }}</div>
+      </div>
+
+      <button 
+        mat-raised-button
+        color="primary"
+        (click)="onAddToCart()" 
+        [disabled]="!canAddToCart()"
+        class="add-button">
+        <mat-icon>add_shopping_cart</mat-icon>
+        <span>Adicionar</span>
       </button>
     </div>
-    <button 
-      (click)="onAddToCart()" 
-      class="add-to-cart-btn-mobile"
-      [disabled]="!canAddToCart()">
-      <mat-icon>add_shopping_cart</mat-icon>
-      <span>Adicionar</span>
-      <span class="price-mobile">{{ formatPrice(displayedPrice * quantity) }}</span>
-    </button>
   </div>
 </div>

@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule, ActivatedRoute } from '@angular/router';
+import { RouterModule, ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
@@ -50,6 +50,7 @@ export class ProductListPageComponent implements OnInit, OnDestroy {
     private comboService: ComboService,
     private cartService: CartService,
     private route: ActivatedRoute,
+    private router: Router,
     private cdr: ChangeDetectorRef,
     private toastr: ToastrService
   ) {}
@@ -253,6 +254,22 @@ export class ProductListPageComponent implements OnInit, OnDestroy {
   }
 
   addToCart(product: Product): void {
+    // Verificar se é um bundle (ProductBundle) - tem groups ou bundle_type
+    const isBundle = (product as any).groups !== undefined || 
+                     (product as any).bundle_type !== undefined;
+    
+    // Verificar se é um combo adaptado (category_id === 0 e não tem doses_por_garrafa)
+    const isCombo = product.category_id === 0 && 
+                    product.doses_por_garrafa === 0 && 
+                    product.current_stock === 999;
+    
+    if (isBundle || isCombo) {
+      // Para bundles/combos, redirecionar para a página de detalhes
+      // O usuário precisa escolher as opções antes de adicionar ao carrinho
+      this.router.navigate(['/combos', product.id]);
+      return;
+    }
+    
     const currentQuantity = this.getQuantity(product);
     // No e-commerce, sempre usar delivery_price se disponível
     const priceToUse = product.delivery_price ?? product.price;
