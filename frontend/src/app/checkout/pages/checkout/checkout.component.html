@@ -36,6 +36,95 @@
     <div class="checkout-container">
       <div class="checkout-content">
         
+        <!-- Bloco 0: Cadastro de Guest User (se não logado) -->
+        <div *ngIf="isGuestUser" class="guest-user-block card">
+          <h2 class="section-title">
+            <mat-icon>person_add</mat-icon>
+            Seus dados
+          </h2>
+          <p class="section-description">Preencha seus dados para finalizar o pedido</p>
+          
+          <form [formGroup]="guestUserForm">
+            <div class="form-row">
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Nome completo</mat-label>
+                <input matInput formControlName="name" placeholder="Seu nome completo">
+                <mat-icon matPrefix>person</mat-icon>
+                <mat-error *ngIf="guestUserForm.get('name')?.errors?.['required']">
+                  Nome é obrigatório
+                </mat-error>
+                <mat-error *ngIf="guestUserForm.get('name')?.errors?.['minlength']">
+                  Nome deve ter no mínimo 3 caracteres
+                </mat-error>
+              </mat-form-field>
+            </div>
+
+            <div class="form-row">
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>E-mail</mat-label>
+                <input matInput formControlName="email" type="email" placeholder="seu@email.com">
+                <mat-icon matPrefix>email</mat-icon>
+                <mat-error *ngIf="guestUserForm.get('email')?.errors?.['required']">
+                  E-mail é obrigatório
+                </mat-error>
+                <mat-error *ngIf="guestUserForm.get('email')?.errors?.['email']">
+                  E-mail inválido
+                </mat-error>
+              </mat-form-field>
+            </div>
+
+            <div class="form-row">
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>CPF ou CNPJ</mat-label>
+                <input 
+                  matInput 
+                  formControlName="document_number" 
+                  placeholder="000.000.000-00 ou 00.000.000/0000-00"
+                  (input)="formatDocument($event)"
+                  maxlength="18">
+                <mat-icon matPrefix>badge</mat-icon>
+                <mat-error *ngIf="guestUserForm.get('document_number')?.errors?.['required']">
+                  CPF/CNPJ é obrigatório
+                </mat-error>
+                <mat-error *ngIf="guestUserForm.get('document_number')?.errors?.['invalidDocument']">
+                  Documento inválido
+                </mat-error>
+              </mat-form-field>
+            </div>
+
+            <div class="form-row">
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Celular</mat-label>
+                <input 
+                  matInput 
+                  formControlName="phone" 
+                  placeholder="(00) 00000-0000" 
+                  (input)="formatPhoneGuest($event)">
+                <mat-icon matPrefix>phone</mat-icon>
+                <mat-error *ngIf="guestUserForm.get('phone')?.errors?.['required']">
+                  Celular é obrigatório
+                </mat-error>
+                <mat-error *ngIf="guestUserForm.get('phone')?.errors?.['invalidPhone']">
+                  {{ guestUserForm.get('phone')?.errors?.['invalidPhone']?.message || 'Celular inválido' }}
+                </mat-error>
+              </mat-form-field>
+            </div>
+
+            <div class="form-row">
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Senha (opcional)</mat-label>
+                <input 
+                  matInput 
+                  type="password"
+                  formControlName="password" 
+                  placeholder="Deixe em branco para gerar senha automática">
+                <mat-icon matPrefix>lock</mat-icon>
+                <mat-hint>Se não preencher, uma senha será gerada e enviada por e-mail</mat-hint>
+              </mat-form-field>
+            </div>
+          </form>
+        </div>
+
         <!-- Bloco 1: Endereço -->
         <div class="address-block card">
           <div class="address-header">
@@ -172,16 +261,6 @@
                     <mat-label>Estado</mat-label>
                     <input matInput formControlName="state" placeholder="UF" maxlength="2">
                     <mat-error *ngIf="deliveryForm.get('state')?.errors?.['required']">Estado é obrigatório</mat-error>
-                  </mat-form-field>
-                </div>
-
-                <!-- Linha 5: Telefone -->
-                <div class="form-row">
-                  <mat-form-field class="phone-field">
-                    <mat-label>Telefone</mat-label>
-                    <input matInput formControlName="phone" placeholder="(00) 00000-0000" (input)="formatPhone($event)">
-                    <mat-error *ngIf="deliveryForm.get('phone')?.errors?.['required']">Telefone é obrigatório</mat-error>
-                    <mat-error *ngIf="deliveryForm.get('phone')?.errors?.['pattern']">Telefone inválido</mat-error>
                   </mat-form-field>
                 </div>
 
@@ -439,8 +518,8 @@
                 <mat-error *ngIf="userDataForm.get('phone')?.errors?.['required']">
                   Telefone é obrigatório
                 </mat-error>
-                <mat-error *ngIf="userDataForm.get('phone')?.errors?.['pattern']">
-                  Telefone inválido
+                <mat-error *ngIf="userDataForm.get('phone')?.errors?.['invalidPhone']">
+                  {{ userDataForm.get('phone')?.errors?.['invalidPhone']?.message || 'Telefone inválido' }}
                 </mat-error>
               </mat-form-field>
             </div>

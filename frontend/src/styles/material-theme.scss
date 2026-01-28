@@ -131,3 +131,75 @@ $custom-theme: mat.m2-define-light-theme((
   border-color: var(--primary) !important;
 }
 
+// ==========================================
+// CORREÇÃO GLOBAL: Labels flutuantes do Angular Material
+// ==========================================
+// Corrigir label flutuante para não ser cortado pela borda
+.mat-mdc-form-field-appearance-outline .mat-mdc-form-field-label {
+  background-color: white !important;
+  padding: 0 4px !important;
+  margin-left: -4px !important;
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+// Quando o label está flutuando (campo preenchido ou focado)
+.mat-mdc-form-field-appearance-outline.mat-form-field-can-float.mat-form-field-should-float .mat-mdc-form-field-label,
+.mat-mdc-form-field-appearance-outline .mat-mdc-form-field-label-wrapper .mat-mdc-form-field-label {
+  background-color: white !important;
+  padding: 0 4px !important;
+  margin-left: -4px !important;
+  position: relative !important;
+  z-index: 1 !important;
+}
+
+// Garantir que o label wrapper também tenha fundo branco
+.mat-mdc-form-field-appearance-outline .mat-mdc-form-field-label-wrapper {
+  background-color: transparent !important;
+}
+
+// Ajuste para campos dentro de cards com fundo branco
+.card .mat-mdc-form-field-appearance-outline .mat-mdc-form-field-label,
+.white-background .mat-mdc-form-field-appearance-outline .mat-mdc-form-field-label {
+  background-color: white !important;
+}
+
+// Ajuste para campos com fundo diferente (se necessário)
+.bg-gray .mat-mdc-form-field-appearance-outline .mat-mdc-form-field-label,
+.bg-light .mat-mdc-form-field-appearance-outline .mat-mdc-form-field-label {
+  background-color: #f5f5f5 !important;
+}
+
+// ==========================================
+// CORREÇÃO: Padding compacto para inputs MDC
+// ==========================================
+// Reduzir padding horizontal dos inputs para layout mais compacto
+.mat-mdc-form-field-appearance-outline .mdc-text-field__input {
+  padding-left: 14px !important;
+  padding-right: 14px !important;
+}
+
+// Ajuste específico para o infix (área interna do form-field)
+.mat-mdc-form-field-appearance-outline .mat-mdc-form-field-infix {
+  padding: 16px 0 !important;
+  min-height: 56px !important;
+}
+
+// Reduzir padding quando há ícone prefix
+.mat-mdc-form-field-appearance-outline .mat-mdc-text-field-wrapper .mat-mdc-form-field-flex .mat-mdc-form-field-infix {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+// Ajuste para campos com ícone prefix - reduzir padding esquerdo
+.mat-mdc-form-field-appearance-outline .mat-icon.matPrefix ~ .mat-mdc-form-field-infix .mdc-text-field__input {
+  padding-left: 8px !important;
+}
+
+// Garantir que o padding não seja excessivo em campos compactos
+.checkout-container .mat-mdc-form-field-appearance-outline .mdc-text-field__input,
+.card .mat-mdc-form-field-appearance-outline .mdc-text-field__input {
+  padding-left: 14px !important;
+  padding-right: 14px !important;
+}
+

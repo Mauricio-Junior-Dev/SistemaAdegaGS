@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterModule } from '@angular/router';
+import { Router, RouterModule, ActivatedRoute } from '@angular/router';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatStepperModule } from '@angular/material/stepper';
 import { MatButtonModule } from '@angular/material/button';
@@ -36,6 +36,7 @@ import { environment } from '../../../../environments/environment';
 import { Clipboard } from '@angular/cdk/clipboard';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { documentValidator, formatDocument } from '../../../core/validators/document.validator';
+import { phoneValidator } from '../../../core/validators/phone.validator';
 
 @Component({
   selector: 'app-checkout',
@@ -67,6 +68,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   deliveryForm: FormGroup;
   paymentForm: FormGroup;
   userDataForm: FormGroup; // Formulário para CPF e Telefone do usuário
+  guestUserForm: FormGroup; // Formulário para cadastro de guest user (Nome, CPF, Celular, Email, Senha)
   cartItems$!: Observable<CartItem[]>;
   cartTotal$!: Observable<number>;
   user$!: Observable<User | null>;
@@ -80,6 +82,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   public isProcessingPayment = false;
   public loadingMessage: string = 'Aguardando pagamento...';
   private paymentPollingSub?: Subscription;
+  isGuestUser = false; // Flag para indicar se é usuário guest
   
   // Endereços
   addresses: Address[] = [];
@@ -117,6 +120,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     private storeStatusService: StoreStatusService,
     private snackBar: MatSnackBar,
     private router: Router,
+    private route: ActivatedRoute,
     private cdr: ChangeDetectorRef,
     private toastr: ToastrService,
     private clipboard: Clipboard,
@@ -130,7 +134,6 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       city: ['', Validators.required],
       state: ['', Validators.required],
       zipcode: ['', [Validators.required, Validators.pattern(/^\d{5}-\d{3}$/)]],
-      phone: ['', [Validators.required, Validators.pattern(/^\(\d{2}\) \d{5}-\d{4}$/)]],
       instructions: ['']
     });
 
@@ -144,6 +147,15 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     this.userDataForm = this.fb.group({
       document_number: [''],
       phone: ['']
+    });
+
+    // Formulário para guest user (cadastro durante checkout)
+    this.guestUserForm = this.fb.group({
+      name: ['', [Validators.required, Validators.minLength(3)]],
+      email: ['', [Validators.required, Validators.email]],
+      document_number: ['', [Validators.required, documentValidator]],
+      phone: ['', [Validators.required, phoneValidator()]],
+      password: [''] // Opcional - se não preenchido, gerar senha automática
     });
 
     // Inicializar observável do status da loja após injeção do serviço
@@ -253,9 +265,26 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     this.updateCartTotals();
     this.user$ = this.authService.user$;
 
+    // Verificar se é guest user (não logado)
+    const currentUser = this.authService.getCurrentUser();
+    this.isGuestUser = !currentUser;
+
+    // Se for guest, verificar se veio email da tela de login
+    if (this.isGuestUser) {
+      this.route.queryParams.subscribe(params => {
+        if (params['email']) {
+          this.guestUserForm.patchValue({
+            email: params['email']
+          });
+        }
+      });
+    }
+
     // Verificar dados do usuário e configurar campos condicionais
     this.user$.subscribe((user: User | null) => {
       if (user) {
+        this.isGuestUser = false;
+        
         // Verificar se precisa de CPF
         this.needsDocumentNumber = !user.document_number || user.document_number.trim() === '';
         
@@ -276,24 +305,24 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         if (this.needsPhone) {
           this.userDataForm.get('phone')?.setValidators([
             Validators.required,
-            Validators.pattern(/^\(\d{2}\) \d{5}-\d{4}$/)
+            phoneValidator()
           ]);
         } else {
           this.userDataForm.get('phone')?.clearValidators();
-          // Preencher telefone no formulário de entrega se já existir
-          this.deliveryForm.patchValue({
-            phone: user.phone
-          });
         }
         
         // Atualizar validações
         this.userDataForm.get('document_number')?.updateValueAndValidity();
         this.userDataForm.get('phone')?.updateValueAndValidity();
+      } else {
+        this.isGuestUser = true;
       }
     });
 
-    // Carregar endereços salvos
-    this.loadAddresses();
+    // Carregar endereços salvos apenas se estiver logado
+    if (!this.isGuestUser) {
+      this.loadAddresses();
+    }
     
     // Carregar zonas de entrega
     this.loadDeliveryZones();
@@ -387,9 +416,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     this.deliveryForm.reset();
     this.isDeliveryAreaValid = false; // Resetar flag ao usar novo endereço
     
-    // Manter o telefone se já estiver preenchido
-    const phone = this.deliveryForm.get('phone')?.value;
-    this.deliveryForm.patchValue({ phone });
+    // Telefone não é mais parte do formulário de endereço
     
     // Forçar detecção de mudanças
     this.cdr.detectChanges();
@@ -418,19 +445,44 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     }
   }
 
-  formatPhone(event: any): void {
-    let value = event.target.value.replace(/\D/g, '');
-    if (value.length <= 11) {
-      value = value.replace(/^(\d{2})(\d{5})(\d{4}).*/, '($1) $2-$3');
-      this.deliveryForm.get('phone')?.setValue(value, { emitEvent: false });
-    }
-  }
 
   formatPhoneUserData(event: any): void {
     let value = event.target.value.replace(/\D/g, '');
+    // Limita a 11 dígitos
+    if (value.length > 11) {
+      value = value.substring(0, 11);
+    }
+    
+    // Formata baseado no tamanho
     if (value.length <= 11) {
-      value = value.replace(/^(\d{2})(\d{5})(\d{4}).*/, '($1) $2-$3');
+      if (value.length <= 10) {
+        // Telefone fixo: (XX) XXXX-XXXX
+        value = value.replace(/^(\d{2})(\d{4})(\d{4}).*/, '($1) $2-$3');
+      } else {
+        // Celular: (XX) XXXXX-XXXX
+        value = value.replace(/^(\d{2})(\d{5})(\d{4}).*/, '($1) $2-$3');
+      }
       this.userDataForm.get('phone')?.setValue(value, { emitEvent: false });
+    }
+  }
+
+  formatPhoneGuest(event: any): void {
+    let value = event.target.value.replace(/\D/g, '');
+    // Limita a 11 dígitos
+    if (value.length > 11) {
+      value = value.substring(0, 11);
+    }
+    
+    // Formata baseado no tamanho
+    if (value.length <= 11) {
+      if (value.length <= 10) {
+        // Telefone fixo: (XX) XXXX-XXXX
+        value = value.replace(/^(\d{2})(\d{4})(\d{4}).*/, '($1) $2-$3');
+      } else {
+        // Celular: (XX) XXXXX-XXXX
+        value = value.replace(/^(\d{2})(\d{5})(\d{4}).*/, '($1) $2-$3');
+      }
+      this.guestUserForm.get('phone')?.setValue(value, { emitEvent: false });
     }
   }
 
@@ -643,54 +695,45 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     }, 100);
   }
 
-  /**
-   * Encontra o primeiro campo inválido dos dados do usuário e faz scroll até ele
-   */
-  private scrollToFirstInvalidUserField(): void {
-    setTimeout(() => {
-      const userFields = [
-        { name: 'document_number', id: 'user-document_number' },
-        { name: 'phone', id: 'user-phone' }
-      ];
-      
-      for (const field of userFields) {
-        const control = this.userDataForm.get(field.name);
-        if (control && control.invalid) {
-          // Buscar pelo ID primeiro
-          let targetElement = document.getElementById(field.id);
-          
-          if (!targetElement) {
-            // Fallback: buscar pelo formControlName dentro do bloco de dados do usuário
-            const userDataBlock = document.querySelector('.user-data-block');
-            if (userDataBlock) {
-              const input = userDataBlock.querySelector(`[formControlName="${field.name}"]`) as HTMLElement;
-              if (input) {
-                targetElement = input;
-              }
-            }
-          }
-          
-          if (targetElement) {
-            targetElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            // Focar no input
-            setTimeout(() => {
-              if (targetElement && typeof (targetElement as any).focus === 'function') {
-                (targetElement as any).focus();
-              }
-            }, 300);
-            return;
-          }
-        }
-      }
-    }, 100);
-  }
 
   /**
    * Encontra o primeiro campo inválido e faz scroll até ele
+   * Melhorado para funcionar com Angular Material e múltiplos formulários
    */
   private scrollToFirstInvalidField(): void {
     setTimeout(() => {
-      // Lista de campos do formulário de entrega na ordem de exibição
+      // Prioridade 1: Guest User Form (se for guest)
+      if (this.isGuestUser) {
+        const guestFields = ['name', 'email', 'document_number', 'phone', 'password'];
+        for (const fieldName of guestFields) {
+          const control = this.guestUserForm.get(fieldName);
+          if (control && control.invalid && control.touched) {
+            const element = document.querySelector(`[formControlName="${fieldName}"]`);
+            if (element) {
+              this.scrollToElement(element as HTMLElement);
+              return;
+            }
+          }
+        }
+      }
+
+      // Prioridade 2: User Data Form (CPF/Telefone condicionais)
+      if (this.needsDocumentNumber || this.needsPhone) {
+        const userDataFields = ['document_number', 'phone'];
+        for (const fieldName of userDataFields) {
+          const control = this.userDataForm.get(fieldName);
+          if (control && control.invalid && control.touched) {
+            const element = document.getElementById(`user-${fieldName}`) || 
+                          document.querySelector(`[formControlName="${fieldName}"]`);
+            if (element) {
+              this.scrollToElement(element as HTMLElement);
+              return;
+            }
+          }
+        }
+      }
+
+      // Prioridade 3: Delivery Form
       const deliveryFields = [
         'zipcode',
         'address',
@@ -699,70 +742,66 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         'complement',
         'city',
         'state',
-        'phone',
         'instructions'
       ];
 
-      // Verificar campos do deliveryForm (após markAllAsTouched, todos estarão touched)
       for (const fieldName of deliveryFields) {
         const control = this.deliveryForm.get(fieldName);
-        if (control && control.invalid) {
+        if (control && control.invalid && control.touched) {
           const element = document.querySelector(`[formControlName="${fieldName}"]`);
           if (element) {
-            const inputElement = element as HTMLElement;
-            const headerOffset = 100;
-            const elementPosition = inputElement.getBoundingClientRect().top;
-            const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
-            window.scrollTo({
-              top: offsetPosition,
-              behavior: 'smooth'
-            });
-            // Tentar focar no input dentro do mat-form-field
-            const input = inputElement.querySelector('input') || inputElement.querySelector('textarea') || inputElement;
-            if (input && input.focus) {
-              setTimeout(() => input.focus(), 300);
-            }
+            this.scrollToElement(element as HTMLElement);
             return;
           }
         }
       }
 
-      // Verificar campos do paymentForm
+      // Prioridade 4: Payment Form
       const paymentFields = ['method', 'received_amount'];
       for (const fieldName of paymentFields) {
         const control = this.paymentForm.get(fieldName);
-        if (control && control.invalid) {
-          const element = document.querySelector(`[formControlName="${fieldName}"]`);
+        if (control && control.invalid && control.touched) {
+          const element = document.querySelector(`[formControlName="${fieldName}"]`) ||
+                         document.getElementById('received-amount-input');
           if (element) {
-            const inputElement = element as HTMLElement;
-            const headerOffset = 100;
-            const elementPosition = inputElement.getBoundingClientRect().top;
-            const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
-            window.scrollTo({
-              top: offsetPosition,
-              behavior: 'smooth'
-            });
-            const input = inputElement.querySelector('input') || inputElement.querySelector('textarea') || inputElement;
-            if (input && input.focus) {
-              setTimeout(() => input.focus(), 300);
-            }
+            this.scrollToElement(element as HTMLElement);
             return;
           }
         }
       }
 
-      // Se não encontrou nenhum campo específico, fazer scroll até o formulário de endereço
-      const addressForm = document.querySelector('.address-form-expandable');
-      if (addressForm) {
-        const headerOffset = 100;
-        const elementPosition = (addressForm as HTMLElement).getBoundingClientRect().top;
-        const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
-        window.scrollTo({
-          top: offsetPosition,
-          behavior: 'smooth'
-        });
+      // Fallback: Buscar qualquer campo com ng-invalid
+      const firstInvalid = document.querySelector('.ng-invalid');
+      if (firstInvalid) {
+        this.scrollToElement(firstInvalid as HTMLElement);
       }
-    }, 100);
+    }, 150);
+  }
+
+  /**
+   * Faz scroll suave até um elemento e foca nele
+   */
+  private scrollToElement(element: HTMLElement): void {
+    const headerOffset = 100;
+    const elementPosition = element.getBoundingClientRect().top;
+    const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+    
+    window.scrollTo({
+      top: offsetPosition,
+      behavior: 'smooth'
+    });
+
+    // Tentar focar no input dentro do mat-form-field
+    setTimeout(() => {
+      const input = element.querySelector('input') || 
+                   element.querySelector('textarea') || 
+                   element.querySelector('select') ||
+                   element;
+      
+      if (input && typeof (input as any).focus === 'function') {
+        (input as any).focus();
+      }
+    }, 400);
   }
 
   public async onSubmit(): Promise<void> {
@@ -775,20 +814,18 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const currentUser =
-      typeof this.authService.getCurrentUser === 'function'
-        ? this.authService.getCurrentUser()
-        : typeof this.authService.getUser === 'function'
-          ? this.authService.getUser()
-          : null;
+    const currentUser = this.authService.getCurrentUser();
+    this.isGuestUser = !currentUser;
 
-    console.log('Usuário logado (segundo o AuthService):', currentUser);
-
-    if (!currentUser) {
-      console.error('ERRO GRAVE: O usuário não está logado no Angular, mas o checkout foi permitido!');
-      this.loading = false;
-      this.isProcessingPayment = false;
-      return;
+    // Se for guest user, validar formulário de cadastro
+    if (this.isGuestUser) {
+      this.guestUserForm.markAllAsTouched();
+      
+      if (this.guestUserForm.invalid) {
+        this.toastr.warning('Por favor, preencha todos os campos obrigatórios (Nome, E-mail, CPF e Telefone).', 'Dados Obrigatórios');
+        this.scrollToFirstInvalidField();
+        return;
+      }
     }
 
     // Validação de formulários com feedback visual
@@ -800,8 +837,8 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         this.toastr.warning('Por favor, preencha os dados obrigatórios (CPF e/ou Telefone).', 'Dados Obrigatórios');
         
         setTimeout(() => {
-          this.scrollToFirstInvalidUserField();
-        }, 100);
+          this.scrollToFirstInvalidField();
+        }, 200);
         
         return;
       }
@@ -823,7 +860,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       // Aguardar um pouco para o formulário expandir antes de fazer scroll
       setTimeout(() => {
         this.scrollToFirstInvalidField();
-      }, 200);
+      }, 300);
       
       return;
     }
@@ -914,15 +951,33 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         changeAmount = undefined;
       }
 
-      // Obter telefone: prioridade para o campo condicional do usuário, senão do formulário de entrega
-      const userPhone = this.needsPhone && this.userDataForm.value.phone
-        ? this.userDataForm.value.phone
-        : (this.deliveryForm.value.phone || null);
-      
-      // Obter CPF do campo condicional se necessário
-      const userDocumentNumber = this.needsDocumentNumber && this.userDataForm.value.document_number
-        ? this.userDataForm.value.document_number.replace(/\D/g, '') // Remove formatação
-        : null;
+      // Obter dados do usuário (guest ou logado)
+      let userPhone: string | null = null;
+      let userDocumentNumber: string | null = null;
+      let userName: string | null = null;
+      let userEmail: string | null = null;
+      let userPassword: string | null = null;
+
+      if (this.isGuestUser) {
+        // Dados do guest user
+        userName = this.guestUserForm.value.name;
+        userEmail = this.guestUserForm.value.email;
+        userDocumentNumber = this.guestUserForm.value.document_number?.replace(/\D/g, '') || null;
+        userPhone = this.guestUserForm.value.phone || null;
+        userPassword = this.guestUserForm.value.password || null; // Opcional
+      } else {
+        // Dados do usuário logado
+        userPhone = this.needsPhone && this.userDataForm.value.phone
+          ? this.userDataForm.value.phone
+          : (currentUser?.phone || null);
+        
+        userDocumentNumber = this.needsDocumentNumber && this.userDataForm.value.document_number
+          ? this.userDataForm.value.document_number.replace(/\D/g, '')
+          : null;
+        
+        userName = currentUser?.name || null;
+        userEmail = currentUser?.email || null;
+      }
 
       const deliveryData = this.useSavedAddress && this.selectedAddressId
         ? {
@@ -940,8 +995,10 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         type: 'online',
         delivery: deliveryData,
         payment_method: mappedPaymentMethod,
-        customer_name: deliveryData.address,
+        customer_name: userName || deliveryData.address,
+        customer_email: userEmail,
         customer_phone: userPhone,
+        customer_document: userDocumentNumber,
         items: items
           .map(item => {
             if (item.isCombo && item.combo) {
@@ -976,21 +1033,45 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         change_amount: changeAmount
       };
 
-      // Adicionar document_number e phone na request se necessário
-      if (userDocumentNumber) {
-        orderPayload.document_number = userDocumentNumber;
-      }
-      
-      if (this.needsPhone && userPhone) {
-        // phone já está em customer_phone e delivery.phone
-        // Mas vamos garantir que está no payload
-        orderPayload.phone = userPhone;
+      // Adicionar dados do guest user se necessário
+      if (this.isGuestUser) {
+        orderPayload.guest_user = {
+          name: userName,
+          email: userEmail,
+          document_number: userDocumentNumber,
+          phone: userPhone,
+          password: userPassword // Opcional - se não fornecido, backend gera automaticamente
+        };
+      } else {
+        // Para usuário logado, adicionar document_number e phone se necessário
+        if (userDocumentNumber) {
+          orderPayload.document_number = userDocumentNumber;
+        }
+        
+        if (this.needsPhone && userPhone) {
+          orderPayload.phone = userPhone;
+        }
       }
 
       console.log("Payload que será enviado para 'createOrder':", orderPayload);
 
       this.orderService.createOrder(orderPayload).subscribe({
-        next: (newlyCreatedOrder: Order) => {
+        next: (response: any) => {
+          // Se a resposta incluir token (guest user criado), fazer auto-login
+          if (response.access_token && this.isGuestUser) {
+            this.authService.saveAuth({
+              access_token: response.access_token,
+              token_type: response.token_type || 'Bearer',
+              user: response.user
+            });
+            this.toastr.success('Conta criada com sucesso! Você foi logado automaticamente.', 'Bem-vindo!');
+            // Atualizar flag após login
+            this.isGuestUser = false;
+          }
+
+          // A resposta pode ser Order diretamente ou { order: Order, access_token: ... }
+          const newlyCreatedOrder: Order = response.order || response;
+          
           // Limpar carrinho imediatamente após criar o pedido com sucesso
           this.cartService.clearCart();
           

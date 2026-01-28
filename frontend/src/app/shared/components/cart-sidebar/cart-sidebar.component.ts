@@ -73,17 +73,7 @@ export class CartSidebarComponent implements OnInit {
       return; // Não fazer nada se a loja estiver fechada
     }
 
-    // Verificar se o usuário está autenticado
-    if (!this.authService.isLoggedIn()) {
-      // Se não estiver autenticado, redirecionar para login
-      this.cartService.closeCart();
-      this.router.navigate(['/login'], {
-        queryParams: { returnUrl: '/checkout' }
-      });
-      return;
-    }
-
-    // Fechar o carrinho e navegar para checkout
+    // Fechar o carrinho e navegar para checkout (guest users podem fazer checkout)
     this.cartService.closeCart();
     this.router.navigate(['/checkout']);
   }

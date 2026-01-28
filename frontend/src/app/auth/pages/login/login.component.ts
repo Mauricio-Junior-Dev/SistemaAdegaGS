@@ -18,6 +18,9 @@ export class LoginComponent implements OnInit, OnDestroy {
   loading = false;
   error: string | null = null;
   returnUrl: string = '/';
+  showPasswordField = false;
+  userExists = false;
+  identifier: string = '';
 
   constructor(
     private fb: FormBuilder,
@@ -28,7 +31,7 @@ export class LoginComponent implements OnInit, OnDestroy {
     private route: ActivatedRoute
   ) {
     this.loginForm = this.fb.group({
-      email: ['', [Validators.required, Validators.email]],
+      identifier: ['', [Validators.required]], // E-mail ou CPF
       password: ['', [Validators.required, Validators.minLength(8)]]
     });
   }
@@ -168,42 +171,91 @@ export class LoginComponent implements OnInit, OnDestroy {
     }
   }
 
+  onContinue(): void {
+    const identifier = this.loginForm.get('identifier')?.value;
+    
+    if (!identifier || identifier.trim() === '') {
+      this.error = 'Por favor, informe seu e-mail ou CPF';
+      return;
+    }
+
+    this.loading = true;
+    this.error = null;
+    this.identifier = identifier;
+
+    this.authService.checkUser(identifier).subscribe({
+      next: (response) => {
+        this.loading = false;
+        
+        if (response.exists) {
+          // Usuário existe: revelar campo de senha
+          this.userExists = true;
+          this.showPasswordField = true;
+          this.loginForm.get('password')?.setValidators([Validators.required, Validators.minLength(8)]);
+          this.loginForm.get('password')?.updateValueAndValidity();
+        } else {
+          // Usuário não existe: redirecionar para checkout
+          const email = identifier.includes('@') ? identifier : '';
+          this.router.navigate(['/checkout'], {
+            queryParams: { email: email || identifier }
+          });
+        }
+      },
+      error: (error) => {
+        this.loading = false;
+        this.error = error.error.message || 'Erro ao verificar usuário';
+      }
+    });
+  }
+
   onSubmit(): void {
     if (this.loginForm.invalid) {
+      return;
+    }
+
+    if (!this.showPasswordField) {
+      // Se ainda não mostrou o campo de senha, fazer a checagem primeiro
+      this.onContinue();
       return;
     }
 
     this.loading = true;
     this.error = null;
 
-     this.authService.login(this.loginForm.value).subscribe({
-       next: (response) => {
-         // Iniciar polling de pedidos apenas se for funcionário
-         if (response.user.type === 'employee') {
-           console.log('[LoginComponent] Iniciando polling de pedidos para funcionário');
-           this.orderPollingService.startPolling();
-         }
-         
-         // Redirecionar baseado no tipo de usuário
-         const userType = response.user.type;
-         let targetRoute = this.returnUrl;
+    // Usar identifier como email para o login (o backend aceita email ou CPF)
+    const loginData = {
+      email: this.identifier,
+      password: this.loginForm.get('password')?.value
+    };
 
-         if (this.returnUrl === '/') {
-           switch (userType) {
-             case 'admin':
-               targetRoute = '/admin';
-               break;
-             case 'employee':
-               targetRoute = '/funcionario';
-               break;
-             case 'customer':
-               targetRoute = '/';
-               break;
-           }
-         }
+    this.authService.login(loginData).subscribe({
+      next: (response) => {
+        // Iniciar polling de pedidos apenas se for funcionário
+        if (response.user.type === 'employee') {
+          console.log('[LoginComponent] Iniciando polling de pedidos para funcionário');
+          this.orderPollingService.startPolling();
+        }
+        
+        // Redirecionar baseado no tipo de usuário
+        const userType = response.user.type;
+        let targetRoute = this.returnUrl;
 
-         this.router.navigate([targetRoute]);
-       },
+        if (this.returnUrl === '/') {
+          switch (userType) {
+            case 'admin':
+              targetRoute = '/admin';
+              break;
+            case 'employee':
+              targetRoute = '/funcionario';
+              break;
+            case 'customer':
+              targetRoute = '/';
+              break;
+          }
+        }
+
+        this.router.navigate([targetRoute]);
+      },
       error: (error) => {
         this.error = error.error.message || 'Erro ao fazer login';
         this.loading = false;

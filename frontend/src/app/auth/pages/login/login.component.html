@@ -11,24 +11,24 @@
         {{ error }}
       </div>
 
-      <!-- Email Field -->
+      <!-- Identifier Field (E-mail ou CPF) -->
       <div class="form-group">
-        <label for="email">E-mail</label>
+        <label for="identifier">E-mail ou CPF</label>
         <input
-          type="email"
-          id="email"
-          formControlName="email"
-          placeholder="Seu e-mail"
-          [class.invalid]="loginForm.get('email')?.invalid && loginForm.get('email')?.touched"
+          type="text"
+          id="identifier"
+          formControlName="identifier"
+          placeholder="Seu e-mail ou CPF"
+          [class.invalid]="loginForm.get('identifier')?.invalid && loginForm.get('identifier')?.touched"
+          [disabled]="showPasswordField"
         >
-        <div *ngIf="loginForm.get('email')?.invalid && loginForm.get('email')?.touched" class="error-hint">
-          <span *ngIf="loginForm.get('email')?.errors?.['required']">E-mail é obrigatório</span>
-          <span *ngIf="loginForm.get('email')?.errors?.['email']">E-mail inválido</span>
+        <div *ngIf="loginForm.get('identifier')?.invalid && loginForm.get('identifier')?.touched" class="error-hint">
+          <span *ngIf="loginForm.get('identifier')?.errors?.['required']">E-mail ou CPF é obrigatório</span>
         </div>
       </div>
 
-      <!-- Password Field -->
-      <div class="form-group">
+      <!-- Password Field (Revelado apenas se usuário existir) -->
+      <div class="form-group" *ngIf="showPasswordField">
         <label for="password">Senha</label>
         <input
           type="password"
@@ -47,10 +47,11 @@
       <button 
         type="submit" 
         class="submit-button" 
-        [disabled]="loginForm.invalid || loading"
+        [disabled]="!loginForm.get('identifier')?.value || loading"
       >
-        <span *ngIf="!loading">Entrar</span>
-        <span *ngIf="loading">Entrando...</span>
+        <span *ngIf="!loading && !showPasswordField">Continuar</span>
+        <span *ngIf="!loading && showPasswordField">Entrar</span>
+        <span *ngIf="loading">Verificando...</span>
       </button>
 
       <!-- Social Login Divider -->
@@ -69,10 +70,6 @@
 
       </div>
 
-      <!-- Register Link -->
-      <div class="auth-links">
-        <p>Ainda não tem uma conta? <a routerLink="/register">Cadastre-se</a></p>
-      </div>
     </form>
   </div>
 </div>

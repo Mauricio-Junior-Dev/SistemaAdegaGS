@@ -296,6 +296,7 @@
 /* Linha 4: Cidade + Estado/UF */
 .form-row.city-state-row {
   grid-template-columns: 2fr 1fr;
+  gap: 16px; /* Espaçamento adequado entre Cidade e Estado */
 }
 
 .city-field {
@@ -306,14 +307,42 @@
   min-width: 80px;
 }
 
-/* Linha 5: Telefone */
-.phone-field {
-  width: 100%;
-}
 
 /* Campo full-width */
 .full-width {
   width: 100%;
+}
+
+/* ==========================================
+   CORREÇÕES ANGULAR MATERIAL FORM FIELDS
+   (Correção global aplicada em material-theme.scss)
+   ========================================== */
+/* Espaçamento entre campos */
+.form-row {
+  margin-bottom: 0;
+}
+
+.form-row mat-form-field {
+  margin-bottom: 0;
+}
+
+/* Padding compacto específico para checkout */
+::ng-deep .checkout-container .mat-mdc-form-field-appearance-outline .mdc-text-field__input {
+  padding-left: 14px !important;
+  padding-right: 14px !important;
+}
+
+::ng-deep .checkout-container .mat-mdc-form-field-appearance-outline .mat-mdc-form-field-infix {
+  padding: 16px 0 !important;
+}
+
+/* Ajuste para campos com ícone prefix no checkout */
+::ng-deep .checkout-container .mat-mdc-form-field-appearance-outline .mat-icon.matPrefix {
+  margin-right: 8px !important;
+}
+
+::ng-deep .checkout-container .mat-mdc-form-field-appearance-outline .mat-icon.matPrefix ~ .mat-mdc-form-field-infix .mdc-text-field__input {
+  padding-left: 8px !important;
 }
 
 /* Responsividade */

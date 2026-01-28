@@ -7,6 +7,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\ProductBundle;
+use App\Models\Combo;
 use App\Models\Address;
 use App\Models\User;
 use App\Models\DeliveryZone;
@@ -17,6 +18,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Database\QueryException;
 use App\Services\PrintService;
 
@@ -184,8 +186,9 @@ class OrderController extends Controller
         $isPending = $requestedStatus === 'pending'; // Entrega/Delivery
         
         // Verificar se é pedido do Caixa (funcionário/admin) - apenas para transação de caixa
-        $user = $request->user();
-        $isEmployeeOrAdmin = $user && in_array($user->type, ['employee', 'admin']);
+        // Nota: $user será definido dentro do try (pode ser criado se for guest)
+        $initialUser = $request->user();
+        $isEmployeeOrAdmin = $initialUser && in_array($initialUser->type, ['employee', 'admin']);
 
         // Validação simplificada para debug
         $request->validate([
@@ -228,7 +231,80 @@ class OrderController extends Controller
         try {
             DB::beginTransaction();
 
-            $user = $request->user();
+            // Verificar se é guest user ANTES de criar o usuário
+            $initialUser = $request->user();
+            $isGuestUser = !$initialUser;
+            $user = $initialUser;
+            $newUserCreated = false;
+            $newUserToken = null;
+
+            // Se for guest user, criar usuário durante checkout
+            if ($isGuestUser && $request->has('guest_user')) {
+                $guestData = $request->guest_user;
+                
+                // Validar dados do guest user
+                if (empty($guestData['name']) || empty($guestData['email']) || empty($guestData['document_number']) || empty($guestData['phone'])) {
+                    DB::rollBack();
+                    return response()->json([
+                        'message' => 'Dados incompletos. Nome, E-mail, CPF e Telefone são obrigatórios.',
+                        'error' => 'guest_user_data_incomplete'
+                    ], 422);
+                }
+
+                // Verificar se usuário já existe
+                $existingUser = User::where('email', $guestData['email'])
+                    ->orWhere('document_number', preg_replace('/\D/', '', $guestData['document_number']))
+                    ->first();
+
+                if ($existingUser) {
+                    DB::rollBack();
+                    return response()->json([
+                        'message' => 'Este e-mail ou CPF já está cadastrado. Faça login para continuar.',
+                        'error' => 'user_already_exists'
+                    ], 422);
+                }
+
+                // Gerar senha se não fornecida
+                $password = !empty($guestData['password']) 
+                    ? $guestData['password'] 
+                    : Str::random(12); // Senha aleatória de 12 caracteres
+
+                // Criar novo usuário
+                try {
+                    $user = User::create([
+                        'name' => $guestData['name'],
+                        'email' => $guestData['email'],
+                        'phone' => $guestData['phone'],
+                        'document_number' => preg_replace('/\D/', '', $guestData['document_number']),
+                        'type' => 'customer',
+                        'is_active' => true,
+                        'password' => Hash::make($password)
+                    ]);
+                    
+                    $newUserCreated = true;
+                    
+                    // Criar token para auto-login
+                    $newUserToken = $user->createToken('auth_token')->plainTextToken;
+                    
+                    Log::info('Usuário guest criado durante checkout', [
+                        'user_id' => $user->id,
+                        'email' => $user->email
+                    ]);
+                } catch (QueryException $e) {
+                    DB::rollBack();
+                    $error = $this->handleDatabaseError($e);
+                    return response()->json([
+                        'message' => $error['message'],
+                        'error' => 'database_error'
+                    ], $error['status_code']);
+                }
+            } else {
+                // Se não for guest, usar o usuário da requisição
+                $user = $request->user();
+            }
+
+            // Recalcular isEmployeeOrAdmin após possível criação de usuário guest
+            $isEmployeeOrAdmin = $user && in_array($user->type, ['employee', 'admin']);
 
             // Determinar se estamos atualizando dados do usuário logado
             // (apenas se não for funcionário/admin criando pedido para cliente)
@@ -286,9 +362,11 @@ class OrderController extends Controller
             }
 
             // Determinar o user_id do pedido:
+            // - Se for guest user, usar o ID do usuário criado (já definido acima)
             // - Se for funcionário/admin criando pedido para cliente, buscar/criar cliente
             // - Se for cliente comum, usar o próprio ID
-            $orderUserId = Auth::id();
+            // Nota: $user sempre existirá aqui (criado se guest, ou do request se logado)
+            $orderUserId = $user->id;
             
             if ($isEmployeeOrAdmin && ($request->customer_name || $request->customer_email || $request->customer_document)) {
                 // Funcionário criando pedido para cliente - buscar ou criar cliente
@@ -389,7 +467,15 @@ class OrderController extends Controller
                     } else {
                         // Se for cliente, verificar se o endereço pertence a ele
                         // Se for funcionário/admin, pode usar endereço de qualquer cliente
-                        if (!$isEmployeeOrAdmin && $savedAddress->user_id !== Auth::id()) {
+                        // Se for guest user, não pode usar endereço salvo (deve criar novo)
+                        if ($isGuestUser) {
+                            DB::rollBack();
+                            return response()->json([
+                                'error' => 'Guest users devem informar um novo endereço'
+                            ], 422);
+                        }
+                        
+                        if (!$isEmployeeOrAdmin && $savedAddress->user_id !== $user->id) {
                             DB::rollBack();
                             return response()->json([
                                 'error' => 'Endereço não encontrado ou não pertence ao usuário'
@@ -403,13 +489,15 @@ class OrderController extends Controller
                     // Validação de zona de entrega será feita no cálculo do frete (se for pending)
                     // Para completed (balcão), não precisa validar zona
                     if ($requiresDelivery || !empty($delivery['address']) || !empty($delivery['zipcode'])) {
-                        // Para funcionário, criar endereço associado ao cliente do pedido
-                        // Se já determinamos o orderUserId (cliente), usar ele; senão usar Auth::id()
-                        $addressUserId = isset($orderUserId) && $orderUserId !== Auth::id()
+                        // Determinar user_id para o endereço:
+                        // - Se for guest user que acabou de ser criado, usar o ID do novo usuário
+                        // - Se for funcionário criando pedido para cliente, usar orderUserId
+                        // - Senão, usar $user->id (já definido, seja do request ou criado)
+                        $addressUserId = isset($orderUserId) && $orderUserId !== $user->id
                             ? $orderUserId
                             : ($isEmployeeOrAdmin && isset($delivery['user_id']) 
                                 ? $delivery['user_id'] 
-                                : Auth::id());
+                                : $user->id);
                         
                         $address = Address::create([
                             'user_id' => $addressUserId,
@@ -549,7 +637,7 @@ class OrderController extends Controller
                     // Registrar movimentação de estoque
                     $unitPrice = $saleType === 'dose' ? $product->dose_price : $itemPrice;
                     $product->stockMovements()->create([
-                        'user_id' => Auth::id(),
+                        'user_id' => $user->id,
                         'type' => 'saida',
                         'quantity' => $item['quantity'],
                         'description' => "Venda ({$saleType}) - Pedido #" . $order->order_number,
@@ -619,7 +707,7 @@ class OrderController extends Controller
                         // Registrar movimentação de estoque
                         $unitPrice = $saleType === 'dose' ? $product->dose_price : $product->price;
                         $product->stockMovements()->create([
-                            'user_id' => Auth::id(),
+                            'user_id' => $user->id,
                             'type' => 'saida',
                             'quantity' => $quantity,
                             'description' => "Venda Combo ({$saleType}) - Pedido #" . $order->order_number,
@@ -732,28 +820,38 @@ class OrderController extends Controller
 
             DB::commit();
 
-            return response()->json(
-                $order->load([
-                    'items.product',
-                    'items.combo',
-                    'user',
-                    'payment' => function ($query) {
-                        // Garantir que received_amount e change_amount sejam selecionados explicitamente
-                        $query->select(
-                            'id',
-                            'order_id',
-                            'payment_method',
-                            'amount',
-                            'status',
-                            'received_amount',
-                            'change_amount',
-                            'created_at',
-                            'updated_at'
-                        );
-                    }
-                ]),
-                201
-            );
+            $orderResponse = $order->load([
+                'items.product',
+                'items.productBundle.groups.options.product',
+                'items.selections.product',
+                'user',
+                'payment' => function ($query) {
+                    // Garantir que received_amount e change_amount sejam selecionados explicitamente
+                    $query->select(
+                        'id',
+                        'order_id',
+                        'payment_method',
+                        'amount',
+                        'status',
+                        'received_amount',
+                        'change_amount',
+                        'created_at',
+                        'updated_at'
+                    );
+                }
+            ]);
+
+            // Se criou novo usuário, retornar token para auto-login
+            if ($newUserCreated && $newUserToken) {
+                return response()->json([
+                    'order' => $orderResponse,
+                    'access_token' => $newUserToken,
+                    'token_type' => 'Bearer',
+                    'user' => $user
+                ], 201);
+            }
+
+            return response()->json($orderResponse, 201);
 
         } catch (QueryException $e) {
             DB::rollBack();
@@ -1060,7 +1158,8 @@ class OrderController extends Controller
             return response()->json([
                 'order' => $order->load([
                     'items.product',
-                    'items.combo',
+                    'items.productBundle.groups.options.product',
+                    'items.selections.product',
                     'user',
                     'delivery_address',
                     'payment' => function ($query) {
@@ -1561,7 +1660,13 @@ class OrderController extends Controller
         }
 
         // Carregar as relações necessárias para retornar o pedido completo
-        $order->load(['items.product', 'items.combo', 'delivery_address', 'payment']);
+        $order->load([
+            'items.product',
+            'items.productBundle.groups.options.product',
+            'items.selections.product',
+            'delivery_address',
+            'payment'
+        ]);
 
         return response()->json($order);
     }

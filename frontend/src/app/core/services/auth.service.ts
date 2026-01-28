@@ -52,6 +52,10 @@ export class AuthService {
       .pipe(tap(response => this.saveAuthInternal(response)));
   }
 
+  checkUser(identifier: string): Observable<{ exists: boolean; user?: any }> {
+    return this.http.post<{ exists: boolean; user?: any }>(`${this.apiUrl}/auth/check-user`, { identifier });
+  }
+
   login(data: LoginRequest): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${this.apiUrl}/login`, data)
       .pipe(tap(response => this.saveAuthInternal(response)));

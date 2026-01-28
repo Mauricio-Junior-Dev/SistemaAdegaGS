@@ -55,10 +55,52 @@ class AuthController extends Controller
         ]);
     }
 
+    public function checkUser(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'identifier' => ['required', 'string'], // Pode ser email ou CPF
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $identifier = $request->identifier;
+        
+        // Remover formatação do CPF se for o caso
+        $cleanIdentifier = preg_replace('/\D/', '', $identifier);
+        
+        // Verificar se é email (contém @) ou CPF (11 dígitos)
+        $isEmail = strpos($identifier, '@') !== false;
+        
+        $user = null;
+        if ($isEmail) {
+            $user = User::where('email', $identifier)->first();
+        } else {
+            // Buscar por CPF (document_number sem formatação)
+            $user = User::where('document_number', $cleanIdentifier)->first();
+        }
+
+        if ($user) {
+            return response()->json([
+                'exists' => true,
+                'user' => [
+                    'id' => $user->id,
+                    'email' => $user->email,
+                    'name' => $user->name
+                ]
+            ]);
+        }
+
+        return response()->json([
+            'exists' => false
+        ]);
+    }
+
     public function login(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'email' => ['required', 'string', 'email'],
+            'email' => ['required', 'string'],
             'password' => ['required', 'string'],
         ]);
 
@@ -66,13 +108,24 @@ class AuthController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        if (!Auth::attempt($request->only('email', 'password'))) {
+        // Aceitar email ou CPF para login
+        $identifier = $request->email;
+        $isEmail = strpos($identifier, '@') !== false;
+        
+        $user = null;
+        if ($isEmail) {
+            $user = User::where('email', $identifier)->first();
+        } else {
+            // Buscar por CPF
+            $cleanIdentifier = preg_replace('/\D/', '', $identifier);
+            $user = User::where('document_number', $cleanIdentifier)->first();
+        }
+
+        if (!$user || !Hash::check($request->password, $user->password)) {
             return response()->json([
                 'message' => 'Credenciais inválidas'
             ], 401);
         }
-
-        $user = User::where('email', $request->email)->firstOrFail();
 
         if (!$user->is_active) {
             return response()->json([

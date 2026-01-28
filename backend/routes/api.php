@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Auth;
 
 // Rotas públicas
 Route::post('/register', [AuthController::class, 'register']);
+Route::post('/auth/check-user', [AuthController::class, 'checkUser']);
 Route::post('/login', [AuthController::class, 'login'])->middleware(['throttle:login']);
 Route::post('/auth/social', [SocialAuthController::class, 'socialAuth']);
 Route::get('/products', [ProductController::class, 'index']);
@@ -39,6 +40,9 @@ Route::get('/banners/active', [App\Http\Controllers\BannerController::class, 'ac
 // Delivery zones públicas (sem autenticação)
 Route::get('/delivery-zones', [DeliveryZoneController::class, 'index']);
 Route::get('/frete', [DeliveryZoneController::class, 'calculateFrete']);
+
+// Pedidos: permitir criação por guest users (validação no controller)
+Route::post('/orders', [OrderController::class, 'store']);
 
 // --- WEBHOOKS (Rotas Públicas para Serviços Externos) ---
 Route::post('/webhooks/mercadopago', [WebhookController::class, 'handleMercadoPago'])
@@ -144,8 +148,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
 
 
-    Route::post('/orders', [OrderController::class, 'store']);
-
+    // Pedidos: permitir criação por usuários autenticados
     // Rotas de cliente
     Route::middleware('customer')->group(function () {
         Route::get('/my-orders', [OrderController::class, 'myOrders']);
