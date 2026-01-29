@@ -47,7 +47,7 @@
       <button 
         type="submit" 
         class="submit-button" 
-        [disabled]="!loginForm.get('identifier')?.value || loading"
+        [disabled]="loading || !(loginForm.get('identifier')?.value?.trim())"
       >
         <span *ngIf="!loading && !showPasswordField">Continuar</span>
         <span *ngIf="!loading && showPasswordField">Entrar</span>

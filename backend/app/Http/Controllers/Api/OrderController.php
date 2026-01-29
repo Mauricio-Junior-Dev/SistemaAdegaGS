@@ -231,76 +231,80 @@ class OrderController extends Controller
         try {
             DB::beginTransaction();
 
-            // Verificar se é guest user ANTES de criar o usuário
-            $initialUser = $request->user();
-            $isGuestUser = !$initialUser;
-            $user = $initialUser;
+            // Usuário logado tem prioridade: usar auth (Token) e ignorar customer_document nulo do payload
+            $user = Auth::guard('sanctum')->user();
+            $isGuestUser = !$user;
             $newUserCreated = false;
             $newUserToken = null;
 
-            // Se for guest user, criar usuário durante checkout
-            if ($isGuestUser && $request->has('guest_user')) {
+            if ($user) {
+                // Usuário autenticado: não buscar por CPF nem criar guest
+            } elseif ($request->has('guest_user')) {
+                // Guest: buscar ou criar usuário (apenas Nome, CPF, Telefone)
                 $guestData = $request->guest_user;
-                
-                // Validar dados do guest user
-                if (empty($guestData['name']) || empty($guestData['email']) || empty($guestData['document_number']) || empty($guestData['phone'])) {
+
+                // Validar dados do guest: Nome, CPF e Telefone (sem e-mail)
+                if (empty($guestData['name']) || empty($guestData['document_number']) || empty($guestData['phone'])) {
                     DB::rollBack();
                     return response()->json([
-                        'message' => 'Dados incompletos. Nome, E-mail, CPF e Telefone são obrigatórios.',
+                        'message' => 'Dados incompletos. Nome, CPF e Telefone são obrigatórios.',
                         'error' => 'guest_user_data_incomplete'
                     ], 422);
                 }
 
-                // Verificar se usuário já existe
-                $existingUser = User::where('email', $guestData['email'])
-                    ->orWhere('document_number', preg_replace('/\D/', '', $guestData['document_number']))
-                    ->first();
+                $cpfClean = preg_replace('/\D/', '', $guestData['document_number']);
 
+                // Verificar antes de criar: CPF já cadastrado deve fazer login (frontend deve checar antes)
+                $existingUser = User::where('document_number', $cpfClean)->first();
                 if ($existingUser) {
                     DB::rollBack();
                     return response()->json([
-                        'message' => 'Este e-mail ou CPF já está cadastrado. Faça login para continuar.',
+                        'message' => 'Este CPF já está cadastrado. Entre para finalizar o pedido.',
                         'error' => 'user_already_exists'
                     ], 422);
                 }
 
-                // Gerar senha se não fornecida
-                $password = !empty($guestData['password']) 
-                    ? $guestData['password'] 
-                    : Str::random(12); // Senha aleatória de 12 caracteres
+                // CPF não existe: criar novo usuário com e-mail técnico (Laravel exige email em users)
+                    $technicalEmail = $cpfClean . '@cliente.adega.com';
 
-                // Criar novo usuário
-                try {
-                    $user = User::create([
-                        'name' => $guestData['name'],
-                        'email' => $guestData['email'],
-                        'phone' => $guestData['phone'],
-                        'document_number' => preg_replace('/\D/', '', $guestData['document_number']),
-                        'type' => 'customer',
-                        'is_active' => true,
-                        'password' => Hash::make($password)
-                    ]);
-                    
-                    $newUserCreated = true;
-                    
-                    // Criar token para auto-login
-                    $newUserToken = $user->createToken('auth_token')->plainTextToken;
-                    
-                    Log::info('Usuário guest criado durante checkout', [
-                        'user_id' => $user->id,
-                        'email' => $user->email
-                    ]);
-                } catch (QueryException $e) {
-                    DB::rollBack();
-                    $error = $this->handleDatabaseError($e);
-                    return response()->json([
-                        'message' => $error['message'],
-                        'error' => 'database_error'
-                    ], $error['status_code']);
-                }
-            } else {
-                // Se não for guest, usar o usuário da requisição
-                $user = $request->user();
+                    $password = !empty($guestData['password'])
+                        ? $guestData['password']
+                        : Str::random(12);
+
+                    try {
+                        $user = User::create([
+                            'name' => $guestData['name'],
+                            'email' => $technicalEmail,
+                            'phone' => $guestData['phone'],
+                            'document_number' => $cpfClean,
+                            'type' => 'customer',
+                            'is_active' => true,
+                            'password' => Hash::make($password)
+                        ]);
+
+                        $newUserCreated = true;
+                        $newUserToken = $user->createToken('auth_token')->plainTextToken;
+
+                        Log::info('Usuário guest criado durante checkout (e-mail técnico)', [
+                            'user_id' => $user->id,
+                            'email' => $user->email
+                        ]);
+                    } catch (QueryException $e) {
+                        DB::rollBack();
+                        $error = $this->handleDatabaseError($e);
+                        return response()->json([
+                            'message' => $error['message'],
+                            'error' => 'database_error'
+                        ], $error['status_code']);
+                    }
+            }
+
+            if (!$user) {
+                DB::rollBack();
+                return response()->json([
+                    'message' => 'Faça login ou preencha seus dados (Nome, CPF e Telefone) para continuar.',
+                    'error' => 'user_required'
+                ], 422);
             }
 
             // Recalcular isEmployeeOrAdmin após possível criação de usuário guest

@@ -58,28 +58,20 @@ class AuthController extends Controller
     public function checkUser(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'identifier' => ['required', 'string'], // Pode ser email ou CPF
+            'identifier' => ['required', 'string'],
         ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $identifier = $request->identifier;
-        
-        // Remover formatação do CPF se for o caso
-        $cleanIdentifier = preg_replace('/\D/', '', $identifier);
-        
-        // Verificar se é email (contém @) ou CPF (11 dígitos)
-        $isEmail = strpos($identifier, '@') !== false;
-        
-        $user = null;
-        if ($isEmail) {
-            $user = User::where('email', $identifier)->first();
-        } else {
-            // Buscar por CPF (document_number sem formatação)
-            $user = User::where('document_number', $cleanIdentifier)->first();
-        }
+        $identifier = trim($request->identifier);
+        $cleanDocument = preg_replace('/[^0-9]/', '', $identifier);
+
+        // Buscar por email OU document_number (CPF sem máscara)
+        $user = User::where('email', $identifier)
+            ->orWhere('document_number', $cleanDocument)
+            ->first();
 
         if ($user) {
             return response()->json([
@@ -87,20 +79,18 @@ class AuthController extends Controller
                 'user' => [
                     'id' => $user->id,
                     'email' => $user->email,
-                    'name' => $user->name
-                ]
+                    'name' => $user->name,
+                ],
             ]);
         }
 
-        return response()->json([
-            'exists' => false
-        ]);
+        return response()->json(['exists' => false]);
     }
 
     public function login(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'email' => ['required', 'string'],
+            'email' => ['required', 'string'], // Campo pode conter e-mail ou CPF
             'password' => ['required', 'string'],
         ]);
 
@@ -108,18 +98,13 @@ class AuthController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        // Aceitar email ou CPF para login
-        $identifier = $request->email;
-        $isEmail = strpos($identifier, '@') !== false;
-        
-        $user = null;
-        if ($isEmail) {
-            $user = User::where('email', $identifier)->first();
-        } else {
-            // Buscar por CPF
-            $cleanIdentifier = preg_replace('/\D/', '', $identifier);
-            $user = User::where('document_number', $cleanIdentifier)->first();
-        }
+        // Aceitar email ou CPF: comparar o input com AMBAS as colunas (email OU document_number)
+        $identifier = trim($request->email);
+        $cleanDocument = preg_replace('/\D/', '', $identifier);
+
+        $user = User::where('email', $identifier)
+            ->orWhere('document_number', $cleanDocument)
+            ->first();
 
         if (!$user || !Hash::check($request->password, $user->password)) {
             return response()->json([

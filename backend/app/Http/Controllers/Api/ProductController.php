@@ -54,6 +54,74 @@ class ProductController extends Controller
         return response()->json($product);
     }
 
+    /**
+     * Sugestões de Compra por Impulso (Upsell) no Checkout.
+     * Retorna produtos destacados para exibir como "Não esqueceu de nada?".
+     */
+    public function suggestions(Request $request): JsonResponse
+    {
+        $limit = (int) $request->input('limit', 6);
+        $limit = min(max($limit, 1), 24);
+
+        $cartIds = $request->input('cart_ids', []);
+        if (!is_array($cartIds)) {
+            $cartIds = array_filter(array_map('intval', (array) $cartIds));
+        } else {
+            $cartIds = array_filter(array_map('intval', $cartIds));
+        }
+
+        $baseQuery = function () use ($cartIds) {
+            $q = Product::with(['category'])
+                ->where('is_active', true)
+                ->whereNull('parent_product_id');
+            if (!empty($cartIds)) {
+                $q->whereNotIn('id', $cartIds);
+            }
+            return $q;
+        };
+
+        $excludeIds = $cartIds;
+        $suggestions = collect();
+
+        // 1) Prioridade: featured = true (Sugestão de Checkout)
+        $featured = $baseQuery()->where('featured', true)->inRandomOrder()->limit($limit)->get();
+        $suggestions = $suggestions->merge($featured);
+        $excludeIds = array_merge($excludeIds, $suggestions->pluck('id')->toArray());
+
+        if ($suggestions->count() < $limit) {
+            $need = $limit - $suggestions->count();
+            $extra = Product::with(['category'])
+                ->where('is_active', true)
+                ->whereNull('parent_product_id')
+                ->whereNotIn('id', $excludeIds)
+                ->where('offers', true)
+                ->inRandomOrder()
+                ->limit($need)
+                ->get();
+            $suggestions = $suggestions->merge($extra);
+            $excludeIds = array_merge($excludeIds, $extra->pluck('id')->toArray());
+        }
+
+        if ($suggestions->count() < $limit) {
+            $need = $limit - $suggestions->count();
+            $extra = Product::with(['category'])
+                ->where('is_active', true)
+                ->whereNull('parent_product_id')
+                ->whereNotIn('id', $excludeIds)
+                ->orderBy('price')
+                ->limit($need)
+                ->get();
+            $suggestions = $suggestions->merge($extra);
+        }
+
+        $suggestions = $suggestions->take($limit)->values();
+
+        return response()->json([
+            'suggestions' => $suggestions,
+            'total' => $suggestions->count(),
+        ]);
+    }
+
     public function store(Request $request): JsonResponse
     {
         $request->validate([

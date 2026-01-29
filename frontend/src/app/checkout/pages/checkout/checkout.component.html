@@ -61,26 +61,12 @@
 
             <div class="form-row">
               <mat-form-field appearance="outline" class="full-width">
-                <mat-label>E-mail</mat-label>
-                <input matInput formControlName="email" type="email" placeholder="seu@email.com">
-                <mat-icon matPrefix>email</mat-icon>
-                <mat-error *ngIf="guestUserForm.get('email')?.errors?.['required']">
-                  E-mail é obrigatório
-                </mat-error>
-                <mat-error *ngIf="guestUserForm.get('email')?.errors?.['email']">
-                  E-mail inválido
-                </mat-error>
-              </mat-form-field>
-            </div>
-
-            <div class="form-row">
-              <mat-form-field appearance="outline" class="full-width">
                 <mat-label>CPF ou CNPJ</mat-label>
                 <input 
                   matInput 
                   formControlName="document_number" 
                   placeholder="000.000.000-00 ou 00.000.000/0000-00"
-                  (input)="formatDocument($event)"
+                  (input)="formatDocumentGuest($event)"
                   maxlength="18">
                 <mat-icon matPrefix>badge</mat-icon>
                 <mat-error *ngIf="guestUserForm.get('document_number')?.errors?.['required']">
@@ -119,7 +105,7 @@
                   formControlName="password" 
                   placeholder="Deixe em branco para gerar senha automática">
                 <mat-icon matPrefix>lock</mat-icon>
-                <mat-hint>Se não preencher, uma senha será gerada e enviada por e-mail</mat-hint>
+                <mat-hint>Opcional. Se não preencher, uma senha será gerada automaticamente.</mat-hint>
               </mat-form-field>
             </div>
           </form>

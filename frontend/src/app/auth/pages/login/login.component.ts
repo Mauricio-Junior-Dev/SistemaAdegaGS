@@ -1,10 +1,13 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router, ActivatedRoute } from '@angular/router';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Subscription } from 'rxjs';
 import { AuthService } from '../../../core/services/auth.service';
+import { AuthResponse } from '../../../core/models/auth.model';
 import { SocialAuthService } from '../../../core/services/social-auth.service';
 import { OrderPollingService } from '../../../core/services/order-polling.service';
+import { ToastrService } from 'ngx-toastr';
 
 @Component({
   selector: 'app-login',
@@ -21,6 +24,8 @@ export class LoginComponent implements OnInit, OnDestroy {
   showPasswordField = false;
   userExists = false;
   identifier: string = '';
+  private queryParamsSub?: Subscription;
+  private identifierAppliedFromUrl = false;
 
   constructor(
     private fb: FormBuilder,
@@ -28,7 +33,9 @@ export class LoginComponent implements OnInit, OnDestroy {
     private socialAuthService: SocialAuthService,
     private orderPollingService: OrderPollingService,
     private router: Router,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
+    private toastr: ToastrService,
+    private cdr: ChangeDetectorRef
   ) {
     this.loginForm = this.fb.group({
       identifier: ['', [Validators.required]], // E-mail ou CPF
@@ -37,24 +44,49 @@ export class LoginComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    // Capturar o returnUrl dos query params
-    this.returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/';
-    
-    // Inicializar serviços de autenticação social
+    this.queryParamsSub = this.route.queryParams.subscribe((params) => {
+      const returnUrlParam = params['returnUrl'];
+      this.returnUrl = returnUrlParam && typeof returnUrlParam === 'string' ? returnUrlParam : '/';
+
+      const identifierParam = params['identifier'];
+      if (identifierParam && typeof identifierParam === 'string' && identifierParam.trim()) {
+        const id = identifierParam.trim();
+        if (this.identifierAppliedFromUrl && this.identifier === id) return;
+        this.identifierAppliedFromUrl = true;
+        this.loginForm.get('identifier')?.setValue(id);
+        this.loginForm.updateValueAndValidity();
+        this.identifier = id;
+        this.cdr.detectChanges();
+        this.toastr.info('Olá! Vimos que você já tem cadastro. Entre para finalizar.', undefined, { timeOut: 5000 });
+        this.loading = true;
+        this.error = null;
+        this.authService.checkUser(id).subscribe({
+          next: (response) => {
+            this.loading = false;
+            if (response.exists) {
+              this.userExists = true;
+              this.showPasswordField = true;
+              this.loginForm.get('password')?.setValidators([Validators.required, Validators.minLength(8)]);
+              this.loginForm.get('password')?.updateValueAndValidity();
+            }
+          },
+          error: () => {
+            this.loading = false;
+          }
+        });
+      }
+    });
+
     this.initializeSocialAuth();
-    
-    // Escutar eventos de autenticação social
     window.addEventListener('social-auth-success', this.handleSocialAuthSuccess.bind(this));
     window.addEventListener('social-auth-error', this.handleSocialAuthError.bind(this));
-    
-    // Configurar callback global do Google
     (window as any).handleGoogleResponse = (response: any) => {
       this.handleGoogleResponse(response);
     };
   }
 
   ngOnDestroy(): void {
-    // Remover listeners
+    this.queryParamsSub?.unsubscribe();
     window.removeEventListener('social-auth-success', this.handleSocialAuthSuccess.bind(this));
     window.removeEventListener('social-auth-error', this.handleSocialAuthError.bind(this));
   }
@@ -73,41 +105,18 @@ export class LoginComponent implements OnInit, OnDestroy {
     this.socialAuthService.loginWithGoogle();
   }
 
-  private handleSocialAuthSuccess(event: any): void {
-    const authResponse = event.detail;
-    
-    // Salvar dados de autenticação
+  private handleSocialAuthSuccess(event: unknown): void {
+    const authResponse = (event as { detail: AuthResponse }).detail;
     this.authService.saveAuth(authResponse);
-    
-    // Iniciar polling de pedidos apenas se for funcionário
-    if (authResponse.user.type === 'employee') {
-      console.log('[LoginComponent] Iniciando polling de pedidos para funcionário (social auth)');
+    if (authResponse.user?.type === 'employee') {
       this.orderPollingService.startPolling();
     }
-    
-    // Redirecionar baseado no tipo de usuário
-    const userType = authResponse.user.type;
-    let targetRoute = this.returnUrl;
-
-    if (this.returnUrl === '/') {
-      switch (userType) {
-        case 'admin':
-          targetRoute = '/admin';
-          break;
-        case 'employee':
-          targetRoute = '/funcionario';
-          break;
-        case 'customer':
-          targetRoute = '/';
-          break;
-      }
-    }
-
-    this.router.navigate([targetRoute]);
+    const url = this.returnUrl ?? '/';
+    this.router.navigateByUrl(url);
     this.loading = false;
   }
 
-  private handleSocialAuthError(event: any): void {
+  private handleSocialAuthError(_event: unknown): void {
     this.error = 'Erro na autenticação social. Tente novamente.';
     this.loading = false;
   }
@@ -137,29 +146,12 @@ export class LoginComponent implements OnInit, OnDestroy {
             this.orderPollingService.startPolling();
           }
           
-          // Redirecionar baseado no tipo de usuário
-          const userType = authResponse.user.type;
-          let targetRoute = this.returnUrl;
-
-          if (this.returnUrl === '/') {
-            switch (userType) {
-              case 'admin':
-                targetRoute = '/admin';
-                break;
-              case 'employee':
-                targetRoute = '/funcionario';
-                break;
-              case 'customer':
-                targetRoute = '/';
-                break;
-            }
-          }
-
-          this.router.navigate([targetRoute]);
+          const url = this.returnUrl ?? '/';
+          this.router.navigateByUrl(url);
           this.loading = false;
         },
-        error: (error) => {
-          console.error('Erro na autenticação social:', error);
+        error: (err: unknown) => {
+          console.error('Erro na autenticação social:', err);
           this.error = 'Erro na autenticação social. Tente novamente.';
           this.loading = false;
         }
@@ -172,9 +164,10 @@ export class LoginComponent implements OnInit, OnDestroy {
   }
 
   onContinue(): void {
-    const identifier = this.loginForm.get('identifier')?.value;
-    
-    if (!identifier || identifier.trim() === '') {
+    const raw = this.loginForm.get('identifier')?.value;
+    const identifier = typeof raw === 'string' ? raw.trim() : '';
+
+    if (!identifier) {
       this.error = 'Por favor, informe seu e-mail ou CPF';
       return;
     }
@@ -186,36 +179,36 @@ export class LoginComponent implements OnInit, OnDestroy {
     this.authService.checkUser(identifier).subscribe({
       next: (response) => {
         this.loading = false;
-        
         if (response.exists) {
-          // Usuário existe: revelar campo de senha
           this.userExists = true;
           this.showPasswordField = true;
           this.loginForm.get('password')?.setValidators([Validators.required, Validators.minLength(8)]);
           this.loginForm.get('password')?.updateValueAndValidity();
         } else {
-          // Usuário não existe: redirecionar para checkout
-          const email = identifier.includes('@') ? identifier : '';
           this.router.navigate(['/checkout'], {
-            queryParams: { email: email || identifier }
+            queryParams: identifier.includes('@') ? { email: identifier } : {}
           });
         }
       },
-      error: (error) => {
+      error: (err) => {
         this.loading = false;
-        this.error = error.error.message || 'Erro ao verificar usuário';
-      }
+        const msg = err?.error?.message
+          || err?.error?.errors?.identifier?.[0]
+          || 'Erro ao verificar usuário. Tente novamente.';
+        this.error = msg;
+      },
     });
   }
 
   onSubmit(): void {
-    if (this.loginForm.invalid) {
+    // Fluxo híbrido: se ainda não mostrou senha, só verificar usuário (Continuar)
+    if (!this.showPasswordField) {
+      this.onContinue();
       return;
     }
 
-    if (!this.showPasswordField) {
-      // Se ainda não mostrou o campo de senha, fazer a checagem primeiro
-      this.onContinue();
+    if (this.loginForm.invalid) {
+      this.error = 'Preencha o e-mail/CPF e a senha.';
       return;
     }
 
@@ -228,36 +221,19 @@ export class LoginComponent implements OnInit, OnDestroy {
       password: this.loginForm.get('password')?.value
     };
 
+    const returnUrl = this.route.snapshot.queryParams['returnUrl'] || this.returnUrl || '/';
     this.authService.login(loginData).subscribe({
       next: (response) => {
-        // Iniciar polling de pedidos apenas se for funcionário
-        if (response.user.type === 'employee') {
-          console.log('[LoginComponent] Iniciando polling de pedidos para funcionário');
+        if (response.user?.type === 'employee') {
           this.orderPollingService.startPolling();
         }
-        
-        // Redirecionar baseado no tipo de usuário
-        const userType = response.user.type;
-        let targetRoute = this.returnUrl;
-
-        if (this.returnUrl === '/') {
-          switch (userType) {
-            case 'admin':
-              targetRoute = '/admin';
-              break;
-            case 'employee':
-              targetRoute = '/funcionario';
-              break;
-            case 'customer':
-              targetRoute = '/';
-              break;
-          }
-        }
-
-        this.router.navigate([targetRoute]);
+        this.router.navigateByUrl(returnUrl);
       },
-      error: (error) => {
-        this.error = error.error.message || 'Erro ao fazer login';
+      error: (err: unknown) => {
+        const msg = err && typeof err === 'object' && 'error' in err
+          ? (err as { error?: { message?: string } }).error?.message
+          : undefined;
+        this.error = msg || 'Erro ao fazer login';
         this.loading = false;
       }
     });

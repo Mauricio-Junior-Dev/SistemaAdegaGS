@@ -149,13 +149,12 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       phone: ['']
     });
 
-    // Formulário para guest user (cadastro durante checkout)
+    // Formulário para guest user (cadastro durante checkout: Nome, CPF, Telefone — sem e-mail)
     this.guestUserForm = this.fb.group({
       name: ['', [Validators.required, Validators.minLength(3)]],
-      email: ['', [Validators.required, Validators.email]],
       document_number: ['', [Validators.required, documentValidator]],
       phone: ['', [Validators.required, phoneValidator()]],
-      password: [''] // Opcional - se não preenchido, gerar senha automática
+      password: [''] // Opcional - se não preenchido, backend gera senha automática
     });
 
     // Inicializar observável do status da loja após injeção do serviço
@@ -269,16 +268,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     const currentUser = this.authService.getCurrentUser();
     this.isGuestUser = !currentUser;
 
-    // Se for guest, verificar se veio email da tela de login
-    if (this.isGuestUser) {
-      this.route.queryParams.subscribe(params => {
-        if (params['email']) {
-          this.guestUserForm.patchValue({
-            email: params['email']
-          });
-        }
-      });
-    }
+    // Guest: formulário usa apenas Nome, CPF e Telefone (sem e-mail)
 
     // Verificar dados do usuário e configurar campos condicionais
     this.user$.subscribe((user: User | null) => {
@@ -492,6 +482,13 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     this.userDataForm.get('document_number')?.setValue(formatted, { emitEvent: false });
   }
 
+  /** Formata CPF/CNPJ no formulário de guest (cadastro durante checkout). */
+  formatDocumentGuest(event: any): void {
+    const value = event.target.value;
+    const formatted = formatDocument(value);
+    this.guestUserForm.get('document_number')?.setValue(formatted, { emitEvent: false });
+  }
+
   formatZipcode(event: any): void {
     let value = event.target.value.replace(/\D/g, '');
     if (value.length <= 8) {
@@ -695,6 +692,14 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     }, 100);
   }
 
+  /** Retorna CPF ou e-mail atual (guest ou logado) para passar ao login ao redirecionar. */
+  private getIdentifierForLogin(): string {
+    const raw = this.isGuestUser
+      ? this.guestUserForm.get('document_number')?.value
+      : (this.userDataForm.get('document_number')?.value || this.authService.getCurrentUser()?.document_number || this.authService.getCurrentUser()?.email);
+    return typeof raw === 'string' ? raw.trim() : '';
+  }
+
 
   /**
    * Encontra o primeiro campo inválido e faz scroll até ele
@@ -704,7 +709,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     setTimeout(() => {
       // Prioridade 1: Guest User Form (se for guest)
       if (this.isGuestUser) {
-        const guestFields = ['name', 'email', 'document_number', 'phone', 'password'];
+        const guestFields = ['name', 'document_number', 'phone', 'password'];
         for (const fieldName of guestFields) {
           const control = this.guestUserForm.get(fieldName);
           if (control && control.invalid && control.touched) {
@@ -822,7 +827,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       this.guestUserForm.markAllAsTouched();
       
       if (this.guestUserForm.invalid) {
-        this.toastr.warning('Por favor, preencha todos os campos obrigatórios (Nome, E-mail, CPF e Telefone).', 'Dados Obrigatórios');
+        this.toastr.warning('Por favor, preencha todos os campos obrigatórios (Nome, CPF e Telefone).', 'Dados Obrigatórios');
         this.scrollToFirstInvalidField();
         return;
       }
@@ -871,10 +876,49 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       return;
     }
 
+    // Verificar antes de criar: se Guest, checar se CPF já existe (evita pedidos fantasmas)
+    if (this.isGuestUser) {
+      const cpf = (this.guestUserForm.get('document_number')?.value || '').replace(/\D/g, '');
+      if (cpf.length !== 11) {
+        this.toastr.warning('Informe um CPF válido.', 'Dados Obrigatórios');
+        return;
+      }
+      this.loading = true;
+      this.authService.checkUser(cpf).subscribe({
+        next: (response) => {
+          this.loading = false;
+          if (response.exists) {
+            this.toastr.info('Este CPF já tem cadastro. Vamos te logar para finalizar.', '', { timeOut: 5000 });
+            const cpfLimpo = cpf;
+            setTimeout(() => {
+              this.router.navigate(['/login'], {
+                queryParams: { identifier: cpfLimpo, returnUrl: '/checkout' }
+              });
+            }, 1500);
+            return;
+          }
+          this.finalizeOrder();
+        },
+        error: () => {
+          this.loading = false;
+          this.toastr.error('Erro ao verificar cadastro. Tente novamente.');
+        }
+      });
+      return;
+    }
+
+    this.finalizeOrder();
+  }
+
+  /** Fluxo de criação do pedido (após validações e, se guest, após checkUser retornar exists: false). */
+  private async finalizeOrder(): Promise<void> {
     this.isProcessingPayment = true;
     this.loading = true;
     this.error = null;
     this.checkoutState = 'form';
+
+    const currentUser = this.authService.getCurrentUser();
+    this.isGuestUser = !currentUser;
 
     try {
       const items = await firstValueFrom(this.cartItems$);
@@ -959,12 +1003,12 @@ export class CheckoutComponent implements OnInit, OnDestroy {
       let userPassword: string | null = null;
 
       if (this.isGuestUser) {
-        // Dados do guest user
+        // Dados do guest user (Nome, CPF, Telefone — e-mail gerado no backend)
         userName = this.guestUserForm.value.name;
-        userEmail = this.guestUserForm.value.email;
         userDocumentNumber = this.guestUserForm.value.document_number?.replace(/\D/g, '') || null;
         userPhone = this.guestUserForm.value.phone || null;
         userPassword = this.guestUserForm.value.password || null; // Opcional
+        userEmail = null; // Backend gera e-mail técnico
       } else {
         // Dados do usuário logado
         userPhone = this.needsPhone && this.userDataForm.value.phone
@@ -1033,14 +1077,13 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         change_amount: changeAmount
       };
 
-      // Adicionar dados do guest user se necessário
+      // Adicionar dados do guest user se necessário (sem e-mail; backend gera e-mail técnico)
       if (this.isGuestUser) {
         orderPayload.guest_user = {
           name: userName,
-          email: userEmail,
           document_number: userDocumentNumber,
           phone: userPhone,
-          password: userPassword // Opcional - se não fornecido, backend gera automaticamente
+          password: userPassword || undefined // Opcional - backend gera automaticamente se vazio
         };
       } else {
         // Para usuário logado, adicionar document_number e phone se necessário
@@ -1118,11 +1161,25 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         },
         error: (err: any) => {
           console.error('Erro ao criar pedido:', err);
-          // Extrair mensagem de erro específica do backend
-          const errorMessage = err?.error?.error || err?.error?.message || 'Erro ao criar seu pedido. Verifique os dados.';
-          this.toastr.error(errorMessage, 'Falha');
           this.isProcessingPayment = false;
           this.loading = false;
+          const code = err?.error?.error;
+          const status = err?.status;
+          if (status === 401 || code === 'user_required' || code === 'user_already_exists') {
+            const identifier = this.getIdentifierForLogin();
+            const cpf = typeof identifier === 'string' ? identifier.replace(/\D/g, '') : '';
+            const cpfParaUrl = cpf.length === 11 ? cpf : (identifier || '');
+            this.router.navigate(['/login'], {
+              queryParams: { identifier: cpfParaUrl, returnUrl: '/checkout' }
+            });
+            this.toastr.info(
+              code === 'user_already_exists' ? 'Encontramos seu cadastro! Entre para finalizar.' : 'Entre com sua conta para finalizar o pedido.',
+              code === 'user_already_exists' ? '' : 'Login necessário'
+            );
+            return;
+          }
+          const errorMessage = err?.error?.message || 'Erro ao criar seu pedido. Verifique os dados.';
+          this.toastr.error(errorMessage, 'Falha');
         }
       });
     } catch (error) {
