@@ -158,9 +158,23 @@
   font-size: 20px !important;
   width: 20px !important;
   height: 20px !important;
-  line-height: 20px !important; /* Ajuda no alinhamento vertical */
+  line-height: 20px !important;
   margin: 0 !important;
   padding: 0 !important;
+}
+
+/* Botão bundle: pill com ícone + texto "Montar" */
+.btn-quick-add.btn-bundle {
+  width: auto !important;
+  min-width: auto !important;
+  border-radius: 20px !important;
+  padding: 0 12px !important;
+  gap: 6px;
+}
+.btn-quick-add .btn-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: white !important;
 }
 
 /* Responsividade */

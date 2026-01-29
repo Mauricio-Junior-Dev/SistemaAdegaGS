@@ -183,6 +183,40 @@
   margin-bottom: 4px;
 }
 
+/* Combos: "A partir de" + preço + botão Montar (igual à Home) */
+.combo-section .menu-item-image,
+.combo-section .menu-item-info {
+  cursor: pointer;
+}
+
+.item-actions-combo {
+  gap: 6px;
+}
+
+.price-from-label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #666;
+  margin-bottom: 0;
+}
+
+.price-value {
+  margin-bottom: 0;
+}
+
+.btn-montar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.btn-montar .btn-montar-icon {
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+}
+
 .btn-add {
   background-color: var(--primary);
   color: #000;

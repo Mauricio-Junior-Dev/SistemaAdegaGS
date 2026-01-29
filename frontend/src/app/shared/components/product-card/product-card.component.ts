@@ -29,7 +29,7 @@ export class ProductCardComponent {
     event.preventDefault();
     event.stopPropagation();
 
-    if ((this.product as any).type === 'bundle') {
+    if (this.product.type === 'bundle' || (this.product as any).is_bundle) {
       this.router.navigate(['/combos', this.product.id]);
       return;
     }
@@ -153,7 +153,12 @@ export class ProductCardComponent {
 
   /** True se deve mostrar "A partir de" (bundle/combo). */
   showPriceFrom(): boolean {
-    return (this.product as any).type === 'bundle' || this.isBundle() || this.isCombo();
+    return this.product.type === 'bundle' || (this.product as any).is_bundle || this.isBundle() || this.isCombo();
+  }
+
+  /** True se o card é de bundle/combo (botão "Montar" / "Ver Opções"). */
+  isBundleCard(): boolean {
+    return this.product.type === 'bundle' || (this.product as any).is_bundle || this.isBundle() || this.isCombo();
   }
 
 }

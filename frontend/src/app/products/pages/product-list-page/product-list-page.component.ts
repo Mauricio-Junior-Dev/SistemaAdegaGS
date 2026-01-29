@@ -384,27 +384,20 @@ export class ProductListPageComponent implements OnInit, OnDestroy {
     return Math.round(((originalPrice - product.price) / originalPrice) * 100);
   }
 
-  addComboToCart(combo: Combo): void {
-    const product = this.comboAdapter(combo);
-    const currentQuantity = this.getQuantity(product);
-    this.cartService.addComboToCart(combo, 1);
-    
-    // Mostrar notificação apenas quando a quantidade for de 0 para 1 (primeira adição)
-    if (currentQuantity === 0) {
-      const comboName = combo.name;
-      const isFeminine = comboName.toLowerCase().endsWith('a') || 
-                         comboName.toLowerCase().endsWith('ão') ||
-                         comboName.toLowerCase().endsWith('ade');
-      const message = isFeminine ? `${comboName} adicionado!` : `${comboName} adicionado!`;
-      
-      this.toastr.success(message, '', {
-        timeOut: 1500,
-        positionClass: 'toast-bottom-center',
-        progressBar: false,
-        toastClass: 'modern-toast-notification'
-      });
-    }
-    
-    this.cdr.detectChanges();
+  /**
+   * Redireciona para a tela de detalhes do combo (Montar).
+   * Combos não devem ser adicionados direto ao carrinho; o usuário escolhe as opções na tela de detalhes.
+   */
+  goToComboDetails(combo: Combo | { id: number; name?: string }): void {
+    this.router.navigate(['/combos', combo.id]);
+  }
+
+  /**
+   * Preço do combo para exibição: base_price (ProductBundle) ou price (Combo).
+   */
+  getComboPrice(combo: Combo | { base_price?: number; price?: number }): number {
+    const base = (combo as any).base_price;
+    if (base != null && !isNaN(Number(base))) return Number(base);
+    return (combo as Combo).price ?? 0;
   }
 }

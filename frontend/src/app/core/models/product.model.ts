@@ -4,11 +4,13 @@ export interface Product {
     parent_product_id?: number | null;
     stock_multiplier?: number;
     type?: 'product' | 'bundle';
+    is_bundle?: boolean;
     name: string;
     slug: string;
     description?: string;
     price: number;
     base_price?: number;
+    min_price?: number;
     delivery_price?: number | null;
     original_price?: number;
     cost_price: number;

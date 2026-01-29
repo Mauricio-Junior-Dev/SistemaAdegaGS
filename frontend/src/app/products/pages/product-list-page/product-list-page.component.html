@@ -33,52 +33,37 @@
 
     <!-- Lista de Produtos Agrupada por Categoria -->
     <div *ngIf="!loading && !error" class="menu-list">
-      <!-- Seção de Combos -->
-      <div *ngIf="filteredCombos.length > 0" class="category-group">
+      <!-- Seção de Combos (Montar = ir para detalhes; não adicionar direto ao carrinho) -->
+      <div *ngIf="filteredCombos.length > 0" class="category-group combo-section">
         <h2 class="category-separator">Combos</h2>
         
         <div class="menu-items">
           <div *ngFor="let combo of filteredCombos" class="menu-item">
-            <!-- Imagem -->
-            <div class="menu-item-image">
+            <!-- Imagem (clicável para detalhes) -->
+            <div class="menu-item-image" (click)="goToComboDetails(combo)" role="button" tabindex="0">
               <img [src]="getImageUrl(comboAdapter(combo))" [alt]="combo.name">
             </div>
 
             <!-- Informações -->
-            <div class="menu-item-info">
+            <div class="menu-item-info" (click)="goToComboDetails(combo)" role="button" tabindex="0">
               <h3 class="menu-item-name">{{ combo.name }}</h3>
               <p class="menu-item-description" *ngIf="combo.description">
                 {{ combo.description }}
               </p>
             </div>
 
-            <!-- Ação (Preço e Botão) -->
+            <!-- Ação: preço + botão Montar (igual à Home) -->
             <div class="menu-item-action">
-              <div class="item-actions">
-                <span class="price">R$ {{ combo.price | number:'1.2-2' }}</span>
-                
-                <!-- Botão Adicionar (quando quantidade = 0) -->
+              <div class="item-actions item-actions-combo">
+                <span class="price price-from-label">A partir de </span>
+                <span class="price price-value">R$ {{ getComboPrice(combo) | number:'1.2-2' }}</span>
                 <button 
-                  *ngIf="getQuantity(comboAdapter(combo)) === 0" 
-                  (click)="addComboToCart(combo)" 
-                  class="btn-add">
-                  Adicionar
+                  (click)="goToComboDetails(combo)" 
+                  class="btn-add btn-montar"
+                  type="button">
+                  <mat-icon class="btn-montar-icon">tune</mat-icon>
+                  Montar
                 </button>
-                
-                <!-- Controles de Quantidade (quando quantidade > 0) -->
-                <div *ngIf="getQuantity(comboAdapter(combo)) > 0" class="qty-controls">
-                  <button 
-                    (click)="decrease(comboAdapter(combo))" 
-                    class="qty-btn minus">
-                    -
-                  </button>
-                  <span class="qty-value">{{ getQuantity(comboAdapter(combo)) }}</span>
-                  <button 
-                    (click)="addComboToCart(combo)" 
-                    class="qty-btn plus">
-                    +
-                  </button>
-                </div>
               </div>
             </div>
           </div>

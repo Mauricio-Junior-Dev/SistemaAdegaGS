@@ -1,6 +1,6 @@
 <div class="product-card" 
-     [routerLink]="(isBundle() || isCombo()) ? ['/combos', product.id.toString()] : null"
-     [style.cursor]="(isBundle() || isCombo()) ? 'pointer' : 'default'">
+     [routerLink]="isBundleCard() ? ['/combos', product.id.toString()] : null"
+     [style.cursor]="isBundleCard() ? 'pointer' : 'default'">
   <!-- Tag de Desconto -->
   <div class="discount-tag" *ngIf="product.has_discount && product.discount_percentage">
     {{ product.discount_percentage }}% OFF
@@ -27,14 +27,16 @@
       </span>
       <span class="price-from" *ngIf="showPriceFrom()">A partir de </span>
       <span class="current-price">
-        {{ (product.type === 'bundle' ? (product.base_price ?? 0) : (product.price ?? 0)) | currency:'BRL' }}
+        {{ (product.type === 'bundle' || product.is_bundle ? (product.base_price ?? product.min_price ?? 0) : product.price) | currency:'BRL' }}
       </span>
     </div>
     <button mat-icon-button 
-            class="btn-quick-add" 
+            class="btn-quick-add"
+            [class.btn-bundle]="isBundleCard()"
             (click)="onAddToCart($event)"
-            [attr.aria-label]="isBundle() || isCombo() ? 'Ver combo e escolher opções' : 'Adicionar ao carrinho'">
-      <mat-icon>add_shopping_cart</mat-icon>
+            [attr.aria-label]="isBundleCard() ? 'Montar combo' : 'Adicionar ao carrinho'">
+      <mat-icon>{{ isBundleCard() ? 'tune' : 'add_shopping_cart' }}</mat-icon>
+      <span class="btn-label" *ngIf="isBundleCard()">Montar</span>
     </button>
   </div>
 </div>
