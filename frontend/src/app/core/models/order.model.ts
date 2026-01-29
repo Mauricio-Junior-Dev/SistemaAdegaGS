@@ -1,7 +1,7 @@
 import { User } from './user.model';
 import { Product } from './product.model';
 
-export type OrderStatus = 'pending' | 'pending_pix' | 'processing' | 'preparing' | 'delivering' | 'completed' | 'cancelled';
+export type OrderStatus = 'pending' | 'pending_pix' | 'processing' | 'preparing' | 'delivering' | 'completed' | 'cancelled' | 'canceled';
 
 export interface Order {
     id: number;

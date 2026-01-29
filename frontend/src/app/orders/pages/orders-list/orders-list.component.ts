@@ -163,11 +163,12 @@ export class OrdersListComponent implements OnInit, OnDestroy {
       'pending': 'Pendente',
       'processing': 'PIX Aprovado',
       'preparing': 'Em Preparo',
-      'delivering': 'Em Entrega',
+      'delivering': 'Saiu para Entrega',
       'paid': 'Pago',
       'shipped': 'Enviado',
       'delivered': 'Entregue',
       'cancelled': 'Cancelado',
+      'canceled': 'Cancelado',
       'refunded': 'Reembolsado',
       'completed': 'Concluído'
     };
@@ -188,6 +189,88 @@ export class OrdersListComponent implements OnInit, OnDestroy {
       'refunded': 'status-refunded'
     };
     return classMap[status] || 'status-default';
+  }
+
+  /**
+   * Verifica se o pedido PIX pendente já expirou (passou do tempo).
+   * Usado para o banner e para o badge (feedback imediato antes do cron).
+   */
+  isExpired(order: Order): boolean {
+    if (order.status !== 'pending' && order.status !== 'pending_pix') {
+      return false;
+    }
+    return this.isPixExpired(this.getPayment(order)?.expires_at);
+  }
+
+  /**
+   * Retorna o método de pagamento do pedido (lowercase), alinhado ao backend.
+   */
+  private getPaymentMethodKey(order: Order): string {
+    const payment = this.getPayment(order);
+    const method = payment?.payment_method ?? order.payment_method ?? '';
+    return String(method).toLowerCase().trim();
+  }
+
+  /**
+   * True se o pagamento é na entrega (dinheiro, cartão na entrega, etc.) – não exige pagamento antecipado.
+   */
+  private isOfflinePaymentMethod(order: Order): boolean {
+    const key = this.getPaymentMethodKey(order);
+    const offlineKeys = [
+      'dinheiro', 'cash', 'money', 'dinero',
+      'cartão de débito', 'cartao de debito', 'cartão de crédito', 'cartao de credito',
+      'credit_card', 'debit_card', 'card_delivery', 'cartão', 'cartao'
+    ];
+    return offlineKeys.some(k => key === k || key.includes(k));
+  }
+
+  /**
+   * Classe do badge: danger (cancelado/expirado), warning (PIX aguardando), info (offline aguardando confirmação).
+   */
+  getBadgeClass(order: Order): string {
+    if (order.status === 'cancelled' || order.status === 'canceled') {
+      return 'badge-danger';
+    }
+    if (order.status === 'pending' || order.status === 'pending_pix') {
+      if (this.isExpired(order)) {
+        return 'badge-danger';
+      }
+      if (this.isOfflinePaymentMethod(order)) {
+        return 'badge-info';
+      }
+      return 'badge-warning';
+    }
+    return this.getStatusClass(order.status);
+  }
+
+  /**
+   * Label do badge: distingue PIX (online) de pagamento na entrega (offline).
+   */
+  getBadgeLabel(order: Order): string {
+    if (order.status === 'cancelled' || order.status === 'canceled') {
+      return 'Cancelado';
+    }
+    if (order.status === 'pending' || order.status === 'pending_pix') {
+      const method = this.getPaymentMethodKey(order);
+      if (method === 'pix') {
+        return this.isExpired(order) ? 'Expirado' : 'Aguardando Pagamento';
+      }
+      if (this.isOfflinePaymentMethod(order)) {
+        return 'Aguardando Confirmação';
+      }
+      return 'Aguardando Pagamento';
+    }
+    return this.getStatusLabel(order.status);
+  }
+
+  /** @deprecated Use getBadgeClass. Mantido para compatibilidade. */
+  getStatusClassForOrder(order: Order): string {
+    return this.getBadgeClass(order);
+  }
+
+  /** @deprecated Use getBadgeLabel. Mantido para compatibilidade. */
+  getStatusLabelForOrder(order: Order): string {
+    return this.getBadgeLabel(order);
   }
 
   getPaymentMethodLabel(order: any): string {
@@ -255,6 +338,8 @@ export class OrdersListComponent implements OnInit, OnDestroy {
     const dialogRef = this.dialog.open(OrderDetailsDialogComponent, {
       data: {
         order,
+        getBadgeClass: this.getBadgeClass.bind(this),
+        getBadgeLabel: this.getBadgeLabel.bind(this),
         getStatusLabel: this.getStatusLabel.bind(this),
         getStatusClass: this.getStatusClass.bind(this),
         getPaymentMethodLabel: this.getPaymentMethodLabel.bind(this),

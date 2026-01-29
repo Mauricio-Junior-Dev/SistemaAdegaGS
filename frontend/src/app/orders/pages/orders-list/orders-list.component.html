@@ -35,8 +35,8 @@
             <h3>Pedido #{{ order.order_number }}</h3>
             <p class="order-date">{{ formatDate(order.created_at || '') }}</p>
           </div>
-          <mat-chip [class]="getStatusClass(order.status)">
-            {{ getStatusLabel(order.status) }}
+          <mat-chip [class]="getBadgeClass(order)">
+            {{ getBadgeLabel(order) }}
           </mat-chip>
         </div>
 

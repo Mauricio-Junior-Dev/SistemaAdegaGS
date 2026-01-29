@@ -56,6 +56,25 @@ export class AuthService {
     return this.http.post<{ exists: boolean; user?: any }>(`${this.apiUrl}/auth/check-user`, { identifier });
   }
 
+  /** Valida CPF + últimos 4 dígitos do celular. Retorna reset_token temporário. */
+  validatePasswordReset(document_number: string, phone_last_4: string): Observable<{ reset_token: string; expires_in: number }> {
+    const doc = (document_number || '').replace(/\D/g, '');
+    const last4 = (phone_last_4 || '').replace(/\D/g, '').slice(-4);
+    return this.http.post<{ message: string; reset_token: string; expires_in: number }>(
+      `${this.apiUrl}/password/validate-reset`,
+      { document_number: doc, phone_last_4: last4 }
+    );
+  }
+
+  /** Confirma nova senha usando reset_token. */
+  confirmPasswordReset(reset_token: string, password: string, password_confirmation: string): Observable<{ message: string }> {
+    return this.http.post<{ message: string }>(`${this.apiUrl}/password/reset-confirm`, {
+      reset_token,
+      password,
+      password_confirmation
+    });
+  }
+
   login(data: LoginRequest): Observable<AuthResponse> {
     return this.http.post<AuthResponse>(`${this.apiUrl}/login`, data)
       .pipe(tap(response => this.saveAuthInternal(response)));

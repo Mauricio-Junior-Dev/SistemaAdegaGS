@@ -107,6 +107,24 @@ mat-chip {
   font-weight: 500;
 }
 
+/* Vermelho: cancelado ou PIX expirado - pedido não é mais válido */
+.badge-danger {
+  background-color: #dc3545 !important;
+  color: #fff !important;
+}
+
+/* Amarelo/laranja: aguardando pagamento PIX */
+.badge-warning {
+  background-color: #ffc107 !important;
+  color: #212529 !important;
+}
+
+/* Azul/neutro: pagamento na entrega (dinheiro/cartão) – pedido recebido com sucesso */
+.badge-info {
+  background-color: #0dcaf0 !important;
+  color: #000 !important;
+}
+
 .status-pending {
   background-color: #fff8e1;
   color: #856404;
@@ -133,6 +151,11 @@ mat-chip {
 }
 
 .status-cancelled, .status-refunded {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.status-expired {
   background-color: #f8d7da;
   color: #721c24;
 }

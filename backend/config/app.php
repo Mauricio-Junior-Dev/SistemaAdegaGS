@@ -73,6 +73,15 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | PIX Expiration (minutes)
+    |--------------------------------------------------------------------------
+    | Tempo em minutos para considerar um pagamento PIX pendente como expirado.
+    | Usado pelo comando orders:cancel-expired.
+    */
+    'pix_expiration_minutes' => (int) env('PIX_EXPIRATION_MINUTES', 15),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Locale Configuration
     |--------------------------------------------------------------------------
     |

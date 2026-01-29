@@ -14,8 +14,8 @@ class Kernel extends ConsoleKernel
     {
         // $schedule->command('inspire')->hourly();
         
-        // Cancelar pedidos PIX expirados a cada minuto
-        $schedule->command('pix:cancel-expired')->everyMinute();
+        // Cancelar pedidos PIX expirados a cada minuto (orders:cancel-expired ou pix:cancel-expired)
+        $schedule->command('orders:cancel-expired')->everyMinute();
     }
 
     /**

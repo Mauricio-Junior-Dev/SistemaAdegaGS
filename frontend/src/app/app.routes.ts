@@ -21,6 +21,10 @@ export const routes: Routes = [
         loadComponent: () => import('./auth/pages/login/login.component').then(m => m.LoginComponent)
       },
       {
+        path: 'esqueci-senha',
+        loadComponent: () => import('./auth/pages/forgot-password/forgot-password.component').then(m => m.ForgotPasswordComponent)
+      },
+      {
         path: 'produtos',
         loadComponent: () => import('./products/pages/product-list-page/product-list-page.component').then(m => m.ProductListPageComponent)
       },

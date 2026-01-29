@@ -11,7 +11,12 @@ import { Order } from '../../../../core/models/order.model';
 @Component({
   selector: 'app-order-details-dialog',
   template: `
-    <h2 mat-dialog-title>Acompanhamento do Pedido #{{data.order.order_number}}</h2>
+    <h2 mat-dialog-title class="dialog-title-with-badge">
+      <span>Acompanhamento do Pedido #{{data.order.order_number}}</span>
+      <mat-chip *ngIf="data.getBadgeClass && data.getBadgeLabel" [class]="data.getBadgeClass(data.order)" class="badge-chip">
+        {{ data.getBadgeLabel(data.order) }}
+      </mat-chip>
+    </h2>
     <mat-dialog-content>
       <mat-card class="order-details-card">
         <!-- Barra de Status Dinâmica -->
@@ -252,6 +257,30 @@ import { Order } from '../../../../core/models/order.model';
       text-align: center;
     }
 
+    /* Badge de status no título (vermelho = cancelado/expirado, amarelo = aguardando) */
+    .dialog-title-with-badge {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .badge-chip {
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .badge-danger {
+      background-color: #dc3545 !important;
+      color: #fff !important;
+    }
+    .badge-warning {
+      background-color: #ffc107 !important;
+      color: #212529 !important;
+    }
+    .badge-info {
+      background-color: #0dcaf0 !important;
+      color: #000 !important;
+    }
+
     /* Estilos da Barra de Status */
     .status-progress-container {
       width: 100%;
@@ -375,6 +404,8 @@ export class OrderDetailsDialogComponent {
     public dialogRef: MatDialogRef<OrderDetailsDialogComponent>,
     @Inject(MAT_DIALOG_DATA) public data: {
       order: Order;
+      getBadgeClass?: (order: Order) => string;
+      getBadgeLabel?: (order: Order) => string;
       getStatusLabel: (status: string) => string;
       getStatusClass: (status: string) => string;
       getPaymentMethodLabel: (order: any) => string;

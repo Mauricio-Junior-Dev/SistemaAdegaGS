@@ -103,6 +103,21 @@ input.invalid {
   opacity: 0.6;
 }
 
+.auth-footer-link {
+  text-align: center;
+  margin-top: 0.75rem;
+}
+
+.auth-footer-link .auth-link {
+  color: var(--primary);
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.auth-footer-link .auth-link:hover {
+  text-decoration: underline;
+}
+
 .auth-links {
   text-align: center;
   font-size: 0.9rem;

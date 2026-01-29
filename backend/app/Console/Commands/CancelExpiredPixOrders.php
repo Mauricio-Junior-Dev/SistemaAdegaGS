@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\Order;
 use App\Models\Payment;
+use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -15,14 +16,14 @@ class CancelExpiredPixOrders extends Command
      *
      * @var string
      */
-    protected $signature = 'pix:cancel-expired';
+    protected $signature = 'orders:cancel-expired|pix:cancel-expired';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'Cancela pedidos PIX que expiraram (15 minutos)';
+    protected $description = 'Cancela pedidos PIX expirados e estorna estoque (php artisan orders:cancel-expired ou php artisan pix:cancel-expired)';
 
     /**
      * Execute the console command.
@@ -31,12 +32,25 @@ class CancelExpiredPixOrders extends Command
     {
         $this->info('Verificando pedidos PIX expirados...');
 
-        // Buscar pedidos com status pending, pagamento PIX e expires_at já passou
+        $expirationMinutes = (int) config('app.pix_expiration_minutes', 15);
+        $nowUtc = Carbon::now('UTC');
+        $cutoffCreated = $nowUtc->copy()->subMinutes($expirationMinutes);
+
+        $this->info("Buscando pagamentos PIX com expires_at anterior a: {$nowUtc->toIso8601String()} (UTC). Tolerância: {$expirationMinutes} min.");
+        $this->info("Ou pedidos PIX sem expires_at criados antes de: {$cutoffCreated->toIso8601String()} (UTC).");
+
+        // Buscar pagamentos PIX pendentes: expires_at já passou (UTC) OU sem expires_at com pedido criado há mais de X min
         $expiredPayments = Payment::where('payment_method', 'pix')
             ->whereIn('status', ['pending', 'pending_pix'])
-            ->whereNotNull('expires_at')
-            ->where('expires_at', '<', now())
-            ->with(['order.items.product', 'order.items.combo.products'])
+            ->where(function ($q) use ($nowUtc, $cutoffCreated) {
+                $q->where(function ($q2) use ($nowUtc) {
+                    $q2->whereNotNull('expires_at')->where('expires_at', '<', $nowUtc);
+                })->orWhere(function ($q2) use ($cutoffCreated) {
+                    $q2->whereNull('expires_at')
+                        ->whereHas('order', fn ($o) => $o->where('created_at', '<', $cutoffCreated));
+                });
+            })
+            ->with(['order.items.product', 'order.items.selections.product'])
             ->get();
 
         if ($expiredPayments->isEmpty()) {
@@ -109,55 +123,51 @@ class CancelExpiredPixOrders extends Command
             }
         }
 
-        $this->info("Processamento concluído. {$cancelledCount} pedido(s) cancelado(s).");
+        $this->info("Processamento concluído. {$cancelledCount} pedido(s) cancelado(s) e estoque estornado.");
+        Log::info('Comando pix:cancel-expired executado', [
+            'cancelled_orders' => $cancelledCount,
+            'checked_at' => now()->toIso8601String(),
+        ]);
         return 0;
     }
 
     /**
-     * Restaura o estoque dos produtos do pedido cancelado
+     * Restaura o estoque dos produtos do pedido cancelado.
+     * Produtos simples: incrementa estoque do product_id.
+     * Bundles (combos): estorna pelos OrderItemSelection (produtos reais escolhidos), não pelo bundle virtual.
      */
     private function restoreStock(Order $order)
     {
         foreach ($order->items as $item) {
-            if ($item->is_combo) {
-                // Estornar produtos do combo
-                $combo = $item->combo;
-                if (!$combo) {
-                    Log::warning("Combo não encontrado para item #{$item->id} do pedido #{$order->order_number}");
-                    continue;
-                }
-                
-                foreach ($combo->products as $comboProduct) {
-                    if (!$comboProduct) {
+            if ($item->is_bundle && $item->product_bundle_id) {
+                // Bundle: estornar pelos selections (produtos reais escolhidos por grupo)
+                foreach ($item->selections as $selection) {
+                    $product = $selection->product;
+                    if (!$product) {
+                        Log::warning("Produto da seleção não encontrado para selection #{$selection->id}, item #{$item->id}, pedido #{$order->order_number}");
                         continue;
                     }
-                    
-                    $product = $comboProduct;
-                    $quantity = $comboProduct->pivot->quantity * $item->quantity;
-                    $saleType = $comboProduct->pivot->sale_type;
+                    $quantity = $selection->quantity * $item->quantity;
+                    $saleType = $selection->sale_type ?? 'garrafa';
 
                     if ($saleType === 'garrafa') {
-                        // Estorno direto de garrafas
                         $product->increment('current_stock', $quantity);
+                        $qtyRestored = $quantity;
                     } else {
-                        // Para doses, reverter a lógica
-                        // Calcular quantas garrafas foram deduzidas
-                        $garrafasDeduzidas = floor($quantity / $product->doses_por_garrafa);
+                        $garrafasDeduzidas = floor($quantity / ($product->doses_por_garrafa ?? 1));
                         if ($garrafasDeduzidas > 0) {
                             $product->increment('current_stock', $garrafasDeduzidas);
                         }
-
-                        // Zerar o contador de doses vendidas
                         $product->update(['doses_vendidas' => 0]);
+                        $qtyRestored = $garrafasDeduzidas ?? 0;
                     }
 
-                    // Registrar movimentação de estoque
-                    $unitPrice = $saleType === 'dose' ? $product->dose_price : $product->price;
+                    $unitPrice = $saleType === 'dose' ? ($product->dose_price ?? 0) : $product->price;
                     $product->stockMovements()->create([
-                        'user_id' => null, // Comando automático, sem usuário
+                        'user_id' => null,
                         'type' => 'entrada',
-                        'quantity' => $saleType === 'garrafa' ? $quantity : ($garrafasDeduzidas ?? 0),
-                        'description' => "Estorno Combo ({$saleType}) - Pedido #" . $order->order_number . ' cancelado (PIX expirado)',
+                        'quantity' => $qtyRestored,
+                        'description' => "Estorno Bundle ({$saleType}) - Pedido #" . $order->order_number . ' cancelado (PIX expirado)',
                         'unit_cost' => $unitPrice
                     ]);
                 }
@@ -174,23 +184,20 @@ class CancelExpiredPixOrders extends Command
                     // Estorno direto de garrafas
                     $item->product->increment('current_stock', $item->quantity);
                 } else {
-                    // Para doses, reverter a lógica
-                    // Calcular quantas garrafas foram deduzidas
-                    $garrafasDeduzidas = floor($item->quantity / $item->product->doses_por_garrafa);
+                    // Para doses: reverter garrafas deduzidas
+                    $garrafasDeduzidas = floor($item->quantity / ($item->product->doses_por_garrafa ?? 1));
                     if ($garrafasDeduzidas > 0) {
                         $item->product->increment('current_stock', $garrafasDeduzidas);
                     }
-
-                    // Zerar o contador de doses vendidas
                     $item->product->update(['doses_vendidas' => 0]);
                 }
 
-                // Registrar movimentação de estoque
-                $unitPrice = $saleType === 'dose' ? $item->product->dose_price : $item->product->price;
+                $qtyRestored = $saleType === 'garrafa' ? $item->quantity : ($garrafasDeduzidas ?? 0);
+                $unitPrice = $saleType === 'dose' ? ($item->product->dose_price ?? 0) : $item->product->price;
                 $item->product->stockMovements()->create([
-                    'user_id' => null, // Comando automático, sem usuário
+                    'user_id' => null,
                     'type' => 'entrada',
-                    'quantity' => $saleType === 'garrafa' ? $item->quantity : ($garrafasDeduzidas ?? 0),
+                    'quantity' => $qtyRestored,
                     'description' => "Estorno ({$saleType}) - Pedido #" . $order->order_number . ' cancelado (PIX expirado)',
                     'unit_cost' => $unitPrice
                 ]);

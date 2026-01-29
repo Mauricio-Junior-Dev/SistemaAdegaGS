@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\ResetPasswordController;
 use App\Http\Controllers\Api\SocialAuthController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\CategoryController;
@@ -20,6 +21,11 @@ Route::post('/register', [AuthController::class, 'register']);
 Route::post('/auth/check-user', [AuthController::class, 'checkUser']);
 Route::post('/login', [AuthController::class, 'login'])->middleware(['throttle:login']);
 Route::post('/auth/social', [SocialAuthController::class, 'socialAuth']);
+
+// Redefinição de senha por validação de dados (CPF + últimos 4 dígitos do celular)
+Route::post('/password/validate-reset', [ResetPasswordController::class, 'validateReset'])
+    ->middleware(['throttle:password-validate']);
+Route::post('/password/reset-confirm', [ResetPasswordController::class, 'resetConfirm']);
 Route::get('/products', [ProductController::class, 'index']);
 Route::get('/products/suggestions', [ProductController::class, 'suggestions']);
 Route::get('/products/{product}', [ProductController::class, 'show']);
