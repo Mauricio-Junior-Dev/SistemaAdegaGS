@@ -3,10 +3,12 @@ export interface Product {
     category_id: number;
     parent_product_id?: number | null;
     stock_multiplier?: number;
+    type?: 'product' | 'bundle';
     name: string;
     slug: string;
     description?: string;
     price: number;
+    base_price?: number;
     delivery_price?: number | null;
     original_price?: number;
     cost_price: number;

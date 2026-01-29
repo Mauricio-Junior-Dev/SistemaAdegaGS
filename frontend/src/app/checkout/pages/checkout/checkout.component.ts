@@ -1045,11 +1045,29 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         customer_document: userDocumentNumber,
         items: items
           .map(item => {
-            if (item.isCombo && item.combo) {
+            if (item.isCombo && item.combo && item.bundleSelections) {
+              const selections: Array<{ bundle_group_id: number; product_id: number; quantity: number; sale_type: 'dose' | 'garrafa'; price: number }> = [];
+              for (const groupId of Object.keys(item.bundleSelections)) {
+                const opts = item.bundleSelections[+groupId] || [];
+                for (const opt of opts) {
+                  const unitPrice = opt.sale_type === 'dose'
+                    ? (opt.product?.dose_price ?? 0)
+                    : (opt.product?.price ?? 0) + (opt.price_adjustment ?? 0);
+                  selections.push({
+                    bundle_group_id: +groupId,
+                    product_id: opt.product_id,
+                    quantity: opt.quantity,
+                    sale_type: opt.sale_type,
+                    price: unitPrice
+                  });
+                }
+              }
               return {
-                combo_id: item.combo.id,
+                product_bundle_id: item.combo.id,
                 quantity: item.quantity,
-                sale_type: 'garrafa' as const
+                sale_type: 'garrafa' as const,
+                price: item.price,
+                selections
               };
             }
 
@@ -1063,15 +1081,9 @@ export class CheckoutComponent implements OnInit, OnDestroy {
 
             return null;
           })
-          .filter((item): item is {
-            combo_id: number;
-            quantity: number;
-            sale_type: 'garrafa';
-          } | {
-            product_id: number;
-            quantity: number;
-            sale_type: 'garrafa';
-          } => item !== null),
+          .filter((item): item is
+            | { product_bundle_id: number; quantity: number; sale_type: 'garrafa'; price: number; selections: any[] }
+            | { product_id: number; quantity: number; sale_type: 'garrafa' } => item !== null),
         delivery_fee: this.deliveryFee,
         received_amount: receivedAmount,
         change_amount: changeAmount

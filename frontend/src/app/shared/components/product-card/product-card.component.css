@@ -114,6 +114,13 @@
   line-height: 1.2;
 }
 
+/* "A partir de" para combo/bundle */
+.price-from {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
 /* Preço Atual */
 .current-price {
   color: var(--primary);

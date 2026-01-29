@@ -7,7 +7,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
 use App\Models\ProductBundle;
-use App\Models\Combo;
+use App\Models\OrderItemSelection;
 use App\Models\Address;
 use App\Models\User;
 use App\Models\DeliveryZone;
@@ -207,22 +207,23 @@ class OrderController extends Controller
             'change_amount' => 'nullable|numeric|min:0'
         ]);
 
-        // Validação customizada para garantir que cada item tenha product_id ou combo_id
+        // Validação: cada item deve ter product_id (produto simples) OU product_bundle_id + selections (bundle)
         foreach ($request->items as $index => $item) {
-            if (empty($item['product_id']) && empty($item['combo_id'])) {
+            $hasProduct = !empty($item['product_id']);
+            $hasBundle = !empty($item['product_bundle_id']) && !empty($item['selections']) && is_array($item['selections']);
+            if (!$hasProduct && !$hasBundle) {
                 return response()->json([
                     'message' => 'Erro de validação',
                     'errors' => [
-                        "items.{$index}" => ['Item deve ter product_id ou combo_id']
+                        "items.{$index}" => ['Item deve ter product_id ou product_bundle_id com selections']
                     ]
                 ], 422);
             }
-            
-            if (!empty($item['product_id']) && !empty($item['combo_id'])) {
+            if ($hasProduct && $hasBundle) {
                 return response()->json([
                     'message' => 'Erro de validação',
                     'errors' => [
-                        "items.{$index}" => ['Item não pode ter product_id e combo_id ao mesmo tempo']
+                        "items.{$index}" => ['Item não pode ter product_id e product_bundle_id ao mesmo tempo']
                     ]
                 ], 422);
             }
@@ -560,12 +561,13 @@ class OrderController extends Controller
             // Adicionar itens
             foreach ($request->items as $item) {
                 // Validar se é produto ou combo
-                if (empty($item['product_id']) && empty($item['combo_id'])) {
-                    throw new \Exception('Item deve ter product_id ou combo_id');
+                $hasProduct = !empty($item['product_id']);
+                $hasBundle = !empty($item['product_bundle_id']) && !empty($item['selections']) && is_array($item['selections']);
+                if (!$hasProduct && !$hasBundle) {
+                    throw new \Exception('Item deve ter product_id ou product_bundle_id com selections');
                 }
-
-                if (!empty($item['product_id']) && !empty($item['combo_id'])) {
-                    throw new \Exception('Item não pode ter product_id e combo_id ao mesmo tempo');
+                if ($hasProduct && $hasBundle) {
+                    throw new \Exception('Item não pode ter product_id e product_bundle_id ao mesmo tempo');
                 }
 
                 if (!empty($item['product_id'])) {
@@ -627,8 +629,8 @@ class OrderController extends Controller
                     OrderItem::create([
                         'order_id' => $order->id,
                         'product_id' => $product->id,
-                        'combo_id' => null,
-                        'is_combo' => false,
+                        'product_bundle_id' => null,
+                        'is_bundle' => false,
                         'quantity' => $item['quantity'],
                         'sale_type' => $saleType,
                         'price' => $itemPrice,
@@ -650,75 +652,75 @@ class OrderController extends Controller
 
                     $total += $subtotal;
 
-                } else {
-                    // Processar combo
-                    $combo = Combo::with('products')->findOrFail($item['combo_id']);
-                    
-                    if (!$combo->is_active) {
-                        throw new \Exception("Combo {$combo->name} não está ativo");
+                } elseif (!empty($item['product_bundle_id']) && !empty($item['selections']) && is_array($item['selections'])) {
+                    // Processar bundle (ProductBundle + order_item_selections)
+                    $bundle = ProductBundle::with(['groups.options.product'])->findOrFail($item['product_bundle_id']);
+                    if (!$bundle->is_active) {
+                        throw new \Exception("Combo {$bundle->name} não está ativo");
                     }
-
-                    // Verificar estoque de todos os produtos do combo
-                    foreach ($combo->products as $comboProduct) {
-                        $product = $comboProduct;
-                        $quantity = $comboProduct->pivot->quantity * $item['quantity'];
-                        $saleType = $comboProduct->pivot->sale_type;
-                        
+                    $itemQuantity = (int) ($item['quantity'] ?? 1);
+                    $itemPrice = isset($item['price']) && $item['price'] > 0 ? (float) $item['price'] : (float) ($bundle->base_price ?? 0);
+                    $subtotal = $itemPrice * $itemQuantity;
+                    $orderItem = OrderItem::create([
+                        'order_id' => $order->id,
+                        'product_id' => null,
+                        'product_bundle_id' => $bundle->id,
+                        'is_bundle' => true,
+                        'quantity' => $itemQuantity,
+                        'sale_type' => $item['sale_type'] ?? 'garrafa',
+                        'price' => $itemPrice,
+                        'subtotal' => $subtotal,
+                        'bundle_snapshot' => ['name' => $bundle->name, 'selections' => $item['selections']]
+                    ]);
+                    foreach ($item['selections'] as $sel) {
+                        $groupId = (int) ($sel['bundle_group_id'] ?? $sel['group_id'] ?? 0);
+                        $productId = (int) ($sel['product_id'] ?? 0);
+                        $qty = (int) ($sel['quantity'] ?? 1) * $itemQuantity;
+                        $saleType = $sel['sale_type'] ?? 'garrafa';
+                        $price = (float) ($sel['price'] ?? 0);
+                        if ($productId < 1) {
+                            continue;
+                        }
+                        $product = Product::find($productId);
+                        if (!$product) {
+                            continue;
+                        }
                         if ($saleType === 'garrafa') {
                             $currentStock = (int) $product->current_stock;
-                            if ($currentStock < $quantity) {
+                            if ($currentStock < $qty) {
                                 DB::rollBack();
                                 return response()->json([
-                                    'error' => "Estoque insuficiente para {$product->name} do combo {$combo->name}. Restam apenas {$currentStock} unidades."
+                                    'error' => "Estoque insuficiente para {$product->name}. Restam apenas {$currentStock} unidades."
                                 ], 400);
                             }
                         } else {
-                            // Para doses, verificar se há garrafas suficientes para converter
-                            $dosesNecessarias = $quantity;
-                            $garrafasNecessarias = ceil($dosesNecessarias / $product->doses_por_garrafa);
+                            $garrafasNecessarias = (int) ceil($qty / ($product->doses_por_garrafa ?: 1));
                             $currentStock = (int) $product->current_stock;
-                            
                             if ($currentStock < $garrafasNecessarias) {
                                 DB::rollBack();
                                 return response()->json([
-                                    'error' => "Estoque insuficiente para {$product->name} do combo {$combo->name}. Restam apenas {$currentStock} garrafas para as doses solicitadas."
+                                    'error' => "Estoque insuficiente para {$product->name}. Restam apenas {$currentStock} garrafas."
                                 ], 400);
                             }
                         }
-                    }
-
-                    $subtotal = $combo->price * $item['quantity'];
-                    OrderItem::create([
-                        'order_id' => $order->id,
-                        'product_id' => null,
-                        'combo_id' => $combo->id,
-                        'is_combo' => true,
-                        'quantity' => $item['quantity'],
-                        'sale_type' => $item['sale_type'] ?? 'garrafa',
-                        'price' => $combo->price,
-                        'subtotal' => $subtotal
-                    ]);
-
-                    // Atualizar estoque de todos os produtos do combo
-                    foreach ($combo->products as $comboProduct) {
-                        $product = $comboProduct;
-                        $quantity = $comboProduct->pivot->quantity * $item['quantity'];
-                        $saleType = $comboProduct->pivot->sale_type;
-                        
-                        // Usar a nova lógica de atualização de estoque
-                        $product->atualizarEstoquePorVenda($quantity, $saleType);
-                        
-                        // Registrar movimentação de estoque
-                        $unitPrice = $saleType === 'dose' ? $product->dose_price : $product->price;
+                        $product->atualizarEstoquePorVenda($qty, $saleType);
+                        $unitPrice = $saleType === 'dose' ? ($product->dose_price ?? 0) : $product->price;
                         $product->stockMovements()->create([
                             'user_id' => $user->id,
                             'type' => 'saida',
-                            'quantity' => $quantity,
-                            'description' => "Venda Combo ({$saleType}) - Pedido #" . $order->order_number,
+                            'quantity' => $saleType === 'garrafa' ? $qty : (int) ceil($qty / ($product->doses_por_garrafa ?: 1)),
+                            'description' => "Venda Bundle ({$saleType}) - Pedido #" . $order->order_number,
                             'unit_cost' => $unitPrice
                         ]);
+                        OrderItemSelection::create([
+                            'order_item_id' => $orderItem->id,
+                            'bundle_group_id' => $groupId,
+                            'product_id' => $product->id,
+                            'quantity' => $qty,
+                            'sale_type' => $saleType,
+                            'price' => $price ?: $unitPrice
+                        ]);
                     }
-
                     $total += $subtotal;
                 }
             }
@@ -883,7 +885,8 @@ class OrderController extends Controller
         $request->validate([
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'nullable|exists:products,id',
-            'items.*.combo_id' => 'nullable|exists:combos,id',
+            'items.*.product_bundle_id' => 'nullable|exists:product_bundles,id',
+            'items.*.selections' => 'nullable|array',
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.sale_type' => 'required|in:dose,garrafa',
             'payment_method' => 'required|in:dinheiro,cartão de débito,cartão de crédito,pix',
@@ -986,12 +989,13 @@ class OrderController extends Controller
             // Adicionar itens
             foreach ($request->items as $item) {
                 // Validar se é produto ou combo
-                if (empty($item['product_id']) && empty($item['combo_id'])) {
-                    throw new \Exception('Item deve ter product_id ou combo_id');
+                $hasProduct = !empty($item['product_id']);
+                $hasBundle = !empty($item['product_bundle_id']) && !empty($item['selections']) && is_array($item['selections']);
+                if (!$hasProduct && !$hasBundle) {
+                    throw new \Exception('Item deve ter product_id ou product_bundle_id com selections');
                 }
-
-                if (!empty($item['product_id']) && !empty($item['combo_id'])) {
-                    throw new \Exception('Item não pode ter product_id e combo_id ao mesmo tempo');
+                if ($hasProduct && $hasBundle) {
+                    throw new \Exception('Item não pode ter product_id e product_bundle_id ao mesmo tempo');
                 }
 
                 if (!empty($item['product_id'])) {
@@ -1036,8 +1040,8 @@ class OrderController extends Controller
                     OrderItem::create([
                         'order_id' => $order->id,
                         'product_id' => $product->id,
-                        'combo_id' => null,
-                        'is_combo' => false,
+                        'product_bundle_id' => null,
+                        'is_bundle' => false,
                         'quantity' => $item['quantity'],
                         'sale_type' => $saleType,
                         'price' => $product->price,
@@ -1059,69 +1063,62 @@ class OrderController extends Controller
 
                     $total += $subtotal;
 
-                } else {
-                    // Processar combo
-                    $combo = Combo::with('products')->findOrFail($item['combo_id']);
-                    
-                    if (!$combo->is_active) {
-                        throw new \Exception("Combo {$combo->name} não está ativo");
+                } elseif (!empty($item['product_bundle_id']) && !empty($item['selections']) && is_array($item['selections'])) {
+                    $bundle = ProductBundle::with(['groups.options.product'])->findOrFail($item['product_bundle_id']);
+                    if (!$bundle->is_active) {
+                        throw new \Exception("Combo {$bundle->name} não está ativo");
                     }
-
-                    // Verificar estoque de todos os produtos do combo
-                    foreach ($combo->products as $comboProduct) {
-                        $product = $comboProduct;
-                        $quantity = $comboProduct->pivot->quantity * $item['quantity'];
-                        $saleType = $comboProduct->pivot->sale_type;
-                        
-                        if ($saleType === 'garrafa') {
-                            $currentStock = (int) $product->current_stock;
-                            if ($currentStock < $quantity) {
-                                throw new \Exception("Produto {$product->name} do combo não possui estoque suficiente de garrafas");
-                            }
-                        } else {
-                            // Para doses, verificar se há garrafas suficientes para converter
-                            $dosesNecessarias = $quantity;
-                            $garrafasNecessarias = ceil($dosesNecessarias / $product->doses_por_garrafa);
-                            $currentStock = (int) $product->current_stock;
-                            
-                            if ($currentStock < $garrafasNecessarias) {
-                                throw new \Exception("Produto {$product->name} do combo não possui garrafas suficientes para as doses solicitadas");
-                            }
-                        }
-                    }
-
-                    $subtotal = $combo->price * $item['quantity'];
-                    OrderItem::create([
+                    $itemQuantity = (int) ($item['quantity'] ?? 1);
+                    $itemPrice = isset($item['price']) && $item['price'] > 0 ? (float) $item['price'] : (float) ($bundle->base_price ?? 0);
+                    $subtotal = $itemPrice * $itemQuantity;
+                    $orderItem = OrderItem::create([
                         'order_id' => $order->id,
                         'product_id' => null,
-                        'combo_id' => $combo->id,
-                        'is_combo' => true,
-                        'quantity' => $item['quantity'],
+                        'product_bundle_id' => $bundle->id,
+                        'is_bundle' => true,
+                        'quantity' => $itemQuantity,
                         'sale_type' => $item['sale_type'] ?? 'garrafa',
-                        'price' => $combo->price,
-                        'subtotal' => $subtotal
+                        'price' => $itemPrice,
+                        'subtotal' => $subtotal,
+                        'bundle_snapshot' => ['name' => $bundle->name, 'selections' => $item['selections']]
                     ]);
-
-                    // Atualizar estoque de todos os produtos do combo
-                    foreach ($combo->products as $comboProduct) {
-                        $product = $comboProduct;
-                        $quantity = $comboProduct->pivot->quantity * $item['quantity'];
-                        $saleType = $comboProduct->pivot->sale_type;
-                        
-                        // Usar a nova lógica de atualização de estoque
-                        $product->atualizarEstoquePorVenda($quantity, $saleType);
-                        
-                        // Registrar movimentação de estoque
-                        $unitPrice = $saleType === 'dose' ? $product->dose_price : $product->price;
+                    foreach ($item['selections'] as $sel) {
+                        $groupId = (int) ($sel['bundle_group_id'] ?? $sel['group_id'] ?? 0);
+                        $productId = (int) ($sel['product_id'] ?? 0);
+                        $qty = (int) ($sel['quantity'] ?? 1) * $itemQuantity;
+                        $saleType = $sel['sale_type'] ?? 'garrafa';
+                        $price = (float) ($sel['price'] ?? 0);
+                        if ($productId < 1) continue;
+                        $product = Product::find($productId);
+                        if (!$product) continue;
+                        if ($saleType === 'garrafa') {
+                            if ((int) $product->current_stock < $qty) {
+                                throw new \Exception("Estoque insuficiente para {$product->name}");
+                            }
+                        } else {
+                            $garrafasNecessarias = (int) ceil($qty / ($product->doses_por_garrafa ?: 1));
+                            if ((int) $product->current_stock < $garrafasNecessarias) {
+                                throw new \Exception("Estoque insuficiente para {$product->name}");
+                            }
+                        }
+                        $product->atualizarEstoquePorVenda($qty, $saleType);
+                        $unitPrice = $saleType === 'dose' ? ($product->dose_price ?? 0) : $product->price;
                         $product->stockMovements()->create([
                             'user_id' => Auth::id(),
                             'type' => 'saida',
-                            'quantity' => $quantity,
-                            'description' => "Venda Manual Combo ({$saleType}) - Pedido #" . $order->order_number,
+                            'quantity' => $saleType === 'garrafa' ? $qty : (int) ceil($qty / ($product->doses_por_garrafa ?: 1)),
+                            'description' => "Venda Manual Bundle ({$saleType}) - Pedido #" . $order->order_number,
                             'unit_cost' => $unitPrice
                         ]);
+                        OrderItemSelection::create([
+                            'order_item_id' => $orderItem->id,
+                            'bundle_group_id' => $groupId,
+                            'product_id' => $product->id,
+                            'quantity' => $qty,
+                            'sale_type' => $saleType,
+                            'price' => $price ?: $unitPrice
+                        ]);
                     }
-
                     $total += $subtotal;
                 }
             }

@@ -1,6 +1,6 @@
 import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { ToastrService } from 'ngx-toastr';
@@ -21,27 +21,27 @@ export class ProductCardComponent {
 
   constructor(
     private cartService: CartService,
-    private toastr: ToastrService
+    private toastr: ToastrService,
+    private router: Router
   ) {}
 
   onAddToCart(event: Event): void {
     event.preventDefault();
     event.stopPropagation();
-    
-    // Verificar se é um combo/bundle (category_id === 0 e não tem doses_por_garrafa)
-    // OU se tem a propriedade groups (ProductBundle)
-    const isCombo = this.isCombo();
-    const isBundle = (this.product as any).groups !== undefined || 
-                     (this.product as any).bundle_type !== undefined;
-    
-    if (isCombo || isBundle) {
-      // Para combos/bundles, redirecionar para a página de detalhes
-      // O routerLink no card já faz isso, mas garantimos aqui também
-      // Não adicionar ao carrinho diretamente - o usuário precisa escolher as opções
-      this.addToCart.emit(this.product);
+
+    if ((this.product as any).type === 'bundle') {
+      this.router.navigate(['/combos', this.product.id]);
       return;
     }
-    
+    if (this.isBundle()) {
+      this.router.navigate(['/combos', this.product.id]);
+      return;
+    }
+    if (this.isCombo()) {
+      this.router.navigate(['/combos', this.product.id]);
+      return;
+    }
+
     // Para produtos normais, adicionar diretamente ao carrinho
     // No e-commerce, sempre usar delivery_price se disponível
     const currentQuantity = this.getCurrentQuantity();
@@ -122,21 +122,38 @@ export class ProductCardComponent {
   }
 
   /**
-   * Retorna o preço a ser exibido no e-commerce
-   * Prioridade: delivery_price > price
-   * No e-commerce, sempre usa delivery_price se disponível
+   * Verifica se o produto é um bundle (tem groups ou bundle_type) – não adicionar direto ao carrinho.
    */
-  getDisplayPrice(product: Product): number {
-    return product.delivery_price ?? product.price;
+  isBundle(): boolean {
+    return (this.product as any).groups !== undefined ||
+           (this.product as any).bundle_type !== undefined ||
+           (this.product as any).type === 'bundle';
   }
 
   /**
-   * Verifica se o produto é um combo adaptado
+   * Verifica se o produto é um combo adaptado (heurística por category_id/doses/stock).
    */
   isCombo(): boolean {
-    return this.product.category_id === 0 && 
-           (this.product as any).doses_por_garrafa === 0 && 
+    return this.product.category_id === 0 &&
+           (this.product as any).doses_por_garrafa === 0 &&
            this.product.current_stock === 999;
+  }
+
+  /**
+   * Preço a exibir: se type === 'bundle' usa base_price; senão price (ou delivery_price).
+   */
+  getDisplayPrice(product: Product): number {
+    if ((product as any).type === 'bundle') {
+      const base = (product as any).base_price;
+      if (base != null && !isNaN(Number(base))) return Number(base);
+      return 0;
+    }
+    return product.delivery_price ?? product.price ?? 0;
+  }
+
+  /** True se deve mostrar "A partir de" (bundle/combo). */
+  showPriceFrom(): boolean {
+    return (this.product as any).type === 'bundle' || this.isBundle() || this.isCombo();
   }
 
 }

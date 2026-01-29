@@ -1,6 +1,6 @@
 import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { Combo } from '../../../core/models/combo.model';
@@ -18,8 +18,14 @@ export class ComboCardComponent {
   @Input() combo!: Combo | ProductBundle;
   @Output() addToCart = new EventEmitter<Combo | ProductBundle>();
 
-  onAddToCart(): void {
-    this.addToCart.emit(this.combo);
+  constructor(private router: Router) {}
+
+  onAddToCart(event?: Event): void {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+    this.router.navigate(['/combos', this.combo.id]);
   }
 
   getComboImage(combo: Combo | ProductBundle): string {
