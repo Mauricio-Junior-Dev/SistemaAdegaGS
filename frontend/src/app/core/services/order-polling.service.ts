@@ -33,6 +33,8 @@ export class OrderPollingService implements OnDestroy {
 
   private userSubscription?: Subscription;
 
+  private audio = new Audio('assets/sounds/notification.mp3');
+
   constructor(
     private http: HttpClient,
     private orderService: OrderService,
@@ -40,6 +42,7 @@ export class OrderPollingService implements OnDestroy {
     private authService: AuthService,
     private toastr: ToastrService
   ) {
+    this.audio.load();
     // Carregar a memória de impressão persistida
     this.loadPrintedIdsFromStorage();
     // Iniciar o listener para mudanças de autenticação
@@ -356,10 +359,24 @@ export class OrderPollingService implements OnDestroy {
    * Imprime os novos pedidos detectados
    * Todos os pedidos que chegam aqui já foram filtrados e são considerados "novos"
    */
+  /**
+   * Toca o alerta sonoro para novo pedido.
+   * Universal: toca para qualquer novo pedido (Funcionário e Admin).
+   */
+  private playNotificationSound(): void {
+    this.audio.currentTime = 0;
+    this.audio.play().catch(error => {
+      console.warn('O navegador bloqueou o som automático. O usuário precisa interagir com a página primeiro.', error);
+    });
+  }
+
   private printNewOrders(orders: Order[]): void {
     if (!orders || orders.length === 0) {
       return;
     }
+
+    // Alerta sonoro universal - toca para qualquer novo pedido detectado
+    this.playNotificationSound();
 
     // Regra: Funcionário sempre imprime | Admin só imprime se o switch estiver ligado
     const isEmployee = this.authService.isEmployee();
