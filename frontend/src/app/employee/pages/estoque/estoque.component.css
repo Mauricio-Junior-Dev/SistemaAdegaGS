@@ -91,6 +91,18 @@ h1 {
   width: 100%;
 }
 
+.stock-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stock-badge {
+  font-size: 11px;
+  min-height: 22px;
+  padding: 0 8px;
+}
+
 .mat-column-actions {
   width: 150px;
   text-align: center;

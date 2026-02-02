@@ -26,27 +26,27 @@ class StockService
             ->with(['category'])
             // Filtrar apenas produtos ativos
             ->where('is_active', true)
-            // Filtro de baixo estoque apenas quando valor truthy
-            ->when(!empty($filters['low_stock']), function ($query) {
-                $query->whereRaw('current_stock <= min_stock');
-            })
             // Filtro por categoria
             ->when(isset($filters['category']) && $filters['category'] !== '', function ($query) use ($filters) {
                 $query->where('category_id', $filters['category']);
             })
-            // Filtro por status do estoque
+            // Filtro por status do estoque (opcional - quando usuário escolhe filtrar)
             ->when(isset($filters['stock_filter']) && $filters['stock_filter'] !== 'all', function ($query) use ($filters) {
                 switch ($filters['stock_filter']) {
                     case 'low':
-                        $query->whereRaw('current_stock <= min_stock');
+                        $query->whereRaw('current_stock > 0 AND current_stock <= min_stock');
                         break;
                     case 'out':
-                        $query->whereRaw('current_stock = 0');
+                        $query->where('current_stock', 0);
                         break;
                     case 'normal':
                         $query->whereRaw('current_stock > min_stock');
                         break;
                 }
+            })
+            // Filtro de baixo estoque (legado - quando low_stock=true)
+            ->when(!empty($filters['low_stock']), function ($query) {
+                $query->whereRaw('current_stock <= min_stock');
             })
             // Busca por nome ou código de barras
             ->when(isset($filters['search']) && $filters['search'] !== '', function ($query) use ($filters) {
@@ -56,8 +56,11 @@ class StockService
                         ->orWhere('barcode', 'like', "%{$search}%");
                 });
             })
-            // Ordenar por estoque ascendente
-            ->orderByRaw('current_stock ASC');
+            // Ordenação ponderada por urgência: 1=Esgotados, 2=Baixo, 3=Normal
+            // Desempate: menores quantidades primeiro, depois ordem alfabética
+            ->orderByRaw('CASE WHEN current_stock = 0 THEN 1 WHEN current_stock <= min_stock THEN 2 ELSE 3 END ASC')
+            ->orderBy('current_stock', 'asc')
+            ->orderBy('name', 'asc');
 
         return $query->paginate($perPage);
     }

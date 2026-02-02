@@ -124,8 +124,13 @@
           <ng-container matColumnDef="current_stock" *ngIf="!isEmployee">
             <th mat-header-cell *matHeaderCellDef>Estoque Atual</th>
             <td mat-cell *matCellDef="let product">
-              <span [style.color]="getStockColor(product.current_stock, product.min_stock || 0)">
-                {{product.current_stock}}
+              <span class="stock-cell">
+                <span [style.color]="getStockColor(product.current_stock, product.min_stock || 0)">
+                  {{product.current_stock}}
+                </span>
+                <mat-chip [color]="getStockBadgeInfo(product).color" selected class="stock-badge">
+                  {{getStockBadgeInfo(product).label}}
+                </mat-chip>
               </span>
             </td>
           </ng-container>

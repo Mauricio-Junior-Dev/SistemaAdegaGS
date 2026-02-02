@@ -242,9 +242,26 @@ export class EstoqueComponent implements OnInit, OnDestroy {
   }
 
   getStockColor(quantity: number, minQuantity: number): string {
-    if (quantity === 0) return '#f44336'; // Vermelho
-    if (quantity <= minQuantity) return '#ff9800'; // Laranja
-    return '#4caf50'; // Verde
+    if (quantity === 0) return '#f44336'; // Vermelho - Esgotado
+    if (quantity <= minQuantity) return '#f9a825'; // Amarelo - Baixo
+    return '#4caf50'; // Verde - Normal
+  }
+
+  /**
+   * Retorna label e cor do badge de status para indicadores visuais claros.
+   * Esgotado (vermelho), Baixo (amarelo), Normal (verde).
+   */
+  getStockBadgeInfo(product: Product): { label: string; color: 'warn' | 'accent' | 'primary' } {
+    const stock = product.current_stock ?? 0;
+    const minStock = product.min_stock ?? 0;
+
+    if (stock <= 0) {
+      return { label: 'Esgotado', color: 'warn' };
+    }
+    if (stock <= minStock) {
+      return { label: 'Baixo', color: 'accent' };
+    }
+    return { label: 'Normal', color: 'primary' };
   }
 
   getStockStatus(product: Product): { label: string; color: string } {

@@ -68,6 +68,10 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
             <mat-icon>swap_horiz</mat-icon>
             <span>Movimentações</span>
           </a>
+          <a routerLink="/admin/estoque" routerLinkActive="active" class="nav-item" matTooltip="Controle de Estoque">
+            <mat-icon>inventory_2</mat-icon>
+            <span>Estoque</span>
+          </a>
           <a routerLink="/admin/caixa" routerLinkActive="active" class="nav-item" matTooltip="Gerenciar Caixa (sessões e transações)">
             <mat-icon>account_balance_wallet</mat-icon>
             <span>Caixa</span>

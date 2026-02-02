@@ -30,8 +30,7 @@ export class EmployeeLayoutComponent {
   menuItems = [
     { path: '/funcionario/dashboard', icon: 'dashboard', label: 'Dashboard' },
     { path: '/funcionario/caixa', icon: 'point_of_sale', label: 'Caixa' },
-    { path: '/funcionario/pedidos', icon: 'receipt_long', label: 'Pedidos' },
-    { path: '/funcionario/estoque', icon: 'inventory_2', label: 'Estoque' }
+    { path: '/funcionario/pedidos', icon: 'receipt_long', label: 'Pedidos' }
   ];
 
   get isAdmin(): boolean {

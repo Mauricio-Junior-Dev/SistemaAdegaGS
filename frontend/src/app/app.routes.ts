@@ -89,7 +89,8 @@ export const routes: Routes = [
       },
       {
         path: 'estoque',
-        loadComponent: () => import('./employee/pages/estoque/estoque.component').then(m => m.EstoqueComponent)
+        redirectTo: 'dashboard',
+        pathMatch: 'full'
       }
     ]
   },
@@ -150,6 +151,10 @@ export const routes: Routes = [
       {
         path: 'movimentacoes',
         loadComponent: () => import('./admin/pages/movimentacoes/movimentacoes.component').then(m => m.MovimentacoesComponent)
+      },
+      {
+        path: 'estoque',
+        loadComponent: () => import('./employee/pages/estoque/estoque.component').then(m => m.EstoqueComponent)
       }
     ]
   }
