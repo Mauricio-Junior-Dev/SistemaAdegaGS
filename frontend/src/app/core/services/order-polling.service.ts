@@ -361,10 +361,11 @@ export class OrderPollingService implements OnDestroy {
       return;
     }
 
-    // Verificar se o usuário atual é do tipo 'employee'
-    // Apenas funcionários devem disparar impressão automática e notificações
-    const userType = this.authService.getUserType();
-    if (userType !== 'employee') {
+    // Regra: Funcionário sempre imprime | Admin só imprime se o switch estiver ligado
+    const isEmployee = this.authService.isEmployee();
+    const isAdmin = this.authService.isAdmin();
+    const adminPrintEnabled = localStorage.getItem('admin_auto_print') === 'true';
+    if (!isEmployee && !(isAdmin && adminPrintEnabled)) {
       return;
     }
 

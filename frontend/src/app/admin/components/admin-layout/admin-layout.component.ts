@@ -103,6 +103,17 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
           <span>{{pageTitle}}</span>
           <span class="toolbar-spacer"></span>
           <div class="toolbar-actions">
+            <!-- Toggle Impressão Automática (apenas Admin) -->
+            <div class="admin-auto-print-toggle">
+              <mat-icon>print</mat-icon>
+              <span class="status-label">Impressão Auto</span>
+              <mat-slide-toggle
+                [checked]="adminAutoPrint"
+                (change)="toggleAdminAutoPrint($event.checked)"
+                color="primary"
+                matTooltip="Imprimir automaticamente novos pedidos neste computador">
+              </mat-slide-toggle>
+            </div>
             <!-- Toggle Status da Loja -->
             <div class="store-status-toggle">
               <mat-icon [class.store-open]="isStoreOpen" [class.store-closed]="!isStoreOpen">
@@ -223,6 +234,23 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
       gap: 16px;
     }
 
+    .admin-auto-print-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      font-size: 0.85em;
+    }
+
+    .admin-auto-print-toggle mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+      opacity: 0.9;
+    }
+
     .store-status-toggle {
       display: flex;
       align-items: center;
@@ -284,6 +312,7 @@ export class AdminLayoutComponent implements OnInit, OnDestroy {
   settings: SystemSettings | null = null;
   isStoreOpen = true;
   updatingStoreStatus = false;
+  adminAutoPrint = false;
   private settingsSubscription?: Subscription;
   private storeStatusSubscription?: Subscription;
 
@@ -298,6 +327,9 @@ export class AdminLayoutComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    // Carregar preferência de impressão automática do Admin (localStorage)
+    this.adminAutoPrint = localStorage.getItem('admin_auto_print') === 'true';
+
     // Carregar configurações iniciais
     this.settingsService.getSettings().subscribe({
       next: (settings) => {
@@ -326,6 +358,11 @@ export class AdminLayoutComponent implements OnInit, OnDestroy {
     if (this.storeStatusSubscription) {
       this.storeStatusSubscription.unsubscribe();
     }
+  }
+
+  toggleAdminAutoPrint(enabled: boolean): void {
+    this.adminAutoPrint = enabled;
+    localStorage.setItem('admin_auto_print', String(enabled));
   }
 
   toggleStoreStatus(isOpen: boolean): void {
