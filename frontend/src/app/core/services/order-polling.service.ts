@@ -378,6 +378,13 @@ export class OrderPollingService implements OnDestroy {
     // Alerta sonoro universal - toca para qualquer novo pedido detectado
     this.playNotificationSound();
 
+    // Marcar TODOS os pedidos como processados IMEDIATAMENTE para evitar duplicatas
+    // (independente de imprimir ou não - Admin com switch off não deve ver o mesmo pedido de novo)
+    orders.forEach(order => {
+      this.printedOrderIds.add(order.id);
+    });
+    this.savePrintedIdsToStorage();
+
     // Regra: Funcionário sempre imprime | Admin só imprime se o switch estiver ligado
     const isEmployee = this.authService.isEmployee();
     const isAdmin = this.authService.isAdmin();
@@ -402,11 +409,6 @@ export class OrderPollingService implements OnDestroy {
       } else if (paymentMethod === 'cartão de débito') {
         title = 'Novo Pedido (Cartão na Entrega)!';
       }
-      
-      // Marcar como impresso IMEDIATAMENTE para evitar duplicação
-      this.printedOrderIds.add(order.id);
-      // SALVAR A MEMÓRIA PERMANENTE
-      this.savePrintedIdsToStorage();
       
       // Adicionar pequeno delay entre cada impressão para evitar sobrecarga
       setTimeout(() => {
