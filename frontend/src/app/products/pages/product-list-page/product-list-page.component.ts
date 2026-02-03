@@ -39,9 +39,15 @@ export class ProductListPageComponent implements OnInit, OnDestroy {
   searchTerm: string = '';
   error: string | null = null;
   
-  // Agrupamento por categoria
+  // Agrupamento por categoria (derivado de menuData + filtros)
   productsByCategory: { category: Category; products: Product[] }[] = [];
-  
+
+  /** Dados do cardápio: categorias com produtos (endpoint /categories/menu) */
+  menuData: { category: Category; products: Product[] }[] = [];
+
+  /** Prateleiras limitadas: exibir apenas os primeiros N produtos por categoria até "Ver todos" */
+  readonly limitPerCategory = 8;
+
   private cartSubscription?: Subscription;
   private cartItemsCache: any[] = [];
 
@@ -73,19 +79,22 @@ export class ProductListPageComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.loadCategories();
     this.loadCombos();
-    
+
     // Observar itens do carrinho para manter cache atualizado
     this.cartSubscription = this.cartService.cartItems$.subscribe(items => {
       this.cartItemsCache = items;
       this.cdr.detectChanges(); // Forçar atualização da view
     });
-    
+
     this.route.queryParams.subscribe(params => {
       this.selectedCategory = params['categoria'] ? +params['categoria'] : null;
       this.searchTerm = params['busca'] || '';
-      this.loadProducts();
+      if (this.menuData.length > 0) {
+        this.applyMenuFilters();
+      } else {
+        this.loadMenu();
+      }
     });
   }
 
@@ -95,32 +104,37 @@ export class ProductListPageComponent implements OnInit, OnDestroy {
     }
   }
 
-  loadCategories(): void {
-    this.productService.getCategories().subscribe({
-      next: (categories) => {
-        // Filtrar categoria "Combos" da lista
-        this.categories = categories.filter(
-          cat => cat.name.toLowerCase() !== 'combos' && cat.slug.toLowerCase() !== 'combos'
-        );
-      },
-      error: (err) => {
-        console.error('Error loading categories:', err);
-      }
-    });
-  }
-
   loadCombos(): void {
     this.loadingCombos = true;
     this.comboService.getCombos({ per_page: 20 }).subscribe({
       next: (response) => {
         this.combos = response.data || [];
-        this.filteredCombos = this.combos; // Inicializar combos filtrados
-        this.filterAndGroupProducts(); // Reaplicar filtros se houver busca ativa
+        this.filteredCombos = this.combos;
+        this.applyMenuFilters(); // Atualiza combos filtrados por busca
         this.loadingCombos = false;
       },
       error: (err) => {
         console.error('Error loading combos:', err);
         this.loadingCombos = false;
+      }
+    });
+  }
+
+  /** Carrega o cardápio (categorias com produtos) do endpoint /categories/menu. */
+  loadMenu(): void {
+    this.loading = true;
+    this.error = null;
+    this.productService.getCategoriesWithProducts().subscribe({
+      next: (data) => {
+        this.menuData = data;
+        this.categories = data.map(g => g.category);
+        this.applyMenuFilters();
+        this.loading = false;
+      },
+      error: (err) => {
+        console.error('Error loading menu:', err);
+        this.error = 'Erro ao carregar cardápio. Por favor, tente novamente.';
+        this.loading = false;
       }
     });
   }
@@ -151,106 +165,82 @@ export class ProductListPageComponent implements OnInit, OnDestroy {
     } as Product;
   }
 
-  loadProducts(): void {
-    const params: any = {};
-    
-    if (this.selectedCategory) {
-      params.category_id = this.selectedCategory;
-    }
-
-    this.loading = true;
-    this.error = null;
-
-    this.productService.getProducts(params).subscribe({
-      next: (response) => {
-        this.products = response.data || [];
-        this.filterAndGroupProducts();
-        this.loading = false;
-      },
-      error: (err) => {
-        console.error('Error loading products:', err);
-        this.error = 'Erro ao carregar produtos. Por favor, tente novamente.';
-        this.loading = false;
-      }
-    });
-  }
-
   /**
-   * Normaliza string removendo acentos e convertendo para minúsculas
-   * Permite busca que funciona tanto com acentos quanto sem acentos
+   * Normaliza string removando acentos e convertendo para minúsculas.
    */
   private normalizeString(str: string): string {
     if (!str) return '';
-    
-    // Remove acentos/diacríticos e converte para minúsculas
-    return str
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, ''); // Remove diacríticos (acentos)
+    return str.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   }
 
-  filterAndGroupProducts(): void {
-    // Filtrar produtos por termo de busca
-    let filtered = this.products;
-    
-    // Filtrar combos também
-    let filteredCombos = this.combos;
-    
-    if (this.searchTerm.trim()) {
-      const normalizedSearchTerm = this.normalizeString(this.searchTerm.trim());
-      
-      // Filtrar produtos
-      filtered = this.products.filter(product => {
-        const normalizedName = this.normalizeString(product.name);
-        const normalizedDescription = product.description ? this.normalizeString(product.description) : '';
-        
-        return normalizedName.includes(normalizedSearchTerm) ||
-               normalizedDescription.includes(normalizedSearchTerm);
+  /**
+   * Aplica filtros (busca + categoria) em menuData e combos; atualiza productsByCategory e filteredCombos.
+   */
+  applyMenuFilters(): void {
+    const term = this.searchTerm.trim();
+    const normalizedSearch = term ? this.normalizeString(term) : '';
+
+    // Filtrar combos por busca
+    if (normalizedSearch) {
+      this.filteredCombos = this.combos.filter(combo => {
+        const name = this.normalizeString(combo.name);
+        const desc = combo.description ? this.normalizeString(combo.description) : '';
+        return name.includes(normalizedSearch) || desc.includes(normalizedSearch);
       });
-      
-      // Filtrar combos também (mesma lógica)
-      filteredCombos = this.combos.filter(combo => {
-        const normalizedName = this.normalizeString(combo.name);
-        const normalizedDescription = combo.description ? this.normalizeString(combo.description) : '';
-        
-        return normalizedName.includes(normalizedSearchTerm) ||
-               normalizedDescription.includes(normalizedSearchTerm);
-      });
+    } else {
+      this.filteredCombos = this.combos;
     }
-    
-    this.filteredProducts = filtered;
-    this.filteredCombos = filteredCombos;
-    
-    // Agrupar por categoria
-    const grouped = new Map<number, { category: Category; products: Product[] }>();
-    
-    filtered.forEach(product => {
-      const categoryId = product.category_id;
-      const category = this.categories.find(c => c.id === categoryId);
-      
-      if (category) {
-        if (!grouped.has(categoryId)) {
-          grouped.set(categoryId, { category, products: [] });
-        }
-        grouped.get(categoryId)!.products.push(product);
-      }
-    });
-    
-    // Converter Map para Array e ordenar por nome da categoria
-    this.productsByCategory = Array.from(grouped.values()).sort((a, b) => 
+
+    if (this.menuData.length === 0) {
+      this.productsByCategory = [];
+      return;
+    }
+
+    let groups = this.menuData.map(g => ({
+      category: g.category,
+      products: term
+        ? g.products.filter(p => {
+            const name = this.normalizeString(p.name);
+            const desc = p.description ? this.normalizeString(p.description) : '';
+            return name.includes(normalizedSearch) || desc.includes(normalizedSearch);
+          })
+        : g.products,
+    }));
+
+    if (this.selectedCategory != null) {
+      groups = groups.filter(g => g.category.id === this.selectedCategory);
+    }
+
+    this.productsByCategory = groups.sort((a, b) =>
       a.category.name.localeCompare(b.category.name)
     );
   }
 
   onCategoryChange(categoryId: number | null): void {
-    this.selectedCategory = categoryId;
-    this.loadProducts();
+    this.router.navigate(['/produtos'], {
+      queryParams: categoryId != null ? { categoria: categoryId } : {},
+    });
+  }
+
+  /** Indica se a categoria está em foco (filtro ativo = mostrando só essa categoria). */
+  isCategoryFocused(category: Category): boolean {
+    return this.selectedCategory === category.id;
+  }
+
+  /** Foca na categoria: filtra para mostrar apenas os produtos dessa categoria. */
+  focusCategory(categoryId: number): void {
+    this.router.navigate(['/produtos'], { queryParams: { categoria: categoryId } });
+  }
+
+  /** Voltar para o cardápio completo (remove filtro de categoria). */
+  backToFullMenu(): void {
+    this.router.navigate(['/produtos'], { queryParams: {} });
   }
 
   onSearchInput(event: Event): void {
     const input = event.target as HTMLInputElement;
     this.searchTerm = input.value;
-    this.filterAndGroupProducts();
+    this.applyMenuFilters();
   }
 
   addToCart(product: Product): void {

@@ -43,6 +43,16 @@ export class ProductService {
     return this.http.get<Category[]>(`${this.apiUrl}/categories`);
   }
 
+  /**
+   * Cardápio: categorias com produtos agrupados (sem paginação).
+   * Usado pela página /produtos para exibir todas as categorias de uma vez.
+   */
+  getCategoriesWithProducts(params?: { category_id?: number }): Observable<{ category: Category; products: Product[] }[]> {
+    return this.http.get<(Category & { products: Product[] })[]>(`${this.apiUrl}/categories/menu`, { params: params || {} }).pipe(
+      map(items => items.map(c => ({ category: c, products: c.products || [] })))
+    );
+  }
+
   getFeaturedProducts(): Observable<Product[]> {
     return this.getProducts({ featured: true, per_page: 8 }).pipe(
       map(response => response.data)

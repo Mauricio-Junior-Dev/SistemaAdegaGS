@@ -32,6 +32,7 @@ Route::get('/products/{product}', [ProductController::class, 'show']);
 Route::get('/combos', [App\Http\Controllers\Api\Admin\ComboController::class, 'publicIndex']);
 Route::get('/combos/{combo}', [App\Http\Controllers\Api\Admin\ComboController::class, 'publicShow']);
 Route::get('/categories', [CategoryController::class, 'index']);
+Route::get('/categories/menu', [CategoryController::class, 'menu']);
 Route::get('/categories/{category}', [CategoryController::class, 'show']);
 
 // Configurações públicas (sem autenticação)

@@ -10,7 +10,7 @@
           (input)="onSearchInput($event)"
           placeholder="Buscar produtos..." 
           class="search-input">
-        <button *ngIf="searchTerm" (click)="searchTerm = ''; filterAndGroupProducts()" class="clear-search" mat-icon-button>
+        <button *ngIf="searchTerm" (click)="searchTerm = ''; applyMenuFilters()" class="clear-search" mat-icon-button>
           <mat-icon>close</mat-icon>
         </button>
       </div>
@@ -26,13 +26,21 @@
     <!-- Error State -->
     <div *ngIf="error" class="error-container">
       <p class="error-message">{{ error }}</p>
-      <button (click)="loadProducts()" class="retry-button">
+      <button (click)="loadMenu()" class="retry-button">
         Tentar Novamente
       </button>
     </div>
 
     <!-- Lista de Produtos Agrupada por Categoria -->
     <div *ngIf="!loading && !error" class="menu-list">
+      <!-- Botão Voltar (quando está vendo uma categoria específica) -->
+      <div *ngIf="selectedCategory" class="back-to-menu-wrapper">
+        <button type="button" (click)="backToFullMenu()" class="btn-back-menu">
+          <mat-icon class="btn-back-icon">arrow_back</mat-icon>
+          Voltar para todo o cardápio
+        </button>
+      </div>
+
       <!-- Seção de Combos (Montar = ir para detalhes; não adicionar direto ao carrinho) -->
       <div *ngIf="filteredCombos.length > 0" class="category-group combo-section">
         <h2 class="category-separator">Combos</h2>
@@ -70,12 +78,18 @@
         </div>
       </div>
 
-      <!-- Outras Categorias -->
+      <!-- Outras Categorias (prateleiras limitadas: 8 itens iniciais + "Ver todos") -->
       <div *ngFor="let group of productsByCategory" class="category-group">
-        <h2 class="category-separator">{{ group.category.name }}</h2>
+        <h2 class="category-separator category-separator-clickable" 
+            (click)="focusCategory(group.category.id)" 
+            (keydown.enter)="focusCategory(group.category.id)"
+            tabindex="0"
+            role="button">
+          {{ group.category.name }}
+        </h2>
         
         <div class="menu-items">
-          <div *ngFor="let product of group.products" class="menu-item">
+          <div *ngFor="let product of group.products | slice:0:(isCategoryFocused(group.category) ? group.products.length : limitPerCategory)" class="menu-item">
             <!-- Imagem -->
             <div class="menu-item-image">
               <img [src]="getImageUrl(product)" [alt]="product.name">
@@ -121,6 +135,12 @@
               </div>
             </div>
           </div>
+        </div>
+        <!-- Ver todos: foca na categoria (filtro) -->
+        <div *ngIf="!isCategoryFocused(group.category) && group.products.length > limitPerCategory" class="ver-todos-wrapper">
+          <button type="button" (click)="focusCategory(group.category.id)" class="btn-ver-todos">
+            Ver todos os {{ group.products.length }} produtos de {{ group.category.name }}
+          </button>
         </div>
       </div>
     </div>
