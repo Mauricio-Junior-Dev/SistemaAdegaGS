@@ -41,7 +41,13 @@
       <mat-card>
         <mat-card-content>
           <div class="summary-item">
-            <span class="summary-value">{{formatCurrency(summary.total_value)}}</span>
+            <div class="value-container">
+              <span *ngIf="isValueVisible" class="value summary-value">{{ formatCurrency(summary.total_value) }}</span>
+              <span *ngIf="!isValueVisible" class="value-hidden summary-value">R$ •••••</span>
+              <button type="button" (click)="toggleValueVisibility()" class="btn-icon" [attr.aria-label]="isValueVisible ? 'Ocultar valor' : 'Mostrar valor'">
+                <i class="fa" [ngClass]="isValueVisible ? 'fa-eye-slash' : 'fa-eye'"></i>
+              </button>
+            </div>
             <span class="summary-label">Valor Total em Estoque</span>
           </div>
         </mat-card-content>

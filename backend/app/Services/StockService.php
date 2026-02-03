@@ -5,9 +5,11 @@ namespace App\Services;
 use App\Models\Product;
 use App\Models\Combo;
 use App\Models\StockMovement;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class StockService
 {
@@ -100,14 +102,48 @@ class StockService
             ->get();
     }
 
+    /**
+     * Resumo de estoque considerando apenas produtos físicos (exclui bundles/combos virtuais).
+     * Combos não têm estoque próprio; somá-los geraria erro ou dados incorretos.
+     * Chaves retornadas alinhadas ao frontend: total_products, low_stock_count, out_of_stock_count, total_value.
+     */
     public function getStockSummary(): array
     {
+        $query = Product::query()
+            ->where('is_active', true);
+
+        // Se a tabela tiver coluna type, considerar apenas produtos não-bundle
+        if (Schema::hasColumn('products', 'type')) {
+            $query->where(function (Builder $q) {
+                $q->whereNull('type')->orWhere('type', '!=', 'bundle');
+            });
+        }
+        // Se tiver is_bundle, excluir bundles
+        if (Schema::hasColumn('products', 'is_bundle')) {
+            $query->where(function (Builder $q) {
+                $q->where('is_bundle', false)->orWhereNull('is_bundle');
+            });
+        }
+
+        $totalProducts = (clone $query)->count();
+        $totalItemsInStock = (clone $query)->sum('current_stock');
+        $lowStockCount = (clone $query)
+            ->where('current_stock', '>', 0)
+            ->whereColumn('current_stock', '<=', 'min_stock')
+            ->count();
+        $outOfStockCount = (clone $query)->where('current_stock', 0)->count();
+
+        // total_value: soma de current_stock * cost_price (COALESCE evita NULL em cost_price)
+        $totalValue = (clone $query)->sum(
+            DB::raw('current_stock * COALESCE(price, 0)')
+        );
+
         return [
-            'total_products' => Product::where('is_active', true)->count(),
-            'total_combos' => Combo::where('is_active', true)->count(),
-            'low_stock_count' => Product::where('is_active', true)->whereRaw('current_stock <= min_stock')->count(),
-            'out_of_stock_count' => Product::where('is_active', true)->where('current_stock', 0)->count(),
-            'total_stock_value' => Product::where('is_active', true)->sum(DB::raw('current_stock * cost_price'))
+            'total_products' => $totalProducts,
+            'total_items_in_stock' => (int) $totalItemsInStock,
+            'low_stock_count' => $lowStockCount,
+            'out_of_stock_count' => $outOfStockCount,
+            'total_value' => (float) $totalValue,
         ];
     }
 

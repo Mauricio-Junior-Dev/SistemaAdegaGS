@@ -93,8 +93,11 @@ class StockController extends Controller
             $summary = $this->stockService->getStockSummary();
             return response()->json($summary);
         } catch (\Exception $e) {
-            Log::error('Erro ao buscar resumo do estoque: ' . $e->getMessage());
-            return response()->json(['message' => 'Erro ao buscar resumo do estoque'], 500);
+            Log::error('Erro no Stock Summary: ' . $e->getMessage(), [
+                'exception' => get_class($e),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json(['error' => 'Erro ao calcular resumo do estoque'], 500);
         }
     }
 }

@@ -14,6 +14,7 @@ export interface StockResponse {
 
 export interface StockSummary {
   total_products: number;
+  total_items_in_stock?: number;
   low_stock_count: number;
   out_of_stock_count: number;
   total_value: number;

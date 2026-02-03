@@ -65,6 +65,9 @@ export class EstoqueComponent implements OnInit, OnDestroy {
   // Verificação de tipo de usuário
   isEmployee = false;
 
+  /** Controle de privacidade: valor total em estoque oculto por padrão */
+  isValueVisible = false;
+
   private destroy$ = new Subject<void>();
 
   constructor(
@@ -96,6 +99,10 @@ export class EstoqueComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  toggleValueVisibility(): void {
+    this.isValueVisible = !this.isValueVisible;
   }
 
   loadSummary(): void {
