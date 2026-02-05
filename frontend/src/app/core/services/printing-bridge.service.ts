@@ -47,17 +47,15 @@ export class PrintingBridgeService {
    * Converte o Order do Angular para o formato OrderDto esperado pelo Print Bridge
    */
   private convertToOrderDto(order: any): any {
-    // Converter items
+    // Converter items (API envia name unificado e sub_lines para combos)
     const items = (order.items || []).map((item: any) => ({
       quantity: item.quantity || 0,
       price: String(item.price || item.subtotal || 0),
-      product: item.product ? {
-        name: item.product.name || ''
-      } : null,
-      combo: item.combo ? {
-        name: item.combo.name || ''
-      } : null,
-      is_combo: item.is_combo || false,
+      name: item.name ?? (item.product?.name ?? item.combo?.name ?? item.product_bundle?.name ?? ''),
+      product: item.product ? { name: item.product.name || '' } : null,
+      combo: item.combo ? { name: item.combo.name || '' } : null,
+      is_combo: item.is_combo ?? !!item.product_bundle_id,
+      sub_lines: Array.isArray(item.sub_lines) ? item.sub_lines : [],
       sale_type: item.sale_type || null
     }));
 

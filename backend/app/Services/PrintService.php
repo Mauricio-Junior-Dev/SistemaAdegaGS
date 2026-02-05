@@ -21,9 +21,9 @@ class PrintService
             Log::info("Order Number: " . ($order->order_number ?? 'N/A'));
             Log::info("Created At: " . ($order->created_at ?? 'N/A'));
 
-            // Garantir que o pedido está com relações carregadas
+            // Garantir que o pedido está com relações carregadas (productBundle + selections para combos)
             $order->refresh();
-            $order->load(['items.product', 'items.combo', 'user', 'payment', 'delivery_address']);
+            $order->load(['items.product', 'items.productBundle', 'items.selections.product', 'user', 'payment', 'delivery_address']);
 
             // Gerar HTML idêntico ao do frontend (print.service.ts)
             $html = $this->generateOrderHtml($order);
@@ -83,11 +83,10 @@ class PrintService
         $customerName = $order->user->name ?? 'Cliente não identificado';
         $customerPhone = $order->user->phone ?? '';
 
-        // Itens
+        // Itens (name unificado já vem do model OrderItem: product ou productBundle)
         $itemsHtml = '';
         foreach ($order->items as $item) {
-            $isCombo = isset($item->is_combo) ? (bool)$item->is_combo : (bool)$item->combo;
-            $name = $isCombo && $item->combo ? ($item->combo->name ?? '') : ($item->product->name ?? 'Produto não encontrado');
+            $name = $item->name ?? 'Item sem nome';
             $qty = (int)$item->quantity;
             $lineTotal = $formatCurrency(((float)$item->price) * $qty);
             $itemsHtml .= '<div class="item">'
@@ -95,6 +94,16 @@ class PrintService
                 . '<span class="name">' . htmlspecialchars($name, ENT_QUOTES, 'UTF-8') . '</span>'
                 . '<span class="price">' . htmlspecialchars($lineTotal, ENT_QUOTES, 'UTF-8') . '</span>'
                 . '</div>';
+            // Sub-itens do combo (sub_lines)
+            if (!empty($item->sub_lines)) {
+                foreach ($item->sub_lines as $subLine) {
+                    $itemsHtml .= '<div class="item sub-item">'
+                        . '<span class="quantity"></span>'
+                        . '<span class="name">' . htmlspecialchars($subLine, ENT_QUOTES, 'UTF-8') . '</span>'
+                        . '<span class="price"></span>'
+                        . '</div>';
+                }
+            }
         }
 
         // Total e pagamento

@@ -228,6 +228,16 @@ public class PrinterService
             // Antes estava imprimindo {lineTotal:F2}, agora imprime {itemPrice:F2}
             buffer.AddRange(PrintTextRight($"{itemPrice:F2}", width: 48));
             buffer.AddRange(PrintLine());
+
+            // Sub-itens do combo (ex: "- 1x Coca-Cola", "- 1x Gelo de Coco")
+            if (item.SubLines != null && item.SubLines.Count > 0)
+            {
+                foreach (var subLine in item.SubLines)
+                {
+                    buffer.AddRange(PrintText("  " + subLine, leftAlign: true));
+                    buffer.AddRange(PrintLine());
+                }
+            }
         }
 
         buffer.AddRange(PrintSeparator());
@@ -569,6 +579,9 @@ public class PrinterService
     // Métodos auxiliares
     private string GetItemName(OrderItemDto item)
     {
+        // Preferir nome unificado enviado pela API (evita "Produto desconhecido" em combos)
+        if (!string.IsNullOrWhiteSpace(item.Name))
+            return item.Name;
         if (item.IsCombo && item.Combo != null)
             return item.Combo.Name;
         return item.Product?.Name ?? "Produto não encontrado";

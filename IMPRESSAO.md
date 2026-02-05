@@ -78,8 +78,8 @@ Antes de iniciar, certifique-se de ter os seguintes arquivos:
         "Default": "Information"
       }
     },
-    "Printer": {
-      "Name": "POS-80C"
+    "Printer": {      "Name": "POS-80C"
+
     }
   }
   ```

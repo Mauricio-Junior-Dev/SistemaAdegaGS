@@ -67,6 +67,10 @@ public class OrderItemDto
     [JsonPropertyName("price")]
     public string Price { get; set; } = "0";
 
+    /// <summary>Nome unificado (produto ou combo) enviado pela API para evitar "Produto desconhecido".</summary>
+    [JsonPropertyName("name")]
+    public string? Name { get; set; }
+
     [JsonPropertyName("product")]
     public ProductDto? Product { get; set; }
 
@@ -75,6 +79,10 @@ public class OrderItemDto
 
     [JsonPropertyName("is_combo")]
     public bool IsCombo { get; set; }
+
+    /// <summary>Sub-itens do combo para imprimir recuado (ex: "- 1x Coca-Cola").</summary>
+    [JsonPropertyName("sub_lines")]
+    public List<string>? SubLines { get; set; }
 
     [JsonPropertyName("sale_type")]
     public string? SaleType { get; set; } // 'dose' ou 'garrafa'

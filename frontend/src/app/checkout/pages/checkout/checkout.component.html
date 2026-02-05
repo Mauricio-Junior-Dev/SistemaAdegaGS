@@ -357,7 +357,6 @@
                   type="text" 
                   placeholder="0,00 ou 0.00"
                   (blur)="onReceivedAmountBlur($event)">
-                <mat-hint>Informe o valor que você vai usar para pagar (aceita vírgula ou ponto)</mat-hint>
               </mat-form-field>
               <div class="change-info" *ngIf="getSanitizedReceivedAmount() > ((cartTotal$ | async) || 0) + deliveryFee">
                 <mat-icon>info</mat-icon>
