@@ -41,6 +41,15 @@ class Order extends Model
     }
 
     /**
+     * Pagamentos múltiplos (Split Payment) - utilizado pelo PDV.
+     * E-commerce continua usando um único método via orders.total e payments.
+     */
+    public function orderPayments(): HasMany
+    {
+        return $this->hasMany(OrderPayment::class);
+    }
+
+    /**
      * Get the delivery address associated with the order.
      */
     public function delivery_address(): BelongsTo

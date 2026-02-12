@@ -293,11 +293,123 @@ h1 {
 }
 
 .total-section {
-  text-align: center;
   margin: 24px 0;
   padding: 16px;
   background: #f5f5f5;
   border-radius: 4px;
+}
+
+.total-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.remaining-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 8px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.remaining-row.remaining-positive .remaining-value {
+  color: #c62828;
+  font-weight: 600;
+}
+
+.remaining-label,
+.total-label {
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.total-value {
+  font-size: 24px;
+  font-weight: 600;
+  color: #1976d2;
+}
+
+.remaining-value {
+  font-size: 18px;
+  font-weight: 500;
+  color: #2e7d32;
+}
+
+/* Pagamentos Múltiplos (Split) */
+.payments-section {
+  margin: 20px 0;
+  padding: 16px;
+  background: #fafafa;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+
+.payments-title {
+  margin: 0 0 12px 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: #333;
+}
+
+.payment-input-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.payment-input-row .method-select {
+  flex: 1;
+  min-width: 120px;
+}
+
+.payment-input-row .amount-input {
+  flex: 1;
+  min-width: 100px;
+}
+
+.add-payment-btn {
+  align-self: center;
+  height: 48px;
+}
+
+.add-payment-btn mat-icon {
+  margin-right: 4px;
+}
+
+.payments-list {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.payment-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #fff;
+  border-radius: 4px;
+  border: 1px solid #e0e0e0;
+}
+
+.payment-detail {
+  flex: 1;
+  font-weight: 500;
+  color: #333;
+}
+
+.payment-change {
+  font-size: 12px;
+  color: #666;
+}
+
+.remove-payment-btn {
+  flex-shrink: 0;
 }
 
 .delivery-payment-section {

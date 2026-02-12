@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Models\DeliveryZone;
 use App\Models\CashSession;
 use App\Models\CashTransaction;
+use App\Models\OrderPayment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
@@ -190,12 +191,15 @@ class OrderController extends Controller
         $initialUser = $request->user();
         $isEmployeeOrAdmin = $initialUser && in_array($initialUser->type, ['employee', 'admin']);
 
-        // Validação simplificada para debug
-        $request->validate([
+        // Detectar modo: PDV (payments array) ou E-commerce (payment_method string)
+        $paymentsArray = $request->input('payments', []);
+        $isPdvSplitPayment = is_array($paymentsArray) && !empty($paymentsArray);
+
+        // Validação condicional
+        $validationRules = [
             'items' => 'required|array|min:1',
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.sale_type' => 'required|in:dose,garrafa',
-            'payment_method' => 'required|in:dinheiro,cartão de débito,cartão de crédito,pix',
             'customer_name' => 'nullable|string|max:255',
             'customer_phone' => 'nullable|string|max:20',
             'document_number' => 'nullable|string|max:20',
@@ -205,7 +209,19 @@ class OrderController extends Controller
             'delivery_fee' => 'nullable|numeric|min:0',
             'received_amount' => 'nullable|numeric|min:0',
             'change_amount' => 'nullable|numeric|min:0'
-        ]);
+        ];
+
+        if ($isPdvSplitPayment) {
+            $validationRules['payments'] = 'required|array|min:1';
+            $validationRules['payments.*.method'] = 'required|string|in:money,dinheiro,pix,credit_card,cartão de crédito,debit_card,cartão de débito';
+            $validationRules['payments.*.amount'] = 'required|numeric|min:0.01';
+            $validationRules['payments.*.received_amount'] = 'nullable|numeric|min:0';
+            $validationRules['payments.*.change'] = 'nullable|numeric|min:0';
+        } else {
+            $validationRules['payment_method'] = 'required|in:dinheiro,cartão de débito,cartão de crédito,pix';
+        }
+
+        $request->validate($validationRules);
 
         // Validação: cada item deve ter product_id (produto simples) OU product_bundle_id + selections (bundle)
         foreach ($request->items as $index => $item) {
@@ -800,24 +816,73 @@ class OrderController extends Controller
             // Recarregar o pedido para garantir que o total foi salvo
             $order->refresh();
 
-            // Respeitar payment_status enviado pelo frontend (para caixa: completed ou pending)
+            // --- Lógica de Pagamento: PDV (Split) vs E-commerce (Único) ---
+            $orderTotal = $calculatedTotal;
             $requestedPaymentStatus = $request->input('payment_status', 'pending');
-            $paymentData = [
-                'amount' => $total + $frete,
-                'payment_method' => $request->payment_method,
-                'status' => in_array($requestedPaymentStatus, ['pending', 'completed']) ? $requestedPaymentStatus : 'pending'
-            ];
 
-            // Incluir received_amount e change_amount se fornecidos
-            if ($request->has('received_amount') && $request->received_amount !== null) {
-                $paymentData['received_amount'] = $request->received_amount;
+            if ($isPdvSplitPayment) {
+                // PDV: Validar soma dos pagamentos >= total
+                $paymentsSum = array_sum(array_column($paymentsArray, 'amount'));
+                if ($paymentsSum < $orderTotal) {
+                    DB::rollBack();
+                    return response()->json([
+                        'message' => 'Valor insuficiente',
+                        'errors' => ['payments' => ['A soma dos pagamentos deve ser maior ou igual ao total do pedido.']]
+                    ], 422);
+                }
+
+                // Payment legado (tabela payments): um registro com 'misto'
+                $paymentData = [
+                    'amount' => $orderTotal,
+                    'payment_method' => 'misto',
+                    'status' => in_array($requestedPaymentStatus, ['pending', 'completed']) ? $requestedPaymentStatus : 'completed'
+                ];
+                $order->payment()->create($paymentData);
+
+                // order_payments: um registro por parcela do split
+                foreach ($paymentsArray as $p) {
+                    $method = $this->mapToOrderPaymentMethod($p['method'] ?? '');
+                    $amount = (float) ($p['amount'] ?? 0);
+                    $receivedAmount = isset($p['received_amount']) ? (float) $p['received_amount'] : null;
+                    $change = null;
+
+                    if ($method === 'money' && $receivedAmount !== null && $receivedAmount > $amount) {
+                        $change = round($receivedAmount - $amount, 2);
+                    }
+                    if (isset($p['change']) && $p['change'] !== null) {
+                        $change = (float) $p['change'];
+                    }
+
+                    $order->orderPayments()->create([
+                        'payment_method' => $method,
+                        'amount' => $amount,
+                        'change' => $change
+                    ]);
+                }
+            } else {
+                // E-commerce: pagamento único (lógica atual)
+                $paymentData = [
+                    'amount' => $orderTotal,
+                    'payment_method' => $request->payment_method,
+                    'status' => in_array($requestedPaymentStatus, ['pending', 'completed']) ? $requestedPaymentStatus : 'pending'
+                ];
+                if ($request->has('received_amount') && $request->received_amount !== null) {
+                    $paymentData['received_amount'] = $request->received_amount;
+                }
+                if ($request->has('change_amount') && $request->change_amount !== null) {
+                    $paymentData['change_amount'] = $request->change_amount;
+                }
+                $order->payment()->create($paymentData);
+
+                // order_payments: um único registro (para relatórios futuros)
+                $order->orderPayments()->create([
+                    'payment_method' => $this->mapToOrderPaymentMethod($request->payment_method),
+                    'amount' => $orderTotal,
+                    'change' => $request->has('change_amount') && $request->change_amount !== null
+                        ? (float) $request->change_amount
+                        : null
+                ]);
             }
-
-            if ($request->has('change_amount') && $request->change_amount !== null) {
-                $paymentData['change_amount'] = $request->change_amount;
-            }
-
-            $order->payment()->create($paymentData);
 
             // Se for venda balcão (completed) do Caixa, criar transação de caixa imediatamente
             if ($isEmployeeOrAdmin && $isCompleted) {
@@ -831,6 +896,7 @@ class OrderController extends Controller
                 'items.productBundle.groups.options.product',
                 'items.selections.product',
                 'user',
+                'orderPayments',
                 'payment' => function ($query) {
                     // Garantir que received_amount e change_amount sejam selecionados explicitamente
                     $query->select(
@@ -1670,6 +1736,23 @@ class OrderController extends Controller
         ]);
 
         return response()->json($order);
+    }
+
+    /**
+     * Mapeia métodos de pagamento (E-commerce/PDV) para o formato order_payments.
+     */
+    private function mapToOrderPaymentMethod(string $method): string
+    {
+        $map = [
+            'dinheiro' => OrderPayment::METHOD_MONEY,
+            'money' => OrderPayment::METHOD_MONEY,
+            'pix' => OrderPayment::METHOD_PIX,
+            'cartão de crédito' => OrderPayment::METHOD_CREDIT_CARD,
+            'credit_card' => OrderPayment::METHOD_CREDIT_CARD,
+            'cartão de débito' => OrderPayment::METHOD_DEBIT_CARD,
+            'debit_card' => OrderPayment::METHOD_DEBIT_CARD,
+        ];
+        return $map[strtolower(trim($method))] ?? OrderPayment::METHOD_MONEY;
     }
 
     /**

@@ -95,6 +95,14 @@ export interface Order {
   updated_at: string;
 }
 
+/** Item de pagamento para Split Payment (PDV) */
+export interface PaymentSplitItem {
+  method: 'money' | 'pix' | 'credit_card' | 'debit_card';
+  amount: number;
+  received_amount?: number;
+  change?: number;
+}
+
 export interface CreateOrderRequest {
   items: {
     product_id?: number;
@@ -104,7 +112,10 @@ export interface CreateOrderRequest {
     price: number;
   }[];
   total: number;
-  payment_method: PaymentMethod;
+  /** Usado quando E-commerce ou pagamento único */
+  payment_method?: PaymentMethod;
+  /** Usado quando PDV com pagamentos múltiplos (split) */
+  payments?: PaymentSplitItem[];
   customer_name?: string;
   customer_phone?: string;
   customer_email?: string;

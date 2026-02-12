@@ -97,10 +97,15 @@ export class CaixaComponent implements OnInit, OnDestroy {
   customerSearchResults: Customer[] = [];
   showCustomerSearch = false;
 
-  // Troco
+  // Troco (legado - usado quando selectedPaymentMethod único)
   receivedAmount = 0;
   changeAmount = 0;
   showChangeSection = false;
+  
+  // Pagamentos múltiplos (Split Payment - PDV)
+  payments: { method: PaymentMethod; amount: number; received_amount?: number; change?: number }[] = [];
+  inputAmount = 0;
+  selectedMethod: PaymentMethod = 'dinheiro';
   
   // Controle de visibilidade do valor do caixa
   showCashValue = false;
@@ -773,10 +778,59 @@ export class CaixaComponent implements OnInit, OnDestroy {
     const appliedDeliveryFee = (this.isPayOnDelivery && this.isDeliveryFeeEnabled) ? this.deliveryFee : 0;
     this.total = itemsTotal + appliedDeliveryFee;
     
-    // Recalcular troco automaticamente se o método de pagamento for dinheiro
+    // Recalcular troco automaticamente se o método de pagamento for dinheiro (legado)
     if (this.selectedPaymentMethod === 'dinheiro' && this.receivedAmount > 0) {
       this.changeAmount = Math.max(0, this.receivedAmount - this.total);
     }
+    
+    // Sincronizar inputAmount com remainingAmount
+    this.inputAmount = this.total > 0 ? this.remainingAmount : 0;
+  }
+
+  /** Valor restante a pagar (total - soma dos pagamentos) */
+  get remainingAmount(): number {
+    const paid = this.payments.reduce((sum, p) => sum + p.amount, 0);
+    return Math.max(0, this.total - paid);
+  }
+
+  /** Troco total quando há overpayment em dinheiro */
+  get totalChange(): number {
+    const changePayments = this.payments.filter(p => p.method === 'dinheiro' && (p.change ?? 0) > 0);
+    return changePayments.reduce((sum, p) => sum + (p.change ?? 0), 0);
+  }
+
+  /** Verifica se pode finalizar (pago totalmente ou com troco) */
+  get canFinalize(): boolean {
+    return this.remainingAmount <= 0;
+  }
+
+  addPayment(): void {
+    const val = Number(this.inputAmount) || 0;
+    if (val <= 0) {
+      this.toastr.warning('Informe um valor maior que zero', '', {
+        toastClass: 'modern-toast-notification',
+        positionClass: 'toast-bottom-center',
+        timeOut: 3000
+      });
+      return;
+    }
+    const remaining = this.remainingAmount;
+    const amountToApply = Math.min(val, remaining);
+    const payment: { method: PaymentMethod; amount: number; received_amount?: number; change?: number } = {
+      method: this.selectedMethod,
+      amount: amountToApply
+    };
+    if (this.selectedMethod === 'dinheiro' && val > remaining) {
+      payment.received_amount = val;
+      payment.change = Math.round((val - remaining) * 100) / 100;
+    }
+    this.payments.push(payment);
+    this.inputAmount = this.remainingAmount;
+  }
+
+  removePayment(index: number): void {
+    this.payments.splice(index, 1);
+    this.inputAmount = this.remainingAmount;
   }
 
   /**
@@ -808,6 +862,8 @@ export class CaixaComponent implements OnInit, OnDestroy {
     this.receivedAmount = 0;
     this.changeAmount = 0;
     this.selectedPaymentMethod = null;
+    this.payments = [];
+    this.inputAmount = 0;
   }
 
   onReceivedAmountChange(): void {
@@ -818,7 +874,7 @@ export class CaixaComponent implements OnInit, OnDestroy {
     }
   }
 
-  selectPaymentMethod(method: PaymentMethod): void {
+  confirmAndFinalizeSale(): void {
     if (!this.cartItems.length) {
       this.toastr.warning('Adicione produtos ao carrinho', '', {
         toastClass: 'modern-toast-notification',
@@ -827,18 +883,8 @@ export class CaixaComponent implements OnInit, OnDestroy {
       });
       return;
     }
-    this.selectedPaymentMethod = method;
-    
-    // Se for dinheiro, limpar valores anteriores
-    if (method === 'dinheiro') {
-      this.receivedAmount = 0;
-      this.changeAmount = 0;
-    }
-  }
-
-  confirmAndFinalizeSale(): void {
-    if (!this.selectedPaymentMethod) {
-      this.toastr.warning('Selecione um método de pagamento', '', {
+    if (!this.canFinalize || this.payments.length === 0) {
+      this.toastr.warning('Adicione os pagamentos até cobrir o total', '', {
         toastClass: 'modern-toast-notification',
         positionClass: 'toast-bottom-center',
         timeOut: 3000
@@ -846,60 +892,46 @@ export class CaixaComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Validação adicional para dinheiro
-    if (this.selectedPaymentMethod === 'dinheiro' && this.receivedAmount < this.total) {
-      this.toastr.warning('Valor recebido insuficiente', '', {
-        toastClass: 'modern-toast-notification',
-        positionClass: 'toast-bottom-center',
-        timeOut: 3000
-      });
-      return;
-    }
+    const paymentSummary = this.payments.length === 1
+      ? this.getPaymentMethodName(this.payments[0].method)
+      : `Misto (${this.payments.map(p => `${this.getPaymentMethodName(p.method)}: ${this.formatCurrency(p.amount)}`).join(', ')})`;
+    const changeInfo = this.totalChange > 0 ? `\n\nTroco: ${this.formatCurrency(this.totalChange)}` : '';
 
-    // Se for entrega, mostrar diálogo com 3 opções
     if (this.isPayOnDelivery) {
-      const paymentMethodName = this.getPaymentMethodName(this.selectedPaymentMethod);
       const dialogRef = this.dialog.open(PrintConfirmationDialogComponent, {
         width: '500px',
         data: {
           orderNumber: null,
           total: this.total,
-          paymentMethod: this.selectedPaymentMethod,
+          paymentMethod: this.payments[0]?.method,
           customerName: this.selectedCustomer?.name || this.customerName,
-          changeAmount: this.selectedPaymentMethod === 'dinheiro' ? this.changeAmount : undefined,
-          receivedAmount: this.selectedPaymentMethod === 'dinheiro' ? this.receivedAmount : undefined,
+          changeAmount: this.totalChange > 0 ? this.totalChange : undefined,
+          receivedAmount: this.payments.find(p => p.method === 'dinheiro')?.received_amount,
           isDeliveryConfirmation: true,
           deliveryFee: this.deliveryFee,
-          confirmMessage: `Pedido de ENTREGA - Total: ${this.formatCurrency(this.total)}\n\nMétodo de pagamento: ${paymentMethodName}`
+          confirmMessage: `Pedido de ENTREGA - Total: ${this.formatCurrency(this.total)}\n\nPagamento: ${paymentSummary}${changeInfo}`
         },
         disableClose: true
       });
 
       dialogRef.afterClosed().subscribe((result: 'pay_on_delivery' | 'already_paid' | false) => {
         if (result === 'pay_on_delivery') {
-          this.finalizeSale(this.selectedPaymentMethod!, 'pending');
+          this.finalizeSale('pending');
         } else if (result === 'already_paid') {
-          this.finalizeSale(this.selectedPaymentMethod!, 'completed');
+          this.finalizeSale('completed');
         }
       });
     } else {
-      // Balcão: confirmação simples
-      const paymentMethodName = this.getPaymentMethodName(this.selectedPaymentMethod);
-      let confirmMessage = `Confirmar recebimento de ${this.formatCurrency(this.total)} no ${paymentMethodName} agora?`;
-      
-      if (this.selectedPaymentMethod === 'dinheiro' && this.changeAmount > 0) {
-        confirmMessage += `\n\nTroco: ${this.formatCurrency(this.changeAmount)}`;
-      }
-
+      const confirmMessage = `Confirmar recebimento de ${this.formatCurrency(this.total)}\n\n${paymentSummary}${changeInfo}`;
       const dialogRef = this.dialog.open(PrintConfirmationDialogComponent, {
         width: '450px',
         data: {
           orderNumber: null,
           total: this.total,
-          paymentMethod: this.selectedPaymentMethod,
+          paymentMethod: this.payments[0]?.method,
           customerName: this.selectedCustomer?.name || this.customerName,
-          changeAmount: this.selectedPaymentMethod === 'dinheiro' ? this.changeAmount : undefined,
-          receivedAmount: this.selectedPaymentMethod === 'dinheiro' ? this.receivedAmount : undefined,
+          changeAmount: this.totalChange > 0 ? this.totalChange : undefined,
+          receivedAmount: this.payments.find(p => p.method === 'dinheiro')?.received_amount,
           isConfirmation: true,
           confirmMessage: confirmMessage
         },
@@ -908,7 +940,7 @@ export class CaixaComponent implements OnInit, OnDestroy {
 
       dialogRef.afterClosed().subscribe((confirmed: boolean) => {
         if (confirmed) {
-          this.finalizeSale(this.selectedPaymentMethod!, 'completed');
+          this.finalizeSale('completed');
         }
       });
     }
@@ -924,8 +956,8 @@ export class CaixaComponent implements OnInit, OnDestroy {
     return names[method] || method;
   }
 
-  finalizeSale(paymentMethod: PaymentMethod, paymentStatus: 'pending' | 'completed' = 'completed'): void {
-    // Bloquear se método estiver desabilitado nas configurações
+  finalizeSale(paymentStatus: 'pending' | 'completed' = 'completed'): void {
+    // Bloquear se métodos estiverem desabilitados nas configurações
     if (this.settings && Array.isArray(this.settings.accepted_payment_methods)) {
       const map: Record<string, string> = {
         'dinheiro': 'cash',
@@ -933,15 +965,17 @@ export class CaixaComponent implements OnInit, OnDestroy {
         'cartão de débito': 'debit_card',
         'cartão de crédito': 'credit_card'
       };
-      const key = map[paymentMethod];
-      const pm = this.settings.accepted_payment_methods.find(m => m.method === key);
-      if (pm && pm.enabled === false) {
-        this.toastr.warning('Forma de pagamento desabilitada nas configurações', '', {
-          toastClass: 'modern-toast-notification',
-          positionClass: 'toast-bottom-center',
-          timeOut: 3000
-        });
-        return;
+      for (const p of this.payments) {
+        const key = map[p.method];
+        const pm = this.settings.accepted_payment_methods.find(m => m.method === key);
+        if (pm && pm.enabled === false) {
+          this.toastr.warning(`Forma de pagamento ${this.getPaymentMethodName(p.method)} desabilitada nas configurações`, '', {
+            toastClass: 'modern-toast-notification',
+            positionClass: 'toast-bottom-center',
+            timeOut: 3000
+          });
+          return;
+        }
       }
     }
     if (!this.cartItems.length) {
@@ -1009,52 +1043,44 @@ export class CaixaComponent implements OnInit, OnDestroy {
       }
     }
 
-    // Se for pagamento em dinheiro, calcular troco
-    const isCashPayment = paymentMethod.toLowerCase() === 'dinheiro';
-    
-    if (isCashPayment) {
-      if (this.receivedAmount < this.total) {
-        this.toastr.warning('Valor recebido insuficiente', '', {
-        toastClass: 'modern-toast-notification',
-        positionClass: 'toast-bottom-center',
-        timeOut: 3000
-      });
-        return;
-      }
-      this.changeAmount = this.receivedAmount - this.total;
-    }
-
     // Determinar qual taxa de entrega será efetivamente cobrada
     const appliedDeliveryFee = (this.isPayOnDelivery && this.isDeliveryFeeEnabled) ? (this.deliveryFee || 0) : 0;
 
     const order: CreateOrderRequest = {
       items: this.cartItems.map(item => {
-        // Calcular o preço unitário baseado no subtotal calculado (não no preço padrão do produto)
-        // Isso garante que doses sejam enviadas com dose_price, não com product.price
         const unitPrice = this.getItemUnitPrice(item);
-        
         return {
           product_id: item.product?.id,
           combo_id: item.combo?.id,
           quantity: item.quantity,
           sale_type: item.sale_type,
-          price: unitPrice // Usar o preço calculado, não o preço padrão do produto
+          price: unitPrice
         };
       }),
-      total: this.total - appliedDeliveryFee, // Subtotal sem frete (o backend recalcula)
+      total: this.total - appliedDeliveryFee,
       delivery_fee: appliedDeliveryFee,
-      payment_method: paymentMethod,
       customer_name: this.customerName || undefined,
       customer_phone: this.customerPhone || undefined,
       customer_email: this.customerEmail || undefined,
       customer_document: this.customerDocument || undefined,
-      received_amount: isCashPayment ? this.receivedAmount : undefined,
-      change_amount: isCashPayment ? this.changeAmount : undefined,
       status: this.isPayOnDelivery ? 'pending' : 'completed',
-      payment_status: paymentStatus, // Usar o status passado como parâmetro
-      // Enviar delivery_address_id na raiz quando for entrega
+      payment_status: paymentStatus,
       delivery_address_id: this.isPayOnDelivery && this.selectedAddressId ? this.selectedAddressId : undefined
     };
+
+    // PDV: enviar payments array (split)
+    const methodMap: Record<PaymentMethod, 'money' | 'pix' | 'credit_card' | 'debit_card'> = {
+      'dinheiro': 'money',
+      'pix': 'pix',
+      'cartão de crédito': 'credit_card',
+      'cartão de débito': 'debit_card'
+    };
+    order.payments = this.payments.map(p => ({
+      method: methodMap[p.method],
+      amount: p.amount,
+      received_amount: p.received_amount,
+      change: p.change
+    }));
 
     this.orderService.createOrder(order)
       .pipe(takeUntil(this.destroy$))
@@ -1067,12 +1093,11 @@ export class CaixaComponent implements OnInit, OnDestroy {
               .subscribe({
                 next: () => {
                   console.log('Status do pedido atualizado para concluído');
-                  this.showPrintConfirmation(response, paymentMethod);
+                  this.showPrintConfirmation(response);
                 },
                 error: (statusError) => {
                   console.error('Erro ao atualizar status do pedido:', statusError);
-                  // Mesmo com erro no status, mostrar confirmação de impressão
-                  this.showPrintConfirmation(response, paymentMethod);
+                  this.showPrintConfirmation(response);
                 }
               });
           } else {
@@ -1082,7 +1107,7 @@ export class CaixaComponent implements OnInit, OnDestroy {
               positionClass: 'toast-bottom-center',
               timeOut: 3000
             });
-            this.showPrintConfirmation(response, paymentMethod);
+            this.showPrintConfirmation(response);
           }
         },
         error: (error: Error) => {
@@ -1096,16 +1121,16 @@ export class CaixaComponent implements OnInit, OnDestroy {
       });
   }
 
-  showPrintConfirmation(response: CreateOrderResponse, paymentMethod: PaymentMethod): void {
-    const isCashPayment = paymentMethod.toLowerCase() === 'dinheiro';
+  showPrintConfirmation(response: CreateOrderResponse): void {
+    const primaryPayment = this.payments[0];
     
     const dialogData = {
       orderNumber: response.order_number,
       total: response.total,
-      paymentMethod: paymentMethod,
+      paymentMethod: primaryPayment?.method ?? 'dinheiro',
       customerName: response.customer_name,
-      changeAmount: isCashPayment ? this.changeAmount : undefined,
-      receivedAmount: isCashPayment ? this.receivedAmount : undefined
+      changeAmount: this.totalChange > 0 ? this.totalChange : undefined,
+      receivedAmount: this.payments.find(p => p.method === 'dinheiro')?.received_amount
     };
 
     const dialogRef = this.dialog.open(PrintConfirmationDialogComponent, {
@@ -1116,16 +1141,14 @@ export class CaixaComponent implements OnInit, OnDestroy {
 
     dialogRef.afterClosed().subscribe((shouldPrint: boolean) => {
       if (shouldPrint) {
-        this.printReceipt(response, paymentMethod);
+        this.printReceipt(response);
       }
-      // Atualizar valor do caixa após venda
-      this.updateCashAmount(response.total, paymentMethod);
-      // Limpar carrinho após confirmação (imprimir ou não)
+      this.updateCashAmountFromPayments(response.total);
       this.clearCart();
     });
   }
 
-  printReceipt(order: CreateOrderResponse, paymentMethod?: PaymentMethod): void {
+  printReceipt(order: CreateOrderResponse): void {
     try {
       const now = new Date();
       const dateStr = now.toLocaleDateString('pt-BR');
@@ -1142,10 +1165,15 @@ export class CaixaComponent implements OnInit, OnDestroy {
         if (!method) return 'Não informado';
         const methods: { [key: string]: string } = {
           'dinheiro': 'Dinheiro',
-          'cartao': 'Cartão',
-          'pix': 'PIX',
+          'money': 'Dinheiro',
+          'cartão de débito': 'Cartão de Débito',
+          'debit_card': 'Cartão de Débito',
+          'debito': 'Cartão de Débito',
+          'cartão de crédito': 'Cartão de Crédito',
+          'credit_card': 'Cartão de Crédito',
           'credito': 'Cartão de Crédito',
-          'debito': 'Cartão de Débito'
+          'pix': 'PIX',
+          'cartao': 'Cartão'
         };
         return methods[method] || method;
       };
@@ -1266,10 +1294,12 @@ export class CaixaComponent implements OnInit, OnDestroy {
             </div>
             
             <div class="payment-info">
-              <p><strong>Forma de Pagamento:</strong> ${formatPaymentMethod(paymentMethod || order.payment_method)}</p>
-              ${(paymentMethod || order.payment_method) === 'dinheiro' && this.receivedAmount ? `
-                <p><strong>Valor recebido:</strong> R$ ${safeNumber(this.receivedAmount).toFixed(2)}</p>
-                <p><strong>TROCO:</strong> R$ ${safeNumber(this.changeAmount).toFixed(2)}</p>
+              <p><strong>Forma de Pagamento:</strong> ${this.payments.length === 1
+                ? formatPaymentMethod(this.payments[0].method)
+                : this.payments.map(p => formatPaymentMethod(p.method) + ': R$ ' + safeNumber(p.amount).toFixed(2)).join(' + ')}</p>
+              ${this.totalChange > 0 ? `
+                <p><strong>Valor recebido (dinheiro):</strong> R$ ${safeNumber(this.payments.find(p => p.method === 'dinheiro')?.received_amount || 0).toFixed(2)}</p>
+                <p><strong>TROCO:</strong> R$ ${safeNumber(this.totalChange).toFixed(2)}</p>
               ` : ''}
             </div>
             
@@ -1567,44 +1597,21 @@ export class CaixaComponent implements OnInit, OnDestroy {
     });
   }
 
-  private updateCashAmount(saleAmount: number, paymentMethod: PaymentMethod): void {
+  private updateCashAmountFromPayments(saleTotal: number): void {
     if (!this.cashStatus) return;
-
-    // Garantir números válidos para evitar NaN
-    const saleAmountNum = Number(saleAmount) || 0;
-    let cashChange = 0;
-
-    switch (paymentMethod) {
-      case 'dinheiro':
-        // Para dinheiro: usar o valor líquido da venda (total da venda)
-        // O valor líquido é o que realmente entra na gaveta física
-        // Não usar receivedAmount - changeAmount, pois isso pode estar incorreto
-        // O valor correto é simplesmente o total da venda (saleAmount)
-        cashChange = saleAmountNum;
-        break;
-      case 'cartão de débito':
-      case 'cartão de crédito':
-      case 'pix':
-        // Para cartão/PIX: NÃO deve somar na gaveta física
-        // Esses valores vão para contas bancárias, não para o caixa físico
-        // Não criar transação de entrada para esses métodos
-        return; // Sair sem criar transação
-      default:
-        // Para outros métodos, não criar transação
-        return;
-    }
-
-    // Criar transação no caixa apenas para dinheiro
+    const cashPayments = this.payments.filter(p => p.method === 'dinheiro');
+    if (cashPayments.length === 0) return;
+    const cashTotal = cashPayments.reduce((sum, p) => sum + p.amount, 0);
     this.cashService.addTransaction({
       type: 'entrada',
-      amount: cashChange,
-      description: `Venda - ${paymentMethod} - R$ ${this.formatCurrency(saleAmount)}`
+      amount: cashTotal,
+      description: this.payments.length === 1
+        ? `Venda - ${this.getPaymentMethodName('dinheiro')} - R$ ${this.formatCurrency(saleTotal)}`
+        : `Venda (Misto) - Dinheiro: R$ ${this.formatCurrency(cashTotal)} - Total: R$ ${this.formatCurrency(saleTotal)}`
     }).subscribe({
       next: () => {
-        // Recarregar status para refletir valor atualizado e evitar inconsistência do mock
         this.cashService.getStatus().subscribe(status => {
           this.cashStatus = status;
-          console.log('Valor do caixa atualizado:', this.cashStatus?.current_amount);
         });
       },
       error: (error) => {
@@ -1612,4 +1619,5 @@ export class CaixaComponent implements OnInit, OnDestroy {
       }
     });
   }
+
 }
