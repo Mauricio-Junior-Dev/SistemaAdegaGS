@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Order;
+use App\Models\OrderPayment;
 use Illuminate\Support\Facades\Log;
 
 class PrintService
@@ -21,9 +22,17 @@ class PrintService
             Log::info("Order Number: " . ($order->order_number ?? 'N/A'));
             Log::info("Created At: " . ($order->created_at ?? 'N/A'));
 
-            // Garantir que o pedido está com relações carregadas (productBundle + selections para combos)
+            // Garantir que o pedido está com relações carregadas (productBundle + selections para combos e pagamentos)
             $order->refresh();
-            $order->load(['items.product', 'items.productBundle', 'items.selections.product', 'user', 'payment', 'delivery_address']);
+            $order->load([
+                'items.product',
+                'items.productBundle',
+                'items.selections.product',
+                'user',
+                'payment',
+                'orderPayments',
+                'delivery_address',
+            ]);
 
             // Gerar HTML idêntico ao do frontend (print.service.ts)
             $html = $this->generateOrderHtml($order);
@@ -317,27 +326,48 @@ PSEDGE;
 
     private function getPaymentMethod(Order $order): string
     {
+        // 1) Nova tabela de pagamentos detalhados (order_payments) - PDV / Split Payment
+        $order->loadMissing('orderPayments');
+
+        if ($order->orderPayments && $order->orderPayments->count() > 0) {
+            $description = $order->orderPayments->map(function (OrderPayment $p) {
+                $methodName = $this->formatOrderPaymentMethod($p->payment_method);
+                $amount = number_format((float) $p->amount, 2, ',', '.');
+                $text = "{$methodName}: R$ {$amount}";
+
+                if (!is_null($p->change) && (float) $p->change > 0) {
+                    $change = number_format((float) $p->change, 2, ',', '.');
+                    $text .= " (Troco: R$ {$change})";
+                }
+
+                return $text;
+            })->implode(' + ');
+
+            return $description;
+        }
+
+        // 2) Legado / E-commerce: usar coluna antiga ou relação payments
         if (isset($order->payment_method) && !empty($order->payment_method)) {
-            return $this->formatPaymentMethod($order->payment_method);
+            return $this->formatLegacyPaymentMethod($order->payment_method);
         }
 
         if ($order->payment) {
             if ($order->payment instanceof \Illuminate\Database\Eloquent\Collection || $order->payment instanceof \Illuminate\Support\Collection) {
                 $firstPayment = $order->payment->first();
                 if ($firstPayment && isset($firstPayment->payment_method)) {
-                    return $this->formatPaymentMethod($firstPayment->payment_method);
+                    return $this->formatLegacyPaymentMethod($firstPayment->payment_method);
                 }
             } elseif (is_object($order->payment)) {
                 $method = $order->payment->payment_method ?? null;
                 if ($method) {
-                    return $this->formatPaymentMethod($method);
+                    return $this->formatLegacyPaymentMethod($method);
                 }
             } elseif (is_array($order->payment)) {
                 $firstPayment = $order->payment[0] ?? null;
                 if ($firstPayment) {
                     $method = is_object($firstPayment) ? ($firstPayment->payment_method ?? null) : ($firstPayment['payment_method'] ?? null);
                     if ($method) {
-                        return $this->formatPaymentMethod($method);
+                        return $this->formatLegacyPaymentMethod($method);
                     }
                 }
             }
@@ -346,18 +376,46 @@ PSEDGE;
         return 'Não informado';
     }
 
-    private function formatPaymentMethod(string $method): string
+    /**
+     * Formata métodos da tabela nova `order_payments` (money, pix, credit_card, debit_card)
+     * para um texto amigável na impressão.
+     */
+    private function formatOrderPaymentMethod(string $method): string
     {
+        $normalized = strtolower(trim($method));
+
+        $methods = [
+            OrderPayment::METHOD_MONEY => 'Dinheiro',
+            OrderPayment::METHOD_PIX => 'PIX',
+            OrderPayment::METHOD_CREDIT_CARD => 'Cartão de Crédito',
+            OrderPayment::METHOD_DEBIT_CARD => 'Cartão de Débito',
+        ];
+
+        return $methods[$normalized] ?? ucfirst($normalized);
+    }
+
+    /**
+     * Formata métodos legados (coluna antiga / tabela `payments`).
+     */
+    private function formatLegacyPaymentMethod(string $method): string
+    {
+        $normalized = strtolower(trim($method));
+
         $methods = [
             'dinheiro' => 'Dinheiro',
+            'money' => 'Dinheiro',
             'cartao' => 'Cartão',
+            'cartão' => 'Cartão',
             'pix' => 'PIX',
             'credito' => 'Cartão de Crédito',
+            'crédito' => 'Cartão de Crédito',
             'debito' => 'Cartão de Débito',
+            'débito' => 'Cartão de Débito',
             'cartão de débito' => 'Cartão de Débito',
             'cartão de crédito' => 'Cartão de Crédito',
         ];
-        return $methods[$method] ?? $method;
+
+        return $methods[$normalized] ?? $method;
     }
 }
 
