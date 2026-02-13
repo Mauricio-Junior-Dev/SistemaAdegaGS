@@ -115,8 +115,10 @@ export class PrintingBridgeService {
     const result = {
       id: order.id || 0,
       order_number: order.order_number || '',
-      total: String(order.total || 0),
+      total: String(order.total || order.total_amount || 0),
       status: order.status || null,
+      // Alinhar com o DTO C#: status financeiro vem separado
+      payment_status: order.payment_status || null,
       user: order.user ? {
         name: order.user.name || '',
         phone: order.user.phone || null

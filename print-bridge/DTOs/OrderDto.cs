@@ -19,14 +19,25 @@ public class OrderDto
     [JsonPropertyName("status")]
     public string? Status { get; set; }
 
+    /// <summary>
+    /// Status financeiro do pagamento (ex: "pending", "completed", "paid").
+    /// Usado para decidir se o pedido já foi pago ou se deve ser cobrado na entrega.
+    /// </summary>
+    [JsonPropertyName("payment_status")]
+    public string? PaymentStatus { get; set; }
+
     [JsonPropertyName("user")]
     public UserDto? User { get; set; }
 
     [JsonPropertyName("items")]
     public List<OrderItemDto> Items { get; set; } = new();
 
+    /// <summary>
+    /// Lista de pagamentos (Split Payment / múltiplas formas).
+    /// Mapeia o campo "payment" recebido do JSON.
+    /// </summary>
     [JsonPropertyName("payment")]
-    public List<PaymentDto>? Payment { get; set; }
+    public List<PaymentDto>? Payments { get; set; }
 
     [JsonPropertyName("payment_method")]
     public string? PaymentMethod { get; set; }
@@ -102,11 +113,19 @@ public class ComboDto
 
 public class PaymentDto
 {
+    /// <summary>
+    /// Método de pagamento raw recebido do JSON (ex: "dinheiro", "pix", "credit_card").
+    /// Continua mapeando o campo "payment_method" para compatibilidade.
+    /// </summary>
     [JsonPropertyName("payment_method")]
-    public string PaymentMethod { get; set; } = string.Empty;
+    public string Method { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Valor da parcela. Aceita tanto número quanto string no JSON.
+    /// </summary>
     [JsonPropertyName("amount")]
-    public string Amount { get; set; } = "0";
+    [JsonNumberHandling(JsonNumberHandling.AllowReadingFromString)]
+    public decimal Amount { get; set; }
 }
 
 public class DeliveryAddressDto

@@ -274,12 +274,12 @@ public class PrinterService
         // Informações de pagamento
         buffer.AddRange(PrintBold("PAGAMENTO:"));
         buffer.AddRange(PrintLine(1));
-        
+
         // Pega o método de pagamento *original* (raw) para a verificação
         string rawPaymentMethod = "desconhecido";
-        if (order.Payment != null && order.Payment.Count > 0)
+        if (order.Payments != null && order.Payments.Count > 0)
         {
-            rawPaymentMethod = order.Payment[0].PaymentMethod ?? "desconhecido";
+            rawPaymentMethod = order.Payments[0].Method ?? "desconhecido";
         }
         else if (!string.IsNullOrEmpty(order.PaymentMethod))
         {
@@ -287,31 +287,50 @@ public class PrinterService
         }
 
         string paymentMethodFormatted = GetPaymentMethod(order); // Ex: "DINHEIRO", "PIX"
-        
-        // Verificar status do pedido para determinar situação de pagamento
-        bool isCompleted = !string.IsNullOrEmpty(order.Status) && 
-                          order.Status.ToLower() == "completed";
-        bool isPending = !string.IsNullOrEmpty(order.Status) && 
-                        order.Status.ToLower() == "pending";
+
+        // Regra de negócio correta: decidir se está pago pelo PaymentStatus (e NÃO pelo Status logístico)
+        bool isPaid = !string.IsNullOrEmpty(order.PaymentStatus) &&
+                      (order.PaymentStatus.Equals("completed", StringComparison.OrdinalIgnoreCase) ||
+                       order.PaymentStatus.Equals("paid", StringComparison.OrdinalIgnoreCase));
+
+        // Status logístico ainda é usado apenas para exibição informativa e instruções de entrega
+        bool isPendingStatus = !string.IsNullOrEmpty(order.Status) &&
+                               order.Status.Equals("pending", StringComparison.OrdinalIgnoreCase);
         bool hasDelivery = order.DeliveryAddress != null && HasDeliveryAddress(order.DeliveryAddress);
 
-        // Mostrar situação de pagamento
-        if (isCompleted)
+        // --- SITUAÇÃO FINANCEIRA / CABEÇALHO E IMPRESSÃO DE SPLIT PAYMENT ---
+        if (isPaid)
         {
-            buffer.AddRange(PrintBold($"SITUAÇÃO: PAGO ({paymentMethodFormatted})"));
-        }
-        else if (isPending)
-        {
-            buffer.AddRange(PrintBold("SITUAÇÃO: A COBRAR NA ENTREGA"));
+            // Cabeçalho claro para pedidos já quitados no caixa
+            buffer.AddRange(PrintBold("*** PAGO NO CAIXA ***"));
+            buffer.AddRange(PrintLine(1));
+
+            // Se veio lista de pagamentos (Split Payment) imprimir cada um detalhado
+            if (order.Payments != null && order.Payments.Count > 0)
+            {
+                foreach (var p in order.Payments)
+                {
+                    var methodLabel = FormatPaymentMethod(p.Method ?? string.Empty);
+                    buffer.AddRange(PrintText($"{methodLabel}: R$ {p.Amount:F2}", leftAlign: true));
+                    buffer.AddRange(PrintLine(1));
+                }
+            }
+            else
+            {
+                // Legado: um único método antigo
+                buffer.AddRange(PrintText($"Forma: {paymentMethodFormatted}", leftAlign: true));
+                buffer.AddRange(PrintLine(1));
+            }
         }
         else
         {
-            buffer.AddRange(PrintText(paymentMethodFormatted));
+            // Pedido ainda não pago: deve ser cobrado na entrega
+            buffer.AddRange(PrintBold($"PAGAR NA ENTREGA: {paymentMethodFormatted}"));
+            buffer.AddRange(PrintLine(1));
         }
-        buffer.AddRange(PrintLine(1));
 
-        // Se for entrega pendente, mostrar instruções para o entregador
-        if (isPending && hasDelivery)
+        // Se for entrega AINDA NÃO PAGA, mostrar instruções para o entregador
+        if (!isPaid && hasDelivery)
         {
             buffer.AddRange(PrintLine(1));
             buffer.AddRange(PrintSeparator());
@@ -370,7 +389,7 @@ public class PrinterService
             buffer.AddRange(PrintSeparator());
             buffer.AddRange(PrintLine(1));
         }
-        else if (isCompleted && rawPaymentMethod.ToLower().Contains("dinheiro"))
+        else if (isPaid && rawPaymentMethod.ToLower().Contains("dinheiro"))
         {
             // Para vendas balcão pagas em dinheiro, mostrar valores recebidos e troco
             if (!string.IsNullOrEmpty(order.ReceivedAmount))
@@ -589,9 +608,9 @@ public class PrinterService
 
     private string GetPaymentMethod(OrderDto order)
     {
-        if (order.Payment != null && order.Payment.Count > 0)
+        if (order.Payments != null && order.Payments.Count > 0)
         {
-            return FormatPaymentMethod(order.Payment[0].PaymentMethod);
+            return FormatPaymentMethod(order.Payments[0].Method);
         }
         if (!string.IsNullOrEmpty(order.PaymentMethod))
         {
