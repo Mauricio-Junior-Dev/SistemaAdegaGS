@@ -67,17 +67,22 @@ export class PrintingBridgeService {
     if (order.payment) {
       if (Array.isArray(order.payment)) {
         payments = order.payment.map((p: any) => ({
-          payment_method: p.payment_method || order.payment_method || '',
+          payment_method: p.payment_method || p.method || order.payment_method || '',
           amount: String(p.amount || order.total || 0)
         }));
-        // Pegar received_amount e change_amount do primeiro payment
-        if (order.payment.length > 0) {
-          receivedAmount = order.payment[0].received_amount != null && order.payment[0].received_amount !== '' 
-            ? String(order.payment[0].received_amount) 
-            : null;
-          changeAmount = order.payment[0].change_amount != null && order.payment[0].change_amount !== '' 
-            ? String(order.payment[0].change_amount) 
-            : null;
+        // Pegar received_amount e change_amount: primeiro do payment dinheiro, depois do order, depois do primeiro payment
+        const dinheiroPayment = order.payment.find((p: any) => 
+          (p.payment_method || p.method || '').toLowerCase().includes('dinheiro') || 
+          (p.payment_method || p.method || '').toLowerCase() === 'money'
+        );
+        const sourceForAmounts = dinheiroPayment || order.payment[0];
+        if (sourceForAmounts) {
+          receivedAmount = sourceForAmounts.received_amount != null && sourceForAmounts.received_amount !== '' 
+            ? String(sourceForAmounts.received_amount) 
+            : (order.received_amount != null && order.received_amount !== '' ? String(order.received_amount) : null);
+          changeAmount = sourceForAmounts.change_amount != null && sourceForAmounts.change_amount !== '' 
+            ? String(sourceForAmounts.change_amount) 
+            : (order.change_amount != null && order.change_amount !== '' ? String(order.change_amount) : null);
         }
       } else {
         payments = [{

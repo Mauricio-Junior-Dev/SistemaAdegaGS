@@ -82,7 +82,7 @@ class OrderController extends Controller
                                      ->where('status', 'pending')
                                      ->whereDoesntHave('payment', function($paymentQuery) {
                                          $paymentQuery->where('payment_method', 'pix')
-                                                      ->where('status', 'pending');
+                                                      ->whereIn('status', ['pending', 'pending_pix']);
                                      });
                       });
                 });

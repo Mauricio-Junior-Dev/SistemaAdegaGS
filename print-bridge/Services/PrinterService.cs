@@ -325,8 +325,25 @@ public class PrinterService
         else
         {
             // Pedido ainda não pago: deve ser cobrado na entrega
-            buffer.AddRange(PrintBold($"PAGAR NA ENTREGA: {paymentMethodFormatted}"));
+            buffer.AddRange(PrintBold("*** PAGAR NA ENTREGA ***"));
             buffer.AddRange(PrintLine(1));
+
+            // Se veio lista de pagamentos (Split Payment) imprimir cada um detalhado
+            if (order.Payments != null && order.Payments.Count > 0)
+            {
+                foreach (var p in order.Payments)
+                {
+                    var methodLabel = FormatPaymentMethod(p.Method ?? string.Empty);
+                    buffer.AddRange(PrintText($"{methodLabel}: R$ {p.Amount:F2}", leftAlign: true));
+                    buffer.AddRange(PrintLine(1));
+                }
+            }
+            else
+            {
+                // Legado: um único método antigo
+                buffer.AddRange(PrintText($"Forma: {paymentMethodFormatted}", leftAlign: true));
+                buffer.AddRange(PrintLine(1));
+            }
         }
 
         // Se for entrega AINDA NÃO PAGA, mostrar instruções para o entregador

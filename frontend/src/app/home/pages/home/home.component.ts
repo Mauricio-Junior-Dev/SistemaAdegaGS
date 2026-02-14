@@ -288,15 +288,20 @@ export class HomeComponent implements OnInit, AfterViewInit {
 
   comboAdapter(combo: Combo): Product {
     // Mapear combo para formato de Product para usar os mesmos cards
+    // API retorna ProductBundle com base_price; Combo legado tem price
+    const price = (combo as any).base_price ?? combo.price ?? 0;
     return {
       id: combo.id,
       category_id: 0, // Combos não têm categoria
       name: combo.name,
       slug: combo.slug || '',
       description: combo.description,
-      price: combo.price,
+      price,
+      base_price: (combo as any).base_price ?? price,
+      type: 'bundle',
+      is_bundle: true,
       original_price: combo.original_price,
-      cost_price: combo.price,
+      cost_price: price,
       current_stock: 999, // Combos sempre disponíveis
       min_stock: 0,
       doses_por_garrafa: 0,

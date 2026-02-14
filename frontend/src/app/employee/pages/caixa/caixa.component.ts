@@ -23,6 +23,7 @@ import { debounceTime, distinctUntilChanged, takeUntil, map, catchError } from '
 import { CashService } from '../../services/cash.service';
 import { StockService } from '../../../core/services/stock.service';
 import { OrderService, PaymentMethod, CreateOrderRequest, CreateOrderResponse, Product, Customer, CustomerAddress } from '../../services/order.service';
+import { PrintService } from '../../../core/services/print.service';
 import { QuickCustomerDialogComponent } from './dialogs/quick-customer-dialog.component';
 import { CashStatus, CashTransaction } from '../../models/cash.model';
 import { SettingsService, SystemSettings } from '../../../admin/services/settings.service';
@@ -138,6 +139,7 @@ export class CaixaComponent implements OnInit, OnDestroy {
     private cashService: CashService,
     private stockService: StockService,
     private orderService: OrderService,
+    private printService: PrintService,
     private dialog: MatDialog,
     private toastr: ToastrService,
     private settingsService: SettingsService,
@@ -1148,11 +1150,11 @@ export class CaixaComponent implements OnInit, OnDestroy {
               .subscribe({
                 next: () => {
                   console.log('Status do pedido atualizado para concluído');
-                  this.showPrintConfirmation(response);
+                  this.showPrintConfirmation(response, paymentStatus);
                 },
                 error: (statusError) => {
                   console.error('Erro ao atualizar status do pedido:', statusError);
-                  this.showPrintConfirmation(response);
+                  this.showPrintConfirmation(response, paymentStatus);
                 }
               });
           } else {
@@ -1162,7 +1164,7 @@ export class CaixaComponent implements OnInit, OnDestroy {
               positionClass: 'toast-bottom-center',
               timeOut: 3000
             });
-            this.showPrintConfirmation(response);
+            this.showPrintConfirmation(response, paymentStatus);
           }
         },
         error: (error: Error) => {
@@ -1176,258 +1178,48 @@ export class CaixaComponent implements OnInit, OnDestroy {
       });
   }
 
-  showPrintConfirmation(response: CreateOrderResponse): void {
-    const primaryPayment = this.payments[0];
-    
-    const dialogData = {
-      orderNumber: response.order_number,
-      total: response.total,
-      paymentMethod: primaryPayment?.method ?? 'dinheiro',
-      customerName: response.customer_name,
-      changeAmount: this.totalChange > 0 ? this.totalChange : undefined,
-      receivedAmount: this.payments.find(p => p.method === 'dinheiro')?.received_amount
-    };
+  showPrintConfirmation(response: CreateOrderResponse, paymentStatus: 'pending' | 'completed'): void {
+    // Enriquecer o pedido com payment_status e payments corretos para impressão via API
+    const enrichedOrder = this.buildOrderForPrint(response, paymentStatus);
 
-    const dialogRef = this.dialog.open(PrintConfirmationDialogComponent, {
-      width: '450px',
-      data: dialogData,
-      disableClose: true
+    // Impressão automática via API (Print Bridge / Backend) - sem diálogo do navegador
+    this.printService.printOrderManual(enrichedOrder);
+
+    this.toastr.success('Venda finalizada! Imprimindo comprovante...', '', {
+      toastClass: 'modern-toast-notification',
+      positionClass: 'toast-bottom-center',
+      timeOut: 2000
     });
 
-    dialogRef.afterClosed().subscribe((shouldPrint: boolean) => {
-      if (shouldPrint) {
-        this.printReceipt(response);
-      }
-      this.updateCashAmountFromPayments(response.total);
-      this.clearCart();
-    });
+    this.updateCashAmountFromPayments(response.total);
+    this.clearCart();
   }
 
-  printReceipt(order: CreateOrderResponse): void {
-    try {
-      const now = new Date();
-      const dateStr = now.toLocaleDateString('pt-BR');
-      const timeStr = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-      
-      // Função auxiliar para garantir valores numéricos válidos
-      const safeNumber = (value: any): number => {
-        const num = parseFloat(value);
-        return isNaN(num) ? 0 : num;
-      };
-      
-      // Função auxiliar para formatar método de pagamento
-      const formatPaymentMethod = (method: any): string => {
-        if (!method) return 'Não informado';
-        const methods: { [key: string]: string } = {
-          'dinheiro': 'Dinheiro',
-          'money': 'Dinheiro',
-          'cartão de débito': 'Cartão de Débito',
-          'debit_card': 'Cartão de Débito',
-          'debito': 'Cartão de Débito',
-          'cartão de crédito': 'Cartão de Crédito',
-          'credit_card': 'Cartão de Crédito',
-          'credito': 'Cartão de Crédito',
-          'pix': 'PIX',
-          'cartao': 'Cartão'
-        };
-        return methods[method] || method;
-      };
-      
-      const printContent = `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta charset="UTF-8">
-            <title>Comprovante de Venda #${order.order_number}</title>
-            <style>
-              @media print {
-                @page {
-                  size: 80mm 297mm;
-                  margin: 0;
-                }
-              }
-              body {
-                font-family: 'Courier New', monospace;
-                width: 80mm;
-                padding: 5mm;
-                margin: 0;
-                box-sizing: border-box;
-              }
-              .header {
-                text-align: center;
-                margin-bottom: 10mm;
-              }
-              .header h1 {
-                font-size: 16pt;
-                margin: 0;
-              }
-              .header p {
-                font-size: 10pt;
-                margin: 2mm 0;
-              }
-              .order-info {
-                margin-bottom: 5mm;
-                font-size: 10pt;
-              }
-              .customer-info {
-                margin-bottom: 5mm;
-                font-size: 10pt;
-              }
-              .items {
-                border-top: 1px dashed #000;
-                border-bottom: 1px dashed #000;
-                padding: 3mm 0;
-                margin: 3mm 0;
-              }
-              .item {
-                font-size: 10pt;
-                margin: 2mm 0;
-              }
-              .item .quantity {
-                display: inline-block;
-                width: 15mm;
-              }
-              .item .name {
-                display: inline-block;
-                width: 40mm;
-              }
-              .item .price {
-                display: inline-block;
-                width: 20mm;
-                text-align: right;
-              }
-              .item.sub-line .name {
-                padding-left: 5mm;
-                font-size: 9pt;
-              }
-              .total {
-                text-align: right;
-                font-size: 12pt;
-                font-weight: bold;
-                margin: 5mm 0;
-              }
-              .payment-info {
-                font-size: 10pt;
-                margin: 2mm 0;
-              }
-              .footer {
-                text-align: center;
-                font-size: 10pt;
-                margin-top: 10mm;
-              }
-            </style>
-          </head>
-          <body>
-            <div class="header">
-              <h1>ADEGA GS</h1>
-              <p>CNPJ: XX.XXX.XXX/0001-XX</p>
-              <p>Rua Exemplo, 123 - Centro</p>
-              <p>Tel: (11) 9999-9999</p>
-            </div>
+  /**
+   * Constrói o objeto Order enriquecido para impressão via API.
+   * Garante payment_status e payments corretos (evita "Pagar na entrega: Misto" quando Pago no Caixa).
+   */
+  private buildOrderForPrint(response: CreateOrderResponse, paymentStatus: 'pending' | 'completed'): CreateOrderResponse {
+    const dinheiroPayment = this.payments.find(p => p.method === 'dinheiro');
+    const receivedAmount = dinheiroPayment?.received_amount;
+    const changeAmount = this.totalChange > 0 ? this.totalChange : undefined;
 
-            <div class="order-info">
-              <p><strong>Pedido:</strong> #${order.order_number}</p>
-              <p><strong>Data:</strong> ${dateStr} ${timeStr}</p>
-              <p><strong>Vendedor:</strong> ${order.customer_name || 'Balcão'}</p>
-            </div>
+    // Mapear payments locais para formato esperado pelo Print Bridge (não enviar 'misto')
+    const paymentArray = this.payments.map(p => ({
+      payment_method: p.method,
+      amount: p.amount,
+      received_amount: p.method === 'dinheiro' ? p.received_amount : undefined,
+      change_amount: p.method === 'dinheiro' ? p.change : undefined
+    }));
 
-            ${order.customer_name ? `
-              <div class="customer-info">
-                <p><strong>Cliente:</strong> ${order.customer_name}</p>
-                ${order.customer_phone ? `<p><strong>Telefone:</strong> ${order.customer_phone}</p>` : ''}
-              </div>
-            ` : ''}
-            
-            <div class="items">
-              ${order.items.map((item: any) => `
-                <div class="item">
-                  <span class="quantity">${item.quantity}x</span>
-                  <span class="name">${item.is_combo && item.combo ? item.combo.name : (item.product?.name || 'Produto não encontrado')}</span>
-                  <span class="price">R$ ${safeNumber(item.subtotal).toFixed(2)}</span>
-                </div>
-                ${(item.sub_lines && item.sub_lines.length) ? item.sub_lines.map((line: string) => `
-                <div class="item sub-line">
-                  <span class="quantity"></span>
-                  <span class="name">${line}</span>
-                  <span class="price"></span>
-                </div>
-                `).join('') : ''}
-              `).join('')}
-            </div>
-
-            <div class="total">
-              Total: R$ ${safeNumber(order.total).toFixed(2)}
-            </div>
-            
-            <div class="payment-info">
-              <p><strong>Forma de Pagamento:</strong> ${this.payments.length === 1
-                ? formatPaymentMethod(this.payments[0].method)
-                : this.payments.map(p => formatPaymentMethod(p.method) + ': R$ ' + safeNumber(p.amount).toFixed(2)).join(' + ')}</p>
-              ${this.totalChange > 0 ? `
-                <p><strong>Valor recebido (dinheiro):</strong> R$ ${safeNumber(this.payments.find(p => p.method === 'dinheiro')?.received_amount || 0).toFixed(2)}</p>
-                <p><strong>TROCO:</strong> R$ ${safeNumber(this.totalChange).toFixed(2)}</p>
-              ` : ''}
-            </div>
-            
-            <div class="footer">
-              <p>Agradecemos a preferência!</p>
-              <p>www.adegags.com.br</p>
-            </div>
-          </body>
-        </html>
-      `;
-
-      // Criar janela de impressão
-      const printWindow = window.open('', '_blank', 'width=600,height=800');
-      
-      if (printWindow) {
-        // Escrever conteúdo
-        printWindow.document.open();
-        printWindow.document.write(printContent);
-        printWindow.document.close();
-        
-        // Aguardar carregamento e imprimir
-        printWindow.onload = () => {
-          setTimeout(() => {
-            printWindow.print();
-            // Fechar janela após um tempo
-            setTimeout(() => {
-              printWindow.close();
-            }, 1000);
-          }, 500);
-        };
-        
-        // Fallback caso onload não funcione
-        setTimeout(() => {
-          if (!printWindow.closed) {
-            printWindow.print();
-            setTimeout(() => {
-              printWindow.close();
-            }, 1000);
-          }
-        }, 1000);
-      } else {
-        // Fallback: usar window.print() se não conseguir abrir nova janela
-        console.warn('Não foi possível abrir janela de impressão, usando fallback');
-        const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = printContent;
-        tempDiv.style.display = 'none';
-        document.body.appendChild(tempDiv);
-        
-        window.print();
-        
-        setTimeout(() => {
-          document.body.removeChild(tempDiv);
-        }, 1000);
-      }
-    } catch (error) {
-      console.error('Erro ao imprimir:', error);
-      this.toastr.error('Erro ao imprimir comprovante', '', {
-        toastClass: 'modern-toast-notification',
-        positionClass: 'toast-bottom-center',
-        timeOut: 3000
-      });
-    }
+    return {
+      ...response,
+      status: response.status || (paymentStatus === 'completed' ? 'completed' : 'pending'),
+      payment_status: paymentStatus,
+      payment: paymentArray as any,
+      received_amount: receivedAmount,
+      change_amount: changeAmount
+    };
   }
 
   formatCurrency(value: number): string {

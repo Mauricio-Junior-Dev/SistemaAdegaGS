@@ -86,6 +86,8 @@ export interface Order {
   type?: 'local' | 'online';
   payment?: Payment | Payment[]; // Pode ser um objeto ou array
   payment_method?: PaymentMethod;
+  /** Status financeiro do pagamento (completed/paid = pago no caixa; pending = pagar na entrega) */
+  payment_status?: 'pending' | 'completed' | 'paid';
   customer_name?: string;
   customer_phone?: string;
   delivery_address?: Address;
