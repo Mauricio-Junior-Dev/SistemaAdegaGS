@@ -27,13 +27,13 @@
     <mat-toolbar color="primary" class="main-toolbar">
       <span>Painel do Funcionário</span>
       <span class="toolbar-spacer"></span>
-      <button *ngIf="isAdmin" 
-              mat-raised-button 
-              color="accent" 
+      <button *ngIf="isAdmin"
+              mat-icon-button
               (click)="goToAdmin()"
-              matTooltip="Voltar ao Painel Admin">
+              matTooltip="Voltar ao Painel Administrativo"
+              class="admin-back-btn"
+              aria-label="Voltar ao Painel Administrativo">
         <mat-icon>admin_panel_settings</mat-icon>
-        Voltar ao Painel Admin
       </button>
     </mat-toolbar>
     <div class="content">

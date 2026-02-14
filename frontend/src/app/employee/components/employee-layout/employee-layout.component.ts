@@ -1,6 +1,6 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { MatSidenavModule } from '@angular/material/sidenav';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { MatListModule } from '@angular/material/list';
@@ -39,11 +39,12 @@ export class EmployeeLayoutComponent {
 
   constructor(
     private authService: AuthService,
-    private orderPollingService: OrderPollingService
+    private orderPollingService: OrderPollingService,
+    private router: Router
   ) {}
 
   goToAdmin(): void {
-    window.location.href = '/admin/dashboard';
+    this.router.navigate(['/admin/dashboard']);
   }
 
   logout(): void {

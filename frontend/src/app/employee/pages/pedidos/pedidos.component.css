@@ -193,6 +193,14 @@
   min-width: 1000px; /* Força uma largura mínima para evitar que as colunas se esmaguem */
 }
 
+/* Tabela de pedidos cancelados - destaque sutil em cinza/vermelho claro */
+.cancelled-orders-table .mat-mdc-row {
+  background-color: rgba(244, 67, 54, 0.04);
+}
+.cancelled-orders-table .mat-mdc-row:hover {
+  background-color: rgba(244, 67, 54, 0.08);
+}
+
 .customer-info {
   display: flex;
   flex-direction: column;

@@ -51,15 +51,6 @@
                        [matAutocomplete]="auto">
                 <mat-icon matSuffix>search</mat-icon>
               </mat-form-field>
-              
-              <!-- Botão Montar Copão -->
-              <button mat-raised-button 
-                      color="accent" 
-                      class="copao-button"
-                      (click)="openCopaoModal()">
-                <mat-icon>local_drink</mat-icon>
-                🥃 Montar Copão / Dose
-              </button>
             </div>
 
               <mat-autocomplete #auto="matAutocomplete" (optionSelected)="selectProduct($event.option.value)">

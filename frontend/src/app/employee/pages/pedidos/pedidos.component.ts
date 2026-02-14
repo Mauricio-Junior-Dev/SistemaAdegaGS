@@ -62,6 +62,9 @@ export class PedidosComponent implements OnInit, OnDestroy {
   pedidosConcluidos: Order[] = [];
   concluidosLoading = false;
   concluidosLoaded = false; // Flag para rastrear se já tentou carregar
+  pedidosCancelados: Order[] = [];
+  canceladosLoading = false;
+  canceladosLoaded = false;
   orders: Order[] = [];
   displayedColumns = ['id', 'created_at', 'customer', 'address', 'items', 'total', 'status', 'actions'];
   loading = true;
@@ -77,12 +80,17 @@ export class PedidosComponent implements OnInit, OnDestroy {
   searching = false;
   
   // Controle de Abas
-  currentTabIndex = 0; // 0: Novos, 1: Em Preparo, 2: Em Entrega, 3: Concluídos
+  currentTabIndex = 0; // 0: Novos, 1: Em Preparo, 2: Em Entrega, 3: Concluídos, 4: Cancelados
   
   // Paginação de Concluídos
   totalConcluidos = 0;
   pageSizeConcluidos = 10;
   pageIndexConcluidos = 0;
+  
+  // Paginação de Cancelados
+  totalCancelados = 0;
+  pageSizeCancelados = 10;
+  pageIndexCancelados = 0;
   
   // Armazenamento de dados filtrados para busca visual
   pedidosNovosFiltrados: Order[] = [];
@@ -117,6 +125,7 @@ export class PedidosComponent implements OnInit, OnDestroy {
     ).subscribe(() => {
       this.currentPage = 0;
       this.pageIndexConcluidos = 0;
+      this.pageIndexCancelados = 0;
       this.searching = true;
       // Sempre chama applySearchFilter, mesmo quando vazio (para resetar)
       this.applySearchFilter();
@@ -215,20 +224,64 @@ export class PedidosComponent implements OnInit, OnDestroy {
     this.loadConcluidos(event.pageIndex + 1, event.pageSize);
   }
 
+  loadCancelados(page: number = 1, size: number = 10): void {
+    this.canceladosLoading = true;
+
+    const params: any = {
+      status: 'cancelled',
+      per_page: size,
+      page: page
+    };
+
+    const hasSearchTerm = this.searchTerm && this.searchTerm.trim().length > 0;
+    if (hasSearchTerm) {
+      params.search = this.searchTerm.trim();
+    }
+
+    this.orderService.fetchOrders(params)
+      .pipe(
+        finalize(() => {
+          this.canceladosLoading = false;
+          this.searching = false;
+        })
+      )
+      .subscribe({
+        next: (response: OrderResponse) => {
+          this.pedidosCancelados = response.data || [];
+          this.totalCancelados = response.total || 0;
+          this.pageIndexCancelados = page - 1;
+        },
+        error: (err) => {
+          console.error('Erro ao carregar pedidos cancelados', err);
+          this.pedidosCancelados = [];
+          this.totalCancelados = 0;
+          this.snackBar.open('Não foi possível carregar os pedidos cancelados.', 'Fechar', { duration: 3000 });
+          this.searching = false;
+        }
+      });
+  }
+
+  onCanceladosPageChange(event: PageEvent): void {
+    this.pageIndexCancelados = event.pageIndex;
+    this.pageSizeCancelados = event.pageSize;
+    this.loadCancelados(event.pageIndex + 1, event.pageSize);
+  }
+
   onTabChange(event: MatTabChangeEvent): void {
-    // Aba "Concluídos" é o índice 3 (0: Novos, 1: Em Preparo, 2: Em Entrega, 3: Concluídos)
     const CONCLUIDOS_TAB_INDEX = 3;
-    
-    // Atualizar índice da aba atual (para manter contexto)
-    // IMPORTANTE: Isso NÃO afeta o OrderPollingService que continua monitorando em background
+    const CANCELADOS_TAB_INDEX = 4;
+
     this.currentTabIndex = event.index;
-    
+
     if (event.index === CONCLUIDOS_TAB_INDEX) {
-      // Lazy Loading: carregar na primeira vez que a aba é acessada
-      // OU recarregar se houver termo de busca (para aplicar o filtro)
       if (!this.concluidosLoaded || this.searchTerm) {
         this.concluidosLoaded = true;
         this.loadConcluidos(1, this.pageSizeConcluidos);
+      }
+    } else if (event.index === CANCELADOS_TAB_INDEX) {
+      if (!this.canceladosLoaded || this.searchTerm) {
+        this.canceladosLoaded = true;
+        this.loadCancelados(1, this.pageSizeCancelados);
       }
     } else {
       // Para outras abas, reaplicar filtro de busca se houver termo
@@ -299,9 +352,11 @@ export class PedidosComponent implements OnInit, OnDestroy {
       this.pedidosEmPreparoFiltrados = [...this.pedidosEmPreparo];
       this.pedidosEmEntregaFiltrados = [...this.pedidosEmEntrega];
       
-      // Se estiver na aba de Concluídos, recarregar sem parâmetro de busca
+      // Se estiver na aba de Concluídos ou Cancelados, recarregar sem parâmetro de busca
       if (this.currentTabIndex === 3) {
         this.loadConcluidos(this.pageIndexConcluidos + 1, this.pageSizeConcluidos);
+      } else if (this.currentTabIndex === 4) {
+        this.loadCancelados(this.pageIndexCancelados + 1, this.pageSizeCancelados);
       } else {
         this.searching = false;
       }
@@ -337,9 +392,11 @@ export class PedidosComponent implements OnInit, OnDestroy {
     this.pedidosEmPreparoFiltrados = this.pedidosEmPreparo.filter(matchesSearch);
     this.pedidosEmEntregaFiltrados = this.pedidosEmEntrega.filter(matchesSearch);
     
-    // Se estiver na aba de Concluídos, recarregar via HTTP
+    // Se estiver na aba de Concluídos ou Cancelados, recarregar via HTTP
     if (this.currentTabIndex === 3) {
       this.loadConcluidos(this.pageIndexConcluidos + 1, this.pageSizeConcluidos);
+    } else if (this.currentTabIndex === 4) {
+      this.loadCancelados(this.pageIndexCancelados + 1, this.pageSizeCancelados);
     } else {
       this.searching = false;
     }
@@ -358,15 +415,17 @@ export class PedidosComponent implements OnInit, OnDestroy {
     this.searchTerm = '';
     this.currentPage = 0;
     this.pageIndexConcluidos = 0;
+    this.pageIndexCancelados = 0;
     
     // Limpar filtros e restaurar listas originais
     this.pedidosNovosFiltrados = this.pedidosNovos;
     this.pedidosEmPreparoFiltrados = this.pedidosEmPreparo;
     this.pedidosEmEntregaFiltrados = this.pedidosEmEntrega;
     
-    // Se estiver na aba de Concluídos, recarregar sem busca
     if (this.currentTabIndex === 3) {
       this.loadConcluidos(1, this.pageSizeConcluidos);
+    } else if (this.currentTabIndex === 4) {
+      this.loadCancelados(1, this.pageSizeCancelados);
     }
   }
 

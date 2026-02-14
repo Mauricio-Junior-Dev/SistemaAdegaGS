@@ -616,6 +616,145 @@
                 </ng-template>
               </div>
             </mat-tab>
+
+            <!-- Aba: Cancelados -->
+            <mat-tab label="Cancelados">
+              <ng-template mat-tab-label>
+                Cancelados
+                <mat-badge *ngIf="totalCancelados > 0" 
+                          [matBadge]="totalCancelados"
+                          matBadgeColor="warn"
+                          matBadgePosition="above after"
+                          matBadgeSize="small"
+                          class="tab-badge">
+                </mat-badge>
+              </ng-template>
+              <div *ngIf="canceladosLoading" class="tab-content">
+                <p>Carregando histórico...</p>
+              </div>
+              <div *ngIf="!canceladosLoading" class="tab-content">
+                <div class="table-container">
+                  <table *ngIf="pedidosCancelados.length > 0; else noCancelados" mat-table [dataSource]="pedidosCancelados" class="orders-table cancelled-orders-table">
+                  <ng-container matColumnDef="id">
+                    <th mat-header-cell *matHeaderCellDef>Pedido</th>
+                    <td mat-cell *matCellDef="let order">#{{order.order_number || order.id}}</td>
+                  </ng-container>
+                  <ng-container matColumnDef="created_at">
+                    <th mat-header-cell *matHeaderCellDef>Data</th>
+                    <td mat-cell *matCellDef="let order">{{formatDate(order.created_at)}}</td>
+                  </ng-container>
+                  <ng-container matColumnDef="customer">
+                    <th mat-header-cell *matHeaderCellDef>Cliente</th>
+                    <td mat-cell *matCellDef="let order">
+                      <div class="customer-info">
+                        <span class="name">{{order.user?.name}}</span>
+                        <span class="email">{{order.user?.email}}</span>
+                        <span *ngIf="order.user?.phone" class="phone">{{order.user?.phone}}</span>
+                      </div>
+                    </td>
+                  </ng-container>
+                  <ng-container matColumnDef="address">
+                    <th mat-header-cell *matHeaderCellDef>Endereço</th>
+                    <td mat-cell *matCellDef="let order">
+                      <div class="address-info" *ngIf="order.delivery_address; else noAddress">
+                        <span class="address-line">
+                          {{order.delivery_address.street}}, {{order.delivery_address.number}} - {{order.delivery_address.neighborhood}}
+                        </span>
+                        <span *ngIf="order.delivery_notes" class="notes">
+                          <mat-icon>note</mat-icon>
+                          {{order.delivery_notes}}
+                        </span>
+                      </div>
+                      <ng-template #noAddress>
+                        <span class="no-address">Retirada no Balcão</span>
+                      </ng-template>
+                    </td>
+                  </ng-container>
+                  <ng-container matColumnDef="items">
+                    <th mat-header-cell *matHeaderCellDef>Itens</th>
+                    <td mat-cell *matCellDef="let order">
+                      <div class="items-preview">
+                        <span class="items-count">{{order.items?.length || 0}} {{(order.items?.length || 0) === 1 ? 'item' : 'itens'}}</span>
+                        <div class="items-summary">
+                          <ng-container *ngFor="let item of (order.items || []).slice(0, 2)">
+                            <div class="item-detail">
+                              <span class="item-quantity">{{item.quantity}}x</span>
+                              <span class="item-name">
+                                <ng-container *ngIf="item.is_combo && item.combo; else productName">
+                                  {{item.combo.name}}
+                                </ng-container>
+                                <ng-template #productName>
+                                  {{item.product?.name || 'Produto não encontrado'}}
+                                </ng-template>
+                              </span>
+                              <span class="item-price">{{formatCurrency(item.price || item.unit_price)}}</span>
+                            </div>
+                          </ng-container>
+                          <small *ngIf="(order.items || []).length > 2" class="more-items">+{{(order.items || []).length - 2}} mais...</small>
+                        </div>
+                      </div>
+                    </td>
+                  </ng-container>
+                  <ng-container matColumnDef="total">
+                    <th mat-header-cell *matHeaderCellDef>Total</th>
+                    <td mat-cell *matCellDef="let order">{{formatCurrency(order.total)}}</td>
+                  </ng-container>
+                  <ng-container matColumnDef="status">
+                    <th mat-header-cell *matHeaderCellDef>Status</th>
+                    <td mat-cell *matCellDef="let order">
+                      <mat-chip [style.background-color]="getStatusColor(order)"
+                               [style.color]="'white'">
+                        {{getStatusLabel(order)}}
+                      </mat-chip>
+                    </td>
+                  </ng-container>
+                  <ng-container matColumnDef="actions" stickyEnd>
+                    <th mat-header-cell *matHeaderCellDef>Ações</th>
+                    <td mat-cell *matCellDef="let order">
+                      <div class="actions-container">
+                        <button mat-icon-button 
+                                color="primary" 
+                                (click)="showDetails(order)"
+                                matTooltip="Ver Detalhes">
+                          <mat-icon>visibility</mat-icon>
+                        </button>
+                        <button mat-icon-button 
+                                color="accent" 
+                                (click)="openManualStatusModal(order)"
+                                matTooltip="Editar Status">
+                          <mat-icon>update</mat-icon>
+                        </button>
+                        <button mat-icon-button 
+                                color="basic" 
+                                (click)="printOrder(order)"
+                                matTooltip="Imprimir Pedido">
+                          <mat-icon>print</mat-icon>
+                        </button>
+                      </div>
+                    </td>
+                  </ng-container>
+                  <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+                  <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+                  </table>
+                </div>
+                <mat-paginator 
+                  *ngIf="!canceladosLoading && totalCancelados > 0"
+                  [length]="totalCancelados"
+                  [pageSize]="pageSizeCancelados"
+                  [pageIndex]="pageIndexCancelados"
+                  [pageSizeOptions]="[5, 10, 25, 50]"
+                  (page)="onCanceladosPageChange($event)"
+                  aria-label="Selecione a página de pedidos cancelados"
+                  showFirstLastButtons>
+                </mat-paginator>
+                <ng-template #noCancelados>
+                  <div class="empty-state">
+                    <mat-icon>cancel</mat-icon>
+                    <p>Nenhum pedido cancelado encontrado.</p>
+                  </div>
+                </ng-template>
+              </div>
+            </mat-tab>
           </mat-tab-group>
         </mat-card-content>
       </mat-card>
