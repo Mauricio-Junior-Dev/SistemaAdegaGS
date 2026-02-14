@@ -59,127 +59,130 @@
       </mat-card-content>
     </mat-card>
 
-    <!-- Grupos de Escolha -->
-    <mat-card class="form-section">
+    <!-- Grupos de Escolha (Accordion estilo iFood/Shopify) -->
+    <mat-card class="form-section groups-section-card">
       <mat-card-header>
         <mat-card-title>Grupos de Escolha</mat-card-title>
-        <mat-card-subtitle>Configure os grupos de escolha e suas opções de produtos</mat-card-subtitle>
+        <mat-card-subtitle>Configure os grupos e os produtos de cada um</mat-card-subtitle>
       </mat-card-header>
       <mat-card-content>
-        <!-- Lista de Grupos -->
         <div formArrayName="groups">
-          <div *ngFor="let group of groupsFormArray.controls; let groupIndex = index" [formGroupName]="groupIndex" class="group-card">
-            <mat-card class="group-item">
-              <mat-card-header>
-                <mat-card-title>
+          <mat-accordion class="groups-accordion" multi>
+            <mat-expansion-panel *ngFor="let group of groupsFormArray.controls; let groupIndex = index" 
+                                [formGroupName]="groupIndex" 
+                                class="group-panel"
+                                [class.group-required]="group.get('min_selections')?.value > 0">
+              <mat-expansion-panel-header class="group-panel-header">
+                <mat-panel-title class="group-panel-title">
+                  <span class="group-name-display">{{ group.get('name')?.value || 'Seleção ' + (groupIndex + 1) }}</span>
+                  <span class="group-badge obrigatorio" *ngIf="group.get('min_selections')?.value > 0">Obrigatório</span>
+                </mat-panel-title>
+                <mat-panel-description class="group-panel-description">
+                  <button type="button" mat-icon-button color="warn" 
+                          (click)="removeGroup(groupIndex); $event.stopPropagation()" 
+                          matTooltip="Remover grupo"
+                          class="group-delete-btn">
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                </mat-panel-description>
+              </mat-expansion-panel-header>
+
+              <div class="group-panel-body">
+                <div class="group-fields">
                   <mat-form-field appearance="outline" class="group-name-field">
-                    <mat-label>Nome do Grupo</mat-label>
+                    <mat-label>Nome do grupo</mat-label>
                     <input matInput formControlName="name" placeholder="Ex: Escolha seu Gin">
-                    <mat-error *ngIf="group.get('name')?.hasError('required')">
-                      Nome do grupo é obrigatório
-                    </mat-error>
+                    <mat-error *ngIf="group.get('name')?.hasError('required')">Nome é obrigatório</mat-error>
                   </mat-form-field>
-                </mat-card-title>
-                <button type="button" mat-icon-button color="warn" (click)="removeGroup(groupIndex)" matTooltip="Remover grupo">
-                  <mat-icon>delete</mat-icon>
-                </button>
-              </mat-card-header>
-              <mat-card-content>
-                <div class="form-row">
-                  <mat-form-field appearance="outline">
-                    <mat-label>Descrição</mat-label>
-                    <textarea matInput formControlName="description" rows="2" placeholder="Descrição do grupo (opcional)"></textarea>
+                  <mat-form-field appearance="outline" class="group-desc-field">
+                    <mat-label>Descrição (opcional)</mat-label>
+                    <textarea matInput formControlName="description" rows="2" placeholder="Ex: Escolha uma opção"></textarea>
                   </mat-form-field>
                 </div>
 
-                <div class="form-row">
-                  <mat-checkbox formControlName="is_required">Obrigatório</mat-checkbox>
-                  
-                  <mat-form-field appearance="outline">
-                    <mat-label>Tipo de Seleção</mat-label>
+                <div class="group-minmax-row">
+                  <mat-form-field appearance="outline" class="minmax-field">
+                    <mat-label>Mínimo de escolhas</mat-label>
+                    <input matInput type="number" formControlName="min_selections" min="0">
+                  </mat-form-field>
+                  <mat-form-field appearance="outline" class="minmax-field">
+                    <mat-label>Máximo de escolhas</mat-label>
+                    <input matInput type="number" formControlName="max_selections" min="1">
+                  </mat-form-field>
+                  <mat-form-field appearance="outline" class="selection-type-field">
+                    <mat-label>Tipo</mat-label>
                     <mat-select formControlName="selection_type">
                       <mat-option value="single">Única</mat-option>
                       <mat-option value="multiple">Múltipla</mat-option>
                     </mat-select>
                   </mat-form-field>
-
-                  <mat-form-field appearance="outline">
-                    <mat-label>Mínimo</mat-label>
-                    <input matInput type="number" formControlName="min_selections" min="0">
-                  </mat-form-field>
-
-                  <mat-form-field appearance="outline">
-                    <mat-label>Máximo</mat-label>
-                    <input matInput type="number" formControlName="max_selections" min="1">
-                  </mat-form-field>
+                  <div class="group-required-toggle">
+                    <mat-checkbox formControlName="is_required">Obrigatório</mat-checkbox>
+                  </div>
                 </div>
 
-                <!-- Opções do Grupo -->
                 <div class="options-section">
-                  <h4>Opções de Produtos</h4>
-                  <div formArrayName="options">
+                  <div class="options-label">Produtos do grupo</div>
+                  <div formArrayName="options" class="options-list">
                     <div *ngFor="let option of getGroupOptionsFormArray(groupIndex).controls; let optionIndex = index" 
-                         [formGroupName]="optionIndex" class="option-item">
-                      <mat-form-field appearance="outline" class="product-search-field">
-                        <mat-label>Produto</mat-label>
-                        <input matInput 
-                               [formControl]="getProductSearchControl(groupIndex)"
-                               [matAutocomplete]="autoOption"
-                               placeholder="Buscar produto...">
-                        <mat-icon matSuffix>search</mat-icon>
-                        <mat-autocomplete #autoOption="matAutocomplete" 
-                                         [displayWith]="displayProductName"
-                                         (optionSelected)="getGroupOptionsFormArray(groupIndex).at(optionIndex).patchValue({product_id: $event.option.value.id})">
-                          <mat-option *ngFor="let product of getFilteredProducts$(groupIndex) | async" [value]="product">
-                            {{ product.name }} - {{ formatPrice(product.price) }}
-                          </mat-option>
-                        </mat-autocomplete>
-                      </mat-form-field>
-
-                      <mat-form-field appearance="outline">
-                        <mat-label>Quantidade</mat-label>
-                        <input matInput type="number" formControlName="quantity" min="1">
-                      </mat-form-field>
-
-                      <mat-form-field appearance="outline">
-                        <mat-label>Tipo de Venda</mat-label>
-                        <mat-select formControlName="sale_type">
-                          <mat-option value="garrafa">Garrafa</mat-option>
-                          <mat-option value="dose">Dose</mat-option>
-                        </mat-select>
-                      </mat-form-field>
-
-                      <mat-form-field appearance="outline">
-                        <mat-label>Ajuste de Preço</mat-label>
-                        <input matInput type="number" formControlName="price_adjustment" step="0.01" min="0">
-                        <span matPrefix>R$&nbsp;</span>
-                      </mat-form-field>
-
-                      <button type="button" mat-icon-button color="warn" 
-                              (click)="removeOptionFromGroup(groupIndex, optionIndex)" 
-                              matTooltip="Remover opção">
-                        <mat-icon>delete</mat-icon>
-                      </button>
+                         [formGroupName]="optionIndex" class="option-row">
+                      <div class="option-main">
+                        <mat-form-field appearance="outline" class="option-product-field">
+                          <mat-label>Produto</mat-label>
+                          <input matInput 
+                                 [formControl]="getOptionProductControl(groupIndex, optionIndex)"
+                                 [matAutocomplete]="autoOption"
+                                 placeholder="Buscar produto...">
+                          <mat-icon matSuffix>search</mat-icon>
+                          <mat-autocomplete #autoOption="matAutocomplete" 
+                                            [displayWith]="displayProductName"
+                                            (optionSelected)="getGroupOptionsFormArray(groupIndex).at(optionIndex).patchValue({ product_id: $event.option.value.id, product: $event.option.value })">
+                            <mat-option *ngFor="let product of getFilteredProducts$(groupIndex, optionIndex) | async" [value]="product">
+                              {{ product.name }} - {{ formatPrice(product.price) }}
+                            </mat-option>
+                          </mat-autocomplete>
+                        </mat-form-field>
+                        <mat-form-field appearance="outline" class="option-qty-field">
+                          <mat-label>Qtd</mat-label>
+                          <input matInput type="number" formControlName="quantity" min="1">
+                        </mat-form-field>
+                        <button type="button" mat-icon-button color="warn" 
+                                (click)="removeOptionFromGroup(groupIndex, optionIndex)" 
+                                matTooltip="Remover produto"
+                                class="option-delete-btn">
+                          <mat-icon>delete</mat-icon>
+                        </button>
+                      </div>
+                      <div class="option-extra">
+                        <mat-form-field appearance="outline" class="option-sale-type-field">
+                          <mat-label>Venda</mat-label>
+                          <mat-select formControlName="sale_type">
+                            <mat-option value="garrafa">Garrafa</mat-option>
+                            <mat-option value="dose">Dose</mat-option>
+                          </mat-select>
+                        </mat-form-field>
+                        <mat-form-field appearance="outline" class="option-adjust-field">
+                          <mat-label>Ajuste (R$)</mat-label>
+                          <input matInput type="number" formControlName="price_adjustment" step="0.01" min="0">
+                        </mat-form-field>
+                      </div>
                     </div>
                   </div>
-
-                  <button type="button" mat-button color="primary" (click)="addOptionToGroup(groupIndex)">
+                  <button type="button" mat-stroked-button (click)="addOptionToGroup(groupIndex)" class="add-option-btn">
                     <mat-icon>add</mat-icon>
-                    Adicionar Opção
+                    Adicionar produto
                   </button>
                 </div>
-              </mat-card-content>
-            </mat-card>
-          </div>
+              </div>
+            </mat-expansion-panel>
+          </mat-accordion>
         </div>
 
-        <!-- Botão para adicionar novo grupo -->
         <button type="button" mat-raised-button color="primary" (click)="addGroup()" class="add-group-button">
           <mat-icon>add</mat-icon>
           Adicionar Grupo
         </button>
 
-        <!-- Mensagem quando não há grupos -->
         <div class="no-groups-message" *ngIf="groupsFormArray.length === 0">
           <mat-icon>info</mat-icon>
           <p>Nenhum grupo adicionado. Clique em "Adicionar Grupo" para começar.</p>

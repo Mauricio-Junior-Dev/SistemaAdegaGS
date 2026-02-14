@@ -999,6 +999,21 @@ h1 {
   font-style: italic;
 }
 
+.product-details.combo-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.combo-hint mat-icon {
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  color: #673ab7;
+}
+
 .sale-type-selection {
   margin: 12px 0;
 }

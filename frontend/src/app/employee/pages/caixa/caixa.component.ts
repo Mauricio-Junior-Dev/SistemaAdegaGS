@@ -32,6 +32,7 @@ import { PrintConfirmationDialogComponent } from './dialogs/print-confirmation-d
 import { CloseCashDialogComponent } from './dialogs/close-cash-dialog.component';
 import { CopaoModalComponent, CopaoResult } from './dialogs/copao-modal.component';
 import { SaleTypeDialogComponent, SaleTypeResult } from './dialogs/sale-type-dialog.component';
+import { ComboSelectionDialogComponent, ComboSelectionResult } from './dialogs/combo-selection-dialog.component';
 import { DeliveryZoneService } from '../../../services/delivery-zone.service';
 import { AddressService, Address, CreateAddressRequest } from '../../../core/services/address.service';
 import { HttpClient } from '@angular/common/http';
@@ -39,8 +40,10 @@ import { environment } from '../../../../environments/environment';
 
 interface CartItem {
   product?: Product;
-  combo?: any; // Combo interface
+  combo?: any; // ProductBundle para combos
   is_combo?: boolean;
+  /** Seleções do combo (grupo id -> opções) para envio no pedido e impressão */
+  bundleSelections?: { [groupId: number]: Array<{ id: number; group_id: number; product_id: number; quantity: number; sale_type: 'dose' | 'garrafa'; price_adjustment?: number }> };
   quantity: number;
   sale_type: 'dose' | 'garrafa';
   subtotal: number;
@@ -635,6 +638,12 @@ export class CaixaComponent implements OnInit, OnDestroy {
   addToCart(): void {
     if (!this.selectedProduct || this.quantity < 1) return;
 
+    // Combo/Bundle: abrir modal de seleção de sub-itens em vez de adicionar direto
+    if ((this.selectedProduct as any).is_bundle || (this.selectedProduct as any).type === 'bundle') {
+      this.openComboSelectionModal(this.selectedProduct);
+      return;
+    }
+
     // Se o produto tem delivery_price, mostrar diálogo de escolha
     if (this.selectedProduct.delivery_price && this.selectedProduct.delivery_price > 0) {
       const dialogRef = this.dialog.open(SaleTypeDialogComponent, {
@@ -652,6 +661,43 @@ export class CaixaComponent implements OnInit, OnDestroy {
 
     // Se não tem delivery_price, adicionar direto com o preço normal
     this.addToCartWithPrice(this.selectedProduct.price);
+  }
+
+  /**
+   * Abre o modal de seleção de itens do combo e, ao confirmar, adiciona o combo ao carrinho do PDV.
+   */
+  openComboSelectionModal(product: Product): void {
+    const bundleId = product.id; // Na busca do PDV, itens bundle têm id = product_bundles.id
+    const dialogRef = this.dialog.open(ComboSelectionDialogComponent, {
+      width: '520px',
+      maxWidth: '95vw',
+      maxHeight: '90vh',
+      data: { bundleId }
+    });
+
+    dialogRef.afterClosed().subscribe((result: ComboSelectionResult | null) => {
+      if (!result) return;
+      const { bundle, quantity, selections, totalPrice } = result;
+      const unitPrice = totalPrice / quantity;
+      this.cartItems.push({
+        combo: bundle,
+        is_combo: true,
+        quantity,
+        sale_type: 'garrafa',
+        subtotal: totalPrice,
+        bundleSelections: selections as CartItem['bundleSelections']
+      });
+      this.updateTotal();
+      this.selectedProduct = null;
+      this.quantity = 1;
+      this.searchTerm = '';
+      this.searchResults = [];
+      this.toastr.success(`${bundle.name} adicionado ao carrinho`, '', {
+        toastClass: 'modern-toast-notification',
+        positionClass: 'toast-bottom-center',
+        timeOut: 2000
+      });
+    });
   }
 
   private addToCartWithPrice(priceToUse: number): void {
@@ -1049,9 +1095,18 @@ export class CaixaComponent implements OnInit, OnDestroy {
     const order: CreateOrderRequest = {
       items: this.cartItems.map(item => {
         const unitPrice = this.getItemUnitPrice(item);
+        if (item.is_combo && item.combo && item.bundleSelections) {
+          const selections = this.buildBundleSelectionsForOrder(item.bundleSelections, item.quantity);
+          return {
+            product_bundle_id: item.combo.id,
+            quantity: item.quantity,
+            sale_type: item.sale_type,
+            price: unitPrice,
+            selections
+          };
+        }
         return {
           product_id: item.product?.id,
-          combo_id: item.combo?.id,
           quantity: item.quantity,
           sale_type: item.sale_type,
           price: unitPrice
@@ -1241,6 +1296,10 @@ export class CaixaComponent implements OnInit, OnDestroy {
                 width: 20mm;
                 text-align: right;
               }
+              .item.sub-line .name {
+                padding-left: 5mm;
+                font-size: 9pt;
+              }
               .total {
                 text-align: right;
                 font-size: 12pt;
@@ -1280,12 +1339,19 @@ export class CaixaComponent implements OnInit, OnDestroy {
             ` : ''}
             
             <div class="items">
-              ${order.items.map(item => `
+              ${order.items.map((item: any) => `
                 <div class="item">
                   <span class="quantity">${item.quantity}x</span>
                   <span class="name">${item.is_combo && item.combo ? item.combo.name : (item.product?.name || 'Produto não encontrado')}</span>
                   <span class="price">R$ ${safeNumber(item.subtotal).toFixed(2)}</span>
                 </div>
+                ${(item.sub_lines && item.sub_lines.length) ? item.sub_lines.map((line: string) => `
+                <div class="item sub-line">
+                  <span class="quantity"></span>
+                  <span class="name">${line}</span>
+                  <span class="price"></span>
+                </div>
+                `).join('') : ''}
               `).join('')}
             </div>
 
@@ -1375,11 +1441,12 @@ export class CaixaComponent implements OnInit, OnDestroy {
     return Math.ceil(value);
   }
 
-  getProductPrice(product: Product, saleType: 'dose' | 'garrafa'): number {
+  getProductPrice(product: Product | null | undefined, saleType: 'dose' | 'garrafa'): number {
+    if (!product) return 0;
     if (saleType === 'dose' && product.can_sell_by_dose && product.dose_price) {
       return product.dose_price;
     }
-    return product.price; // Preço da garrafa
+    return (product as any).base_price ?? product.price ?? 0;
   }
 
   /**
@@ -1402,6 +1469,40 @@ export class CaixaComponent implements OnInit, OnDestroy {
     }
     
     return 0;
+  }
+
+  /**
+   * Converte as seleções do combo (por grupo) no formato esperado pelo backend para criação do pedido.
+   * Agrega por (group_id, product_id, sale_type) e soma quantidades (quantity por unidade do bundle).
+   */
+  private buildBundleSelectionsForOrder(
+    bundleSelections: CartItem['bundleSelections'],
+    _itemQuantity: number
+  ): Array<{ bundle_group_id: number; product_id: number; quantity: number; sale_type: 'dose' | 'garrafa'; price?: number }> {
+    if (!bundleSelections) return [];
+    const key = (g: number, p: number, s: string) => `${g}-${p}-${s}`;
+    const agg = new Map<string, { bundle_group_id: number; product_id: number; quantity: number; sale_type: 'dose' | 'garrafa'; price?: number }>();
+    Object.entries(bundleSelections).forEach(([groupId, options]) => {
+      const gid = +groupId;
+      (options || []).forEach((opt: any) => {
+        const qty = opt.quantity ?? 1;
+        const st = (opt.sale_type || 'garrafa') as 'dose' | 'garrafa';
+        const k = key(gid, opt.product_id, st);
+        const existing = agg.get(k);
+        if (existing) {
+          existing.quantity += qty;
+        } else {
+          agg.set(k, {
+            bundle_group_id: gid,
+            product_id: opt.product_id,
+            quantity: qty,
+            sale_type: st,
+            price: opt.price_adjustment ?? 0
+          });
+        }
+      });
+    });
+    return Array.from(agg.values());
   }
 
   /**

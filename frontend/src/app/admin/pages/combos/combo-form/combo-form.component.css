@@ -231,6 +231,35 @@
     flex-direction: column;
     gap: 8px;
   }
+
+  .group-panel-body {
+    padding: 16px;
+  }
+
+  .group-minmax-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .group-minmax-row .minmax-field,
+  .group-minmax-row .selection-type-field {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .option-main {
+    flex-direction: column;
+  }
+
+  .option-product-field {
+    min-width: 0;
+  }
+
+  .option-qty-field {
+    flex: 0 0 auto;
+    width: 100%;
+    max-width: 100px;
+  }
   
   .products-table {
     font-size: 12px;
@@ -320,6 +349,250 @@ mat-card-title {
 mat-card-subtitle {
   color: #666;
   font-size: 0.875rem;
+}
+
+/* ========== Grupos de Escolha (UI moderna tipo iFood/Shopify) ========== */
+.groups-section-card .mat-mdc-card-content {
+  padding: 24px;
+}
+
+.groups-accordion {
+  display: block;
+  margin-bottom: 24px;
+}
+
+.groups-accordion .mat-expansion-panel {
+  border-radius: 12px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  margin-bottom: 16px;
+  border: 1px solid #e5e7eb;
+}
+
+.groups-accordion .mat-expansion-panel:last-child {
+  margin-bottom: 0;
+}
+
+.group-panel-header {
+  padding: 16px 20px;
+  align-items: center;
+}
+
+.group-panel-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.group-name-display {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #111827;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.group-badge.obrigatorio {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: #d1fae5;
+  color: #065f46;
+  flex-shrink: 0;
+}
+
+.group-panel-description {
+  flex: 0 0 auto;
+  margin-left: 8px;
+}
+
+.group-delete-btn {
+  margin-right: -8px;
+}
+
+.group-delete-btn mat-icon {
+  font-size: 22px;
+  width: 22px;
+  height: 22px;
+}
+
+.group-panel-body {
+  padding: 24px;
+  background: #fff;
+  border-top: 1px solid #f3f4f6;
+}
+
+.group-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.group-name-field,
+.group-desc-field {
+  max-width: 100%;
+}
+
+.group-minmax-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.group-minmax-row .minmax-field {
+  width: 120px;
+  min-width: 100px;
+}
+
+.group-minmax-row .selection-type-field {
+  width: 140px;
+  min-width: 120px;
+}
+
+.group-required-toggle {
+  margin-left: 8px;
+}
+
+.group-required-toggle .mat-mdc-checkbox {
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+/* Área de produtos do grupo (fundo cinza suave) */
+.options-section {
+  background: #f9fafb;
+  border-radius: 10px;
+  padding: 20px;
+  margin-top: 8px;
+}
+
+.options-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #6b7280;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.options-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.option-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.option-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.option-product-field {
+  flex: 1 1 70%;
+  min-width: 200px;
+}
+
+.option-qty-field {
+  flex: 0 0 80px;
+  width: 80px;
+}
+
+.option-qty-field .mat-mdc-form-field-subscript-wrapper {
+  display: none;
+}
+
+.option-delete-btn {
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+
+.option-delete-btn mat-icon {
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+}
+
+.option-extra {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-left: 0;
+  flex-wrap: wrap;
+}
+
+.option-sale-type-field {
+  width: 130px;
+  min-width: 100px;
+}
+
+.option-sale-type-field .mat-mdc-form-field-subscript-wrapper,
+.option-adjust-field .mat-mdc-form-field-subscript-wrapper {
+  display: none;
+}
+
+.option-adjust-field {
+  width: 110px;
+  min-width: 90px;
+}
+
+.add-option-btn {
+  font-size: 0.875rem;
+  color: #6b7280;
+  border-style: dashed;
+  border-color: #d1d5db;
+}
+
+.add-option-btn:hover {
+  border-color: #9ca3af;
+  color: #374151;
+}
+
+.add-group-button {
+  margin-top: 8px;
+}
+
+.no-groups-message {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 24px;
+  background: #f9fafb;
+  border-radius: 10px;
+  color: #6b7280;
+  margin-top: 16px;
+  border: 1px dashed #e5e7eb;
+}
+
+.no-groups-message mat-icon {
+  color: #9ca3af;
+  font-size: 24px;
+  width: 24px;
+  height: 24px;
+}
+
+.no-groups-message p {
+  margin: 0;
+  font-size: 0.9375rem;
 }
 
 /* Estilos para loading */

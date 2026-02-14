@@ -16,8 +16,14 @@ class ProductController extends Controller
     {
         $search = $request->input('busca') ?? $request->input('search');
 
-        $query = Product::with(['category'])
-            ->where('is_active', true);
+        // Carregar categoria mesmo que esteja inativa (PDV precisa ver todos os produtos)
+        // Usar with sem constraints para garantir que a categoria seja sempre carregada
+        $query = Product::with(['category' => function ($q) {
+            // Sem filtros: carrega categoria mesmo se inativa (PDV precisa ver tudo)
+        }])
+            ->where('is_active', true)
+            // Excluir packs (produtos com parent_product_id) - não devem aparecer em seleções
+            ->whereNull('parent_product_id');
 
         $query->when($search, function ($q) use ($search) {
             $q->where(function($sub) use ($search) {

@@ -211,6 +211,9 @@ export class ProductListPageComponent implements OnInit, OnDestroy {
       groups = groups.filter(g => g.category.id === this.selectedCategory);
     }
 
+    // Não exibir categorias vazias: manter apenas grupos com pelo menos 1 produto após o filtro
+    groups = groups.filter(g => g.products && g.products.length > 0);
+
     this.productsByCategory = groups.sort((a, b) =>
       a.category.name.localeCompare(b.category.name)
     );

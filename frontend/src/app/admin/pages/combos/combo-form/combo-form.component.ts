@@ -14,6 +14,7 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
+import { MatExpansionModule } from '@angular/material/expansion';
 import { Router, ActivatedRoute } from '@angular/router';
 import { Subject, Observable, of } from 'rxjs';
 import { startWith, map, debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
@@ -47,7 +48,8 @@ import { AuthService } from '../../../../core/services/auth.service';
     MatChipsModule,
     MatTooltipModule,
     MatDialogModule,
-    MatAutocompleteModule
+    MatAutocompleteModule,
+    MatExpansionModule
   ],
   templateUrl: './combo-form.component.html',
   styleUrls: ['./combo-form.component.css']
@@ -63,9 +65,8 @@ export class ComboFormComponent implements OnInit, OnDestroy {
   existingImages: string[] = [];
   imagePreviewUrls: string[] = []; // URLs de preview para evitar NG0100
 
-  // Sistema de busca de produtos para opções
-  productSearchControls: Map<number, FormControl> = new Map(); // groupIndex -> FormControl
-  filteredProducts$: Map<number, Observable<Product[]>> = new Map(); // groupIndex -> Observable
+  // Sistema de busca de produtos por opção (cada opção tem seu próprio controle e observable)
+  filteredProducts$: Map<string, Observable<Product[]>> = new Map(); // key: 'groupIndex_optionIndex'
 
   private comboService = inject(ComboService);
   private router = inject(Router);
@@ -173,11 +174,13 @@ export class ComboFormComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Cria um FormGroup para uma nova opção
+   * Cria um FormGroup para uma nova opção.
+   * O controle 'product' guarda o objeto Product para exibir no autocomplete (nome); product_id é enviado ao backend.
    */
   createOptionFormGroup(): FormGroup {
     return this.fb.group({
       product_id: [null, [Validators.required]],
+      product: [null as Product | null], // objeto completo para o autocomplete exibir o nome ao carregar
       quantity: [1, [Validators.required, Validators.min(1)]],
       sale_type: ['garrafa', [Validators.required]],
       price_adjustment: [0, [Validators.min(0)]],
@@ -195,7 +198,6 @@ export class ComboFormComponent implements OnInit, OnDestroy {
     this.groupsFormArray.push(groupForm);
     
     const groupIndex = this.groupsFormArray.length - 1;
-    this.setupProductAutocompleteForGroup(groupIndex);
     
     // Atualizar o order do novo grupo para o índice correto (sem emitir eventos)
     groupForm.patchValue({ order: groupIndex }, { emitEvent: false, onlySelf: true });
@@ -209,8 +211,9 @@ export class ComboFormComponent implements OnInit, OnDestroy {
    */
   removeGroup(groupIndex: number): void {
     this.groupsFormArray.removeAt(groupIndex);
-    this.productSearchControls.delete(groupIndex);
-    this.filteredProducts$.delete(groupIndex);
+    for (const key of Array.from(this.filteredProducts$.keys())) {
+      if (key.startsWith(`${groupIndex}_`)) this.filteredProducts$.delete(key);
+    }
   }
 
   /**
@@ -222,11 +225,13 @@ export class ComboFormComponent implements OnInit, OnDestroy {
     
     if (product) {
       optionForm.patchValue({
-        product_id: product.id
+        product_id: product.id,
+        product
       });
     }
     
     optionsFormArray.push(optionForm);
+    this.setupFilteredProductsForOption(groupIndex, optionsFormArray.length - 1);
   }
 
   /**
@@ -238,52 +243,51 @@ export class ComboFormComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Configura o autocomplete de produtos para um grupo específico
+   * Configura o observable de produtos filtrados para uma opção (autocomplete por opção).
+   * Permite exibir o nome do produto ao carregar o bundle para edição.
    */
-  setupProductAutocompleteForGroup(groupIndex: number): void {
-    const searchControl = new FormControl('');
-    this.productSearchControls.set(groupIndex, searchControl);
-    
-    const filtered$ = searchControl.valueChanges.pipe(
-      startWith(''),
-      debounceTime(300),
+  setupFilteredProductsForOption(groupIndex: number, optionIndex: number): void {
+    const key = `${groupIndex}_${optionIndex}`;
+    if (this.filteredProducts$.has(key)) return;
+    const optionForm = this.getGroupOptionsFormArray(groupIndex).at(optionIndex);
+    const productControl = optionForm.get('product');
+    if (!productControl) return;
+    const filtered$ = productControl.valueChanges.pipe(
+      startWith(productControl.value),
+      debounceTime(200),
       distinctUntilChanged(),
       map(value => {
-        const searchTerm = typeof value === 'string' ? value : '';
-        if (!this.products || this.products.length === 0) {
-          return [];
-        }
-        if (!searchTerm.trim()) {
-          return this.products;
-        }
-        const term = searchTerm.toLowerCase();
-        return this.products.filter(product => 
-          product.name.toLowerCase().includes(term)
-        );
+        if (!this.products?.length) return [];
+        const searchTerm = typeof value === 'string'
+          ? value
+          : (value && typeof value === 'object' && value !== null && 'name' in value
+            ? (value as Product).name
+            : '');
+        if (!searchTerm.trim()) return this.products;
+        const term = String(searchTerm).toLowerCase();
+        return this.products.filter(p => p.name.toLowerCase().includes(term));
       })
     );
-    
-    this.filteredProducts$.set(groupIndex, filtered$);
+    this.filteredProducts$.set(key, filtered$);
   }
 
   /**
-   * Obtém o FormControl de busca para um grupo
+   * Retorna o FormControl 'product' da opção para uso com [formControl] no template.
+   * O controle sempre existe (criado em createOptionFormGroup).
    */
-  getProductSearchControl(groupIndex: number): FormControl {
-    if (!this.productSearchControls.has(groupIndex)) {
-      this.setupProductAutocompleteForGroup(groupIndex);
-    }
-    return this.productSearchControls.get(groupIndex)!;
+  getOptionProductControl(groupIndex: number, optionIndex: number): FormControl {
+    return this.getGroupOptionsFormArray(groupIndex).at(optionIndex).get('product') as FormControl;
   }
 
   /**
-   * Obtém o Observable filtrado para um grupo
+   * Obtém o Observable filtrado para a opção (autocomplete).
    */
-  getFilteredProducts$(groupIndex: number): Observable<Product[]> {
-    if (!this.filteredProducts$.has(groupIndex)) {
-      this.setupProductAutocompleteForGroup(groupIndex);
+  getFilteredProducts$(groupIndex: number, optionIndex: number): Observable<Product[]> {
+    const key = `${groupIndex}_${optionIndex}`;
+    if (!this.filteredProducts$.has(key)) {
+      this.setupFilteredProductsForOption(groupIndex, optionIndex);
     }
-    return this.filteredProducts$.get(groupIndex)!;
+    return this.filteredProducts$.get(key)!;
   }
 
   displayProductName(product: Product | null): string {
@@ -324,11 +328,10 @@ export class ComboFormComponent implements OnInit, OnDestroy {
     console.log('Bundle recebido:', bundle);
     console.log('Bundle.groups:', bundle.groups);
     
-    // Primeiro, limpar todos os FormArrays e controles de busca
+    // Primeiro, limpar todos os FormArrays e observables de busca por opção
     while (this.groupsFormArray.length > 0) {
       this.groupsFormArray.removeAt(0);
     }
-    this.productSearchControls.clear();
     this.filteredProducts$.clear();
 
     // Aplicar valores básicos do bundle
@@ -389,6 +392,8 @@ export class ComboFormComponent implements OnInit, OnDestroy {
             
             // Aplicar valores da opção DIRETAMENTE (não usar patchValue aqui)
             optionForm.get('product_id')?.setValue(option.product_id !== undefined && option.product_id !== null ? option.product_id : null);
+            // Objeto product (vindo da API) para o autocomplete exibir o nome ao carregar a edição
+            optionForm.get('product')?.setValue((option as any).product ?? null);
             optionForm.get('quantity')?.setValue(option.quantity !== undefined ? option.quantity : 1);
             optionForm.get('sale_type')?.setValue(option.sale_type || 'garrafa');
             optionForm.get('price_adjustment')?.setValue(option.price_adjustment !== undefined ? option.price_adjustment : 0);
@@ -401,9 +406,10 @@ export class ComboFormComponent implements OnInit, OnDestroy {
 
         // Adicionar grupo ao FormArray principal
         this.groupsFormArray.push(groupForm);
-        
-        // Configurar autocomplete para este grupo (usando o índice correto - após adicionar ao array)
-        this.setupProductAutocompleteForGroup(this.groupsFormArray.length - 1);
+        const actualGroupIndex = this.groupsFormArray.length - 1;
+        for (let optIdx = 0; optIdx < optionsFormArray.length; optIdx++) {
+          this.setupFilteredProductsForOption(actualGroupIndex, optIdx);
+        }
       });
     }
 

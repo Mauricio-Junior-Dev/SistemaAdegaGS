@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule, ActivatedRoute } from '@angular/router';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -104,6 +104,10 @@ export class CheckoutComponent implements OnInit, OnDestroy {
   // Controle de UI
   showAddressForm = false;
   showOrderSummary = false;
+  /** Revelação progressiva: detalhes do endereço só aparecem após buscar CEP */
+  isAddressDetailsVisible = false;
+
+  @ViewChild('numberInput') numberInputRef!: ElementRef<HTMLInputElement>;
   
   // Flags para campos condicionais do usuário
   needsDocumentNumber = false;
@@ -405,6 +409,7 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     this.selectedAddressId = null;
     this.deliveryForm.reset();
     this.isDeliveryAreaValid = false; // Resetar flag ao usar novo endereço
+    this.isAddressDetailsVisible = false; // Reiniciar revelação progressiva
     
     // Telefone não é mais parte do formulário de endereço
     
@@ -543,11 +548,17 @@ export class CheckoutComponent implements OnInit, OnDestroy {
           neighborhoodControl.setValue(patchData.neighborhood, { emitEvent: true });
         }
         
+        // Revelação progressiva: mostrar campos de endereço após CEP preenchido
+        this.isAddressDetailsVisible = true;
+        
         // Dispara a validação de área de entrega e cálculo de frete
         this.calculateFreteFromCep();
         
         this.loading = false;
         this.cdr.detectChanges();
+        
+        // UX: foco automático no campo Número para o usuário completar rapidamente
+        setTimeout(() => this.numberInputRef?.nativeElement?.focus(), 100);
       },
       error: (error) => {
         console.error('Erro ao buscar CEP:', error);

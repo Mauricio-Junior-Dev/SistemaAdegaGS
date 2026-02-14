@@ -107,6 +107,10 @@ export interface CreateOrderRequest {
   items: {
     product_id?: number;
     combo_id?: number;
+    /** ID do combo/bundle (product_bundles.id) quando o item é um combo com seleções */
+    product_bundle_id?: number;
+    /** Seleções do combo para o backend: array de { bundle_group_id, product_id, quantity, sale_type, price } */
+    selections?: Array<{ bundle_group_id: number; product_id: number; quantity: number; sale_type: 'dose' | 'garrafa'; price?: number }>;
     quantity: number;
     sale_type: 'dose' | 'garrafa';
     price: number;

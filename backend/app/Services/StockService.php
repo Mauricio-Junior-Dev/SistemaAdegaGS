@@ -4,11 +4,13 @@ namespace App\Services;
 
 use App\Models\Product;
 use App\Models\Combo;
+use App\Models\ProductBundle;
 use App\Models\StockMovement;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 
 class StockService
@@ -64,7 +66,91 @@ class StockService
             ->orderBy('current_stock', 'asc')
             ->orderBy('name', 'asc');
 
-        return $query->paginate($perPage);
+        $paginator = $query->paginate($perPage);
+
+        // PDV: quando há busca, incluir Combos/Bundles na lista para venda no caixa.
+        // Unificar como arrays para evitar serialização mista (Model + objeto) que pode causar Erro 500.
+        $search = isset($filters['search']) && trim($filters['search']) !== '' ? trim($filters['search']) : null;
+        if ($search !== null) {
+            try {
+                $bundles = ProductBundle::query()
+                    ->where('is_active', true)
+                    ->where(function ($q) use ($search) {
+                        $q->where('name', 'like', "%{$search}%")
+                            ->orWhere('barcode', 'like', "%{$search}%");
+                    })
+                    ->orderBy('name')
+                    ->limit(20)
+                    ->get();
+
+                $bundleRows = $bundles->map(function (ProductBundle $bundle): array {
+                    return $this->bundleToStockItemArray($bundle);
+                })->all();
+
+                // Converter produtos a array e mesclar com bundles (todos como array) para serialização consistente
+                $productArrays = $paginator->getCollection()->map(fn (Product $p) => $p->toArray())->all();
+                $mergedData = array_values(array_merge($productArrays, $bundleRows));
+                $total = $paginator->total() + $bundles->count();
+
+                $paginator = new LengthAwarePaginator(
+                    $mergedData,
+                    $total,
+                    $perPage,
+                    $paginator->currentPage(),
+                    ['path' => \Illuminate\Pagination\Paginator::resolveCurrentPath()]
+                );
+            } catch (\Throwable $e) {
+                Log::warning('StockService: falha ao incluir bundles na busca PDV, retornando apenas produtos.', [
+                    'search' => $search,
+                    'message' => $e->getMessage(),
+                ]);
+                // Em caso de erro (ex.: coluna faltando, tabela diferente), retorna só produtos
+            }
+        }
+
+        return $paginator;
+    }
+
+    /**
+     * Converte um ProductBundle em array no formato esperado pelo PDV (compatível com Product).
+     * Inclui campos que o frontend pode acessar (id, name, price, etc.) e preenche com null/0
+     * os que não existem em bundles para evitar erros de serialização ou acesso.
+     */
+    private function bundleToStockItemArray(ProductBundle $bundle): array
+    {
+        $price = (float) ($bundle->base_price ?? 0);
+        return [
+            'id' => $bundle->id,
+            'name' => $bundle->name,
+            'price' => $price,
+            'base_price' => $price,
+            'current_stock' => 0,
+            'is_bundle' => true,
+            'type' => 'bundle',
+            'barcode' => $bundle->barcode ?? null,
+            'category_id' => null,
+            'category' => null,
+            // Campos opcionais que Product pode ter (evitar undefined no frontend)
+            'slug' => $bundle->slug ?? null,
+            'description' => $bundle->description ?? null,
+            'delivery_price' => null,
+            'original_price' => $bundle->original_price ? (float) $bundle->original_price : null,
+            'cost_price' => null,
+            'min_stock' => 0,
+            'doses_por_garrafa' => null,
+            'doses_vendidas' => null,
+            'can_sell_by_dose' => false,
+            'dose_price' => null,
+            'is_active' => (bool) $bundle->is_active,
+            'visible_online' => null,
+            'featured' => (bool) $bundle->featured,
+            'offers' => (bool) $bundle->offers,
+            'popular' => (bool) $bundle->popular,
+            'images' => $bundle->images ?? null,
+            'low_stock' => false,
+            'discount_percentage' => $bundle->discount_percentage ? (float) $bundle->discount_percentage : null,
+            'has_discount' => false,
+        ];
     }
 
     public function updateStock(

@@ -60,7 +60,11 @@ class ComboController extends Controller
 
     public function show(ProductBundle $combo): JsonResponse
     {
-        $combo->load(['groups.options.product']);
+        $combo->load([
+            'groups' => fn ($q) => $q->orderBy('order'),
+            'groups.options' => fn ($q) => $q->orderBy('order'),
+            'groups.options.product',
+        ]);
         return response()->json($combo);
     }
 

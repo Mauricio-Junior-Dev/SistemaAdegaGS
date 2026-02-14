@@ -249,7 +249,7 @@
   gap: 16px;
 }
 
-/* Linha 1: CEP + Botão Buscar */
+/* Linha 1: CEP + Botão Buscar (sempre visível) */
 .cep-row {
   display: grid;
   grid-template-columns: 1fr auto;
@@ -267,9 +267,57 @@
   height: 56px;
 }
 
-/* Linha 2: Endereço + Número */
-.form-row.address-number-row {
-  grid-template-columns: 2fr 1fr;
+/* Revelação progressiva: detalhes após CEP */
+.address-details-revealed {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  animation: slideDown 0.3s ease-out;
+}
+
+/* Linha 1: Endereço 70% + Número 30% */
+.address-details-revealed .form-row.row-1 {
+  grid-template-columns: 70% 30%;
+  gap: 12px;
+}
+
+.address-details-revealed .address-field {
+  min-width: 0;
+}
+
+.address-details-revealed .number-field {
+  min-width: 0;
+}
+
+/* Linha 2: Complemento 50% + Bairro 50% */
+.address-details-revealed .form-row.row-2 {
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* Linha 3: Cidade 50% + Estado 50% */
+.address-details-revealed .form-row.row-3 {
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* Labels e inputs mais limpos na área revelada */
+.address-details-revealed mat-form-field {
+  font-size: 14px;
+}
+
+::ng-deep .address-details-revealed .mat-mdc-form-field .mat-mdc-floating-label {
+  font-size: 13px;
+}
+
+::ng-deep .address-details-revealed .mat-mdc-text-field-wrapper {
+  --mdc-outlined-text-field-outline-width: 1px;
+}
+
+::ng-deep .address-details-revealed .mat-mdc-form-field .mdc-notched-outline .mdc-notched-outline__leading,
+::ng-deep .address-details-revealed .mat-mdc-form-field .mdc-notched-outline .mdc-notched-outline__notch,
+::ng-deep .address-details-revealed .mat-mdc-form-field .mdc-notched-outline .mdc-notched-outline__trailing {
+  border-width: 1px;
 }
 
 .address-field {
@@ -280,23 +328,12 @@
   min-width: 100px;
 }
 
-/* Linha 3: Bairro + Complemento */
-.form-row.neighborhood-complement-row {
-  grid-template-columns: 1fr 1fr;
-}
-
 .neighborhood-field {
   flex: 1;
 }
 
 .complement-field {
   flex: 1;
-}
-
-/* Linha 4: Cidade + Estado/UF */
-.form-row.city-state-row {
-  grid-template-columns: 2fr 1fr;
-  gap: 16px; /* Espaçamento adequado entre Cidade e Estado */
 }
 
 .city-field {
@@ -345,7 +382,7 @@
   padding-left: 8px !important;
 }
 
-/* Responsividade */
+/* Responsividade: formulário de endereço */
 @media (max-width: 768px) {
   .cep-row {
     grid-template-columns: 1fr;
@@ -355,9 +392,9 @@
     width: 100%;
   }
 
-  .form-row.address-number-row,
-  .form-row.neighborhood-complement-row,
-  .form-row.city-state-row {
+  .address-details-revealed .form-row.row-1,
+  .address-details-revealed .form-row.row-2,
+  .address-details-revealed .form-row.row-3 {
     grid-template-columns: 1fr;
   }
 }

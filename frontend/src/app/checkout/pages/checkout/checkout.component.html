@@ -190,11 +190,11 @@
                 </div>
               </div>
 
-              <!-- Formulário de Novo Endereço -->
+              <!-- Formulário de Novo Endereço (Revelação Progressiva: CEP primeiro) -->
               <div class="address-form" *ngIf="!useSavedAddress">
-                <!-- Linha 1: CEP + Botão Buscar -->
+                <!-- Sempre visível: CEP + Botão Buscar -->
                 <div class="form-row cep-row">
-                  <mat-form-field class="cep-input">
+                  <mat-form-field class="cep-input" appearance="outline">
                     <mat-label>CEP</mat-label>
                     <input matInput formControlName="zipcode" placeholder="00000-000" (input)="formatZipcode($event); clearError()" (blur)="calculateFreteFromCep()">
                     <mat-error *ngIf="deliveryForm.get('zipcode')?.errors?.['required']">CEP é obrigatório</mat-error>
@@ -209,53 +209,56 @@
                   </button>
                 </div>
 
-                <!-- Linha 2: Endereço + Número -->
-                <div class="form-row address-number-row">
-                  <mat-form-field class="address-field">
-                    <mat-label>Endereço</mat-label>
-                    <input matInput formControlName="address" placeholder="Rua, Avenida, etc">
-                    <mat-error *ngIf="deliveryForm.get('address')?.errors?.['required']">Endereço é obrigatório</mat-error>
-                  </mat-form-field>
-                  <mat-form-field class="number-field">
-                    <mat-label>Número</mat-label>
-                    <input matInput formControlName="number" placeholder="123">
-                    <mat-error *ngIf="deliveryForm.get('number')?.errors?.['required']">Número é obrigatório</mat-error>
-                  </mat-form-field>
-                </div>
+                <!-- Detalhes do endereço: revelados após buscar CEP -->
+                <div class="address-details-revealed" *ngIf="isAddressDetailsVisible">
+                  <!-- Linha 1: Endereço (70%) + Número (30%) -->
+                  <div class="form-row row-1">
+                    <mat-form-field class="address-field" appearance="outline">
+                      <mat-label>Endereço</mat-label>
+                      <input matInput formControlName="address" placeholder="Rua, Avenida, etc">
+                      <mat-error *ngIf="deliveryForm.get('address')?.errors?.['required']">Endereço é obrigatório</mat-error>
+                    </mat-form-field>
+                    <mat-form-field class="number-field" appearance="outline">
+                      <mat-label>Número</mat-label>
+                      <input #numberInput matInput formControlName="number" placeholder="123">
+                      <mat-error *ngIf="deliveryForm.get('number')?.errors?.['required']">Número é obrigatório</mat-error>
+                    </mat-form-field>
+                  </div>
 
-                <!-- Linha 3: Bairro + Complemento -->
-                <div class="form-row neighborhood-complement-row">
-                  <mat-form-field class="neighborhood-field">
-                    <mat-label>Bairro</mat-label>
-                    <input matInput formControlName="neighborhood" placeholder="Seu bairro" (input)="onNeighborhoodChange()">
-                    <mat-error *ngIf="deliveryForm.get('neighborhood')?.errors?.['required']">Bairro é obrigatório</mat-error>
-                  </mat-form-field>
-                  <mat-form-field class="complement-field">
-                    <mat-label>Complemento</mat-label>
-                    <input matInput formControlName="complement" placeholder="Apto, Bloco, etc">
-                  </mat-form-field>
-                </div>
+                  <!-- Linha 2: Complemento (50%) + Bairro (50%) -->
+                  <div class="form-row row-2">
+                    <mat-form-field class="complement-field" appearance="outline">
+                      <mat-label>Complemento</mat-label>
+                      <input matInput formControlName="complement" placeholder="Apto, Bloco, etc">
+                    </mat-form-field>
+                    <mat-form-field class="neighborhood-field" appearance="outline">
+                      <mat-label>Bairro</mat-label>
+                      <input matInput formControlName="neighborhood" placeholder="Seu bairro" (input)="onNeighborhoodChange()">
+                      <mat-error *ngIf="deliveryForm.get('neighborhood')?.errors?.['required']">Bairro é obrigatório</mat-error>
+                    </mat-form-field>
+                  </div>
 
-                <!-- Linha 4: Cidade + Estado/UF -->
-                <div class="form-row city-state-row">
-                  <mat-form-field class="city-field">
-                    <mat-label>Cidade</mat-label>
-                    <input matInput formControlName="city" placeholder="Sua cidade">
-                    <mat-error *ngIf="deliveryForm.get('city')?.errors?.['required']">Cidade é obrigatória</mat-error>
-                  </mat-form-field>
-                  <mat-form-field class="state-field">
-                    <mat-label>Estado</mat-label>
-                    <input matInput formControlName="state" placeholder="UF" maxlength="2">
-                    <mat-error *ngIf="deliveryForm.get('state')?.errors?.['required']">Estado é obrigatório</mat-error>
-                  </mat-form-field>
-                </div>
+                  <!-- Linha 3: Cidade (50%) + Estado (50%) -->
+                  <div class="form-row row-3">
+                    <mat-form-field class="city-field" appearance="outline">
+                      <mat-label>Cidade</mat-label>
+                      <input matInput formControlName="city" placeholder="Sua cidade">
+                      <mat-error *ngIf="deliveryForm.get('city')?.errors?.['required']">Cidade é obrigatória</mat-error>
+                    </mat-form-field>
+                    <mat-form-field class="state-field" appearance="outline">
+                      <mat-label>Estado</mat-label>
+                      <input matInput formControlName="state" placeholder="UF" maxlength="2">
+                      <mat-error *ngIf="deliveryForm.get('state')?.errors?.['required']">Estado é obrigatório</mat-error>
+                    </mat-form-field>
+                  </div>
 
-                <!-- Instruções para entrega -->
-                <div class="form-row">
-                  <mat-form-field class="full-width">
-                    <mat-label>Instruções para entrega</mat-label>
-                    <textarea matInput formControlName="instructions" placeholder="Instruções especiais para entrega"></textarea>
-                  </mat-form-field>
+                  <!-- Instruções para entrega -->
+                  <div class="form-row">
+                    <mat-form-field class="full-width" appearance="outline">
+                      <mat-label>Instruções para entrega</mat-label>
+                      <textarea matInput formControlName="instructions" placeholder="Instruções especiais para entrega"></textarea>
+                    </mat-form-field>
+                  </div>
                 </div>
               </div>
 

@@ -1,0 +1,95 @@
+<h2 mat-dialog-title>Selecionar itens do Combo</h2>
+
+<mat-dialog-content>
+  <div *ngIf="loading" class="loading">
+    <mat-spinner diameter="40"></mat-spinner>
+    <p>Carregando combo...</p>
+  </div>
+
+  <div *ngIf="error" class="error">
+    <mat-icon>error_outline</mat-icon>
+    <span>{{ error }}</span>
+  </div>
+
+  <div *ngIf="!loading && !error && bundle" class="content">
+    <p class="combo-name">{{ bundle.name }}</p>
+    <p class="price-line">Preço: {{ formatPrice(displayedPrice) }}</p>
+
+    <mat-accordion class="groups" *ngIf="bundle.groups?.length">
+      <mat-expansion-panel
+        *ngFor="let group of bundle.groups; trackBy: trackByGroupId"
+        [class.required]="group.is_required"
+        [class.invalid]="!isGroupValid(group)">
+        <mat-expansion-panel-header>
+          <mat-panel-title>
+            <span class="group-name">{{ group.name }}</span>
+            <span *ngIf="group.is_required" class="badge">Obrigatório</span>
+          </mat-panel-title>
+          <mat-panel-description>
+            {{ getGroupInstruction(group) }}
+          </mat-panel-description>
+        </mat-expansion-panel-header>
+
+        <div class="options-list">
+          <div
+            *ngFor="let option of group.options; trackBy: trackByOptionId"
+            class="option-item"
+            [class.selected]="isOptionSelected(group, option)"
+            (click)="onOptionClick(group, option, $event)">
+            <div class="option-thumb">
+              <img [src]="getProductImage(option.product)" [alt]="option.product?.name" onerror="this.src='assets/images/no-image.jpg'">
+            </div>
+            <div class="option-info">
+              <span class="option-name">{{ option.product?.name || 'Produto' }}</span>
+              <span *ngIf="option.price_adjustment > 0" class="adj">+ {{ formatPrice(option.price_adjustment) }}</span>
+            </div>
+            <div class="option-control" (click)="$event.stopPropagation()">
+              <mat-radio-button
+                *ngIf="group.max_selections === 1"
+                [value]="option"
+                [checked]="getSelectedOption(group)?.id === option.id"
+                (change)="onRadioSelect(group, option)"
+                (click)="$event.stopPropagation()">
+              </mat-radio-button>
+              <div *ngIf="group.max_selections > 1" class="qty-control">
+                <button mat-icon-button type="button" (click)="onQuantityChange(group, option, -1); $event.stopPropagation()" [disabled]="getOptionQuantity(group, option) === 0">
+                  <mat-icon>remove</mat-icon>
+                </button>
+                <span class="qty-num">{{ getOptionQuantity(group, option) }}</span>
+                <button mat-icon-button type="button" (click)="onQuantityChange(group, option, 1); $event.stopPropagation()" [disabled]="!canSelectMore(group)">
+                  <mat-icon>add</mat-icon>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </mat-expansion-panel>
+    </mat-accordion>
+
+    <div class="quantity-row">
+      <span>Quantidade:</span>
+      <div class="qty-btns">
+        <button mat-icon-button (click)="decrementQty()" [disabled]="quantity <= 1">
+          <mat-icon>remove</mat-icon>
+        </button>
+        <span class="qty-value">{{ quantity }}</span>
+        <button mat-icon-button (click)="incrementQty()">
+          <mat-icon>add</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <div class="total-row">
+      <strong>Total:</strong>
+      <strong class="total-value">{{ formatPrice(getTotalPrice()) }}</strong>
+    </div>
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="cancel()">Cancelar</button>
+  <button mat-raised-button color="primary" (click)="confirm()" [disabled]="!bundle || !canConfirm()">
+    <mat-icon>add_shopping_cart</mat-icon>
+    Confirmar
+  </button>
+</mat-dialog-actions>

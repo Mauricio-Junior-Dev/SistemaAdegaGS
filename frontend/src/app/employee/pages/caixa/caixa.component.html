@@ -80,21 +80,26 @@
               <div class="product-info">
                 <span class="name">{{selectedProduct.name}}</span>
                 <div class="price-info">
-                  <span class="price">Garrafa: {{formatCurrency(selectedProduct.price)}}</span>
-                  <span class="dose-price" *ngIf="selectedProduct.can_sell_by_dose && selectedProduct.dose_price">
+                  <span class="price" *ngIf="!(selectedProduct.is_bundle || selectedProduct.type === 'bundle')">Garrafa: {{formatCurrency(selectedProduct.price)}}</span>
+                  <span class="price" *ngIf="selectedProduct.is_bundle || selectedProduct.type === 'bundle'">{{formatCurrency(selectedProduct.base_price ?? selectedProduct.price)}}</span>
+                  <span class="dose-price" *ngIf="selectedProduct.can_sell_by_dose && selectedProduct.dose_price && !(selectedProduct.is_bundle || selectedProduct.type === 'bundle')">
                     | Dose: {{formatCurrency(selectedProduct.dose_price)}}
                   </span>
                 </div>
-                <div class="product-details">
+                <div class="product-details" *ngIf="!(selectedProduct.is_bundle || selectedProduct.type === 'bundle')">
                   <span class="stock">Estoque: {{selectedProduct.current_stock}} garrafas</span>
                   <span class="doses-info" *ngIf="selectedProduct.doses_por_garrafa">
                     ({{selectedProduct.doses_por_garrafa}} doses por garrafa)
                   </span>
                 </div>
+                <div class="product-details combo-hint" *ngIf="selectedProduct.is_bundle || selectedProduct.type === 'bundle'">
+                  <mat-icon>tune</mat-icon>
+                  <span>Clique no botão abaixo para escolher os itens do combo.</span>
+                </div>
               </div>
               
-              <!-- Seleção do Tipo de Venda -->
-              <div class="sale-type-selection" *ngIf="selectedProduct.can_sell_by_dose">
+              <!-- Seleção do Tipo de Venda (apenas produtos simples) -->
+              <div class="sale-type-selection" *ngIf="selectedProduct.can_sell_by_dose && !(selectedProduct.is_bundle || selectedProduct.type === 'bundle')">
                 <mat-form-field appearance="outline" class="full-width">
                   <mat-label>Tipo de Venda</mat-label>
                   <mat-select [(ngModel)]="saleType">
@@ -104,13 +109,13 @@
                 </mat-form-field>
               </div>
               
-              <!-- Aviso quando produto não pode ser vendido por dose -->
-              <div *ngIf="!selectedProduct.can_sell_by_dose" class="dose-unavailable-info">
+              <!-- Aviso quando produto não pode ser vendido por dose (apenas produtos simples) -->
+              <div *ngIf="!selectedProduct.can_sell_by_dose && !(selectedProduct.is_bundle || selectedProduct.type === 'bundle')" class="dose-unavailable-info">
                 <mat-icon>info</mat-icon>
                 <span>Este produto só pode ser vendido por garrafa</span>
               </div>
 
-              <div class="quantity-control">
+              <div class="quantity-control" *ngIf="!(selectedProduct.is_bundle || selectedProduct.type === 'bundle')">
                 <button mat-icon-button 
                         (click)="quantity = quantity > 1 ? quantity - 1 : 1"
                         [disabled]="quantity <= 1">
@@ -125,14 +130,14 @@
               </div>
               
               <!-- Informações de disponibilidade -->
-              <div *ngIf="saleType === 'dose'" class="dose-info">
+              <div *ngIf="saleType === 'dose' && !(selectedProduct.is_bundle || selectedProduct.type === 'bundle')" class="dose-info">
                 <mat-icon>info</mat-icon>
                 <span>
                   {{quantity}} dose(s) = {{ceil(quantity / selectedProduct.doses_por_garrafa)}} garrafa(s) necessária(s)
                 </span>
               </div>
               
-              <div *ngIf="selectedProduct.current_stock === 0" class="stock-warning">
+              <div *ngIf="selectedProduct.current_stock === 0 && !(selectedProduct.is_bundle || selectedProduct.type === 'bundle')" class="stock-warning">
                 <mat-icon color="warn">warning</mat-icon>
                 <span>Produto sem estoque. Não é possível adicionar ao carrinho.</span>
               </div>
@@ -141,9 +146,9 @@
                       color="primary" 
                       (click)="addToCart()"
                       class="add-button"
-                      [disabled]="selectedProduct.current_stock === 0">
-                <mat-icon>add_shopping_cart</mat-icon>
-                Adicionar ao Carrinho
+                      [disabled]="!(selectedProduct.is_bundle || selectedProduct.type === 'bundle') && selectedProduct.current_stock === 0">
+                <mat-icon>{{ (selectedProduct.is_bundle || selectedProduct.type === 'bundle') ? 'tune' : 'add_shopping_cart' }}</mat-icon>
+                {{ (selectedProduct.is_bundle || selectedProduct.type === 'bundle') ? 'Escolher itens do Combo' : 'Adicionar ao Carrinho' }}
               </button>
             </div>
           </mat-card-content>

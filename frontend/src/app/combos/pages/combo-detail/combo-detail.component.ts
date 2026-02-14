@@ -52,6 +52,9 @@ export class ComboDetailComponent implements OnInit, AfterViewInit {
   
   // Preço calculado dinamicamente
   displayedPrice: number = 0;
+  
+  // Controle de inicialização: evita auto-avanço durante o carregamento
+  private isInitializing: boolean = true;
 
   constructor(
     private comboService: ComboService,
@@ -69,24 +72,32 @@ export class ComboDetailComponent implements OnInit, AfterViewInit {
   }
 
   ngAfterViewInit(): void {
-    // Aguardar um ciclo para garantir que os painéis foram renderizados
-    setTimeout(() => {
-      this.initializePanels();
-    }, 100);
+    // Não inicializar aqui - será feito após o carregamento do combo em loadCombo()
+    // Isso evita conflito e garante que os dados já estejam carregados
   }
 
   /**
-   * Inicializa os painéis: abre os obrigatórios por padrão
+   * Inicializa os painéis: abre apenas o primeiro grupo por padrão
    */
   initializePanels(): void {
     if (!this.bundle || !this.bundle.groups) return;
     
-    this.panels.forEach((panel, index) => {
-      const group = this.bundle!.groups![index];
-      if (group && group.is_required) {
-        panel.open();
-      }
+    // Fechar todos os painéis primeiro
+    this.panels.forEach(panel => {
+      panel.close();
     });
+    
+    // Abrir apenas o primeiro painel (índice 0)
+    const firstPanel = this.panels.first;
+    if (firstPanel) {
+      firstPanel.open();
+    }
+    
+    // Marcar inicialização como concluída após um pequeno delay
+    setTimeout(() => {
+      this.isInitializing = false;
+    }, 300);
+    
     this.cdr.detectChanges();
   }
 
@@ -96,6 +107,8 @@ export class ComboDetailComponent implements OnInit, AfterViewInit {
     this.selections = {};
     this.quantity = 1;
     this.observations = '';
+    // Resetar flag de inicialização ao carregar novo combo
+    this.isInitializing = true;
 
     this.comboService.getCombo(id).subscribe({
       next: (bundle) => {
@@ -121,6 +134,7 @@ export class ComboDetailComponent implements OnInit, AfterViewInit {
         console.error('Erro ao carregar combo:', error);
         this.error = 'Combo não encontrado';
         this.loading = false;
+        this.isInitializing = false;
       }
     });
   }
@@ -378,6 +392,9 @@ export class ComboDetailComponent implements OnInit, AfterViewInit {
    * Verifica se um grupo obrigatório foi completado e avança para o próximo painel
    */
   checkAndAdvanceGroup(completedGroup: BundleGroup): void {
+    // Guard clause: não avançar durante a inicialização
+    if (this.isInitializing) return;
+    
     if (!this.bundle || !this.bundle.groups) return;
     
     const groupIndex = this.bundle.groups.findIndex(g => g.id === completedGroup.id);
@@ -502,9 +519,14 @@ export class ComboDetailComponent implements OnInit, AfterViewInit {
 
   /**
    * Verifica se o painel deve estar aberto por padrão
+   * Retorna true apenas para o primeiro grupo (índice 0)
    */
   isPanelExpanded(group: BundleGroup): boolean {
-    return group.is_required;
+    if (!this.bundle || !this.bundle.groups) return false;
+    
+    // Retornar true apenas para o primeiro grupo
+    const groupIndex = this.bundle.groups.findIndex(g => g.id === group.id);
+    return groupIndex === 0;
   }
 
   incrementQuantity(): void {
