@@ -384,6 +384,30 @@ mat-sidenav-content {
   color: var(--white) !important;
 }
 
+/* mat-slide-toggle usa .mat-primary só para a cor do switch; o container deve ficar transparente */
+.mat-mdc-slide-toggle.mat-primary,
+mat-slide-toggle.mat-primary {
+  background-color: transparent !important;
+  background: transparent !important;
+  color: inherit !important;
+}
+
+.mat-mdc-slide-toggle .mat-internal-form-field,
+mat-slide-toggle .mat-internal-form-field,
+.mat-mdc-slide-toggle .mdc-form-field,
+mat-slide-toggle .mdc-form-field {
+  background-color: transparent !important;
+  background: transparent !important;
+}
+
+/* mat-step-header (stepper) usa .mat-primary para estado selecionado; fundo do header deve ficar transparente */
+.mat-step-header.mat-primary,
+.mat-horizontal-stepper-header.mat-primary {
+  background-color: transparent !important;
+  background: transparent !important;
+  color: inherit !important;
+}
+
 .mat-toolbar.mat-primary {
   background-color: var(--primary) !important;
   color: var(--white) !important;
