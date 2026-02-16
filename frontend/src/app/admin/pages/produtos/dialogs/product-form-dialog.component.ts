@@ -92,6 +92,8 @@ import { environment } from '../../../../../environments/environment';
                 mat-icon-button
                 matSuffix
                 type="button"
+                color="primary"
+                class="category-add-button"
                 matTooltip="Nova Categoria"
                 (click)="openNewCategoryDialog($event)">
                 <mat-icon>add</mat-icon>
@@ -770,6 +772,14 @@ import { environment } from '../../../../../environments/environment';
         width: 100px;
         height: 100px;
       }
+    }
+
+    .category-add-button {
+      color: #ff9800; /* laranja global do tema */
+    }
+
+    .category-add-button mat-icon {
+      color: inherit;
     }
   `]
 })
