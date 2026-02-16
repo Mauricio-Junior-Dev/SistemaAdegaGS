@@ -176,11 +176,25 @@ h1 {
   margin-bottom: 12px;
 }
 
-.quantity {
+.quantity-input {
+  width: 50px;
   font-size: 18px;
   font-weight: 500;
-  min-width: 40px;
   text-align: center;
+  border: none;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.42);
+  background: transparent;
+  padding: 4px 0;
+  -moz-appearance: textfield;
+}
+.quantity-input::-webkit-outer-spin-button,
+.quantity-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.quantity-input:focus {
+  outline: none;
+  border-bottom-color: var(--mat-primary-color, #1976d2);
 }
 
 .add-button {
@@ -433,6 +447,36 @@ h1 {
   border: 1px solid #dee2e6;
 }
 
+.quick-delivery-summary .address-header {
+  margin-bottom: 8px;
+}
+.quick-delivery-summary .quick-summary-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.875rem;
+  color: #333;
+  margin-bottom: 12px;
+}
+.quick-delivery-summary .quick-summary-text .name { font-weight: 600; }
+.quick-delivery-summary .quick-summary-text .phone { color: #666; }
+.quick-delivery-summary .quick-summary-text .address { color: #555; }
+.quick-delivery-summary .fee-info {
+  margin-top: 8px;
+}
+.quick-delivery-summary .fee-edit-row {
+  margin-top: 8px;
+}
+.quick-delivery-summary .fee-input {
+  width: 140px;
+}
+.delivery-identify-cta {
+  padding: 12px 0;
+}
+.delivery-identify-cta button {
+  width: 100%;
+}
+
 .address-header {
   display: flex;
   justify-content: space-between;
@@ -676,6 +720,26 @@ h1 {
 
 .payment-button.selected mat-icon {
   color: white !important;
+}
+
+.finalize-hint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: #fff8e1;
+  border-radius: 6px;
+  border-left: 4px solid #ff9800;
+  font-size: 0.875rem;
+  color: #e65100;
+}
+.finalize-hint mat-icon {
+  flex-shrink: 0;
+  color: #ff9800;
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
 }
 
 .finalize-section {
@@ -977,12 +1041,6 @@ h1 {
   color: rgba(0, 0, 0, 0.6);
 }
 
-.product-details .doses-info {
-  font-size: 11px;
-  color: rgba(0, 0, 0, 0.5);
-  font-style: italic;
-}
-
 .product-details.combo-hint {
   display: flex;
   align-items: center;
@@ -1059,22 +1117,4 @@ h1 {
   font-weight: 500;
   color: #1976d2;
   font-size: 14px;
-}
-
-.dose-unavailable-info {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 8px 0;
-  padding: 8px;
-  background-color: #fff3e0;
-  border-radius: 4px;
-  font-size: 12px;
-  color: #f57c00;
-}
-
-.dose-unavailable-info mat-icon {
-  font-size: 16px;
-  width: 16px;
-  height: 16px;
 }

@@ -33,6 +33,7 @@ import { PrintConfirmationDialogComponent } from './dialogs/print-confirmation-d
 import { CloseCashDialogComponent } from './dialogs/close-cash-dialog.component';
 import { SaleTypeDialogComponent, SaleTypeResult } from './dialogs/sale-type-dialog.component';
 import { ComboSelectionDialogComponent, ComboSelectionResult } from './dialogs/combo-selection-dialog.component';
+import { DeliveryPhoneDialogComponent, QuickDeliveryData } from './dialogs/delivery-phone-dialog.component';
 import { DeliveryZoneService } from '../../../services/delivery-zone.service';
 import { AddressService, Address, CreateAddressRequest } from '../../../core/services/address.service';
 import { HttpClient } from '@angular/common/http';
@@ -129,6 +130,9 @@ export class CaixaComponent implements OnInit, OnDestroy {
   deliveryFee = 0;
   loadingDeliveryFee = false;
   estimatedDeliveryTime = '';
+
+  /** Dados de entrega rápida (cliente não cadastrado): nome, telefone, endereço e frete manual */
+  quickDeliveryData: QuickDeliveryData | null = null;
 
   private destroy$ = new Subject<void>();
   private searchSubject = new Subject<string>();
@@ -503,36 +507,76 @@ export class CaixaComponent implements OnInit, OnDestroy {
   
   onPayOnDeliveryChange(): void {
     if (!this.isPayOnDelivery) {
-      // Se desmarcou, limpar endereço e frete
+      // Se desmarcou, limpar endereço, frete e dados de entrega rápida
       this.selectedAddressId = null;
       this.deliveryFee = 0;
       this.isDeliveryFeeEnabled = false;
       this.estimatedDeliveryTime = '';
+      this.quickDeliveryData = null;
       this.updateTotal();
     } else {
-      // Ao marcar entrega, por padrão habilitar a cobrança da taxa de entrega
       this.isDeliveryFeeEnabled = true;
-      // Se marcou, verificar se tem cliente selecionado
-      if (!this.selectedCustomer) {
-        this.toastr.warning('Selecione um cliente antes de marcar "Pagamento na Entrega"', '', {
-          toastClass: 'modern-toast-notification',
-          positionClass: 'toast-bottom-center',
-          timeOut: 3000
-        });
-        // Desmarcar o checkbox
-        setTimeout(() => {
-          this.isPayOnDelivery = false;
-        }, 100);
-        return;
-      }
-      // Carregar endereços se ainda não carregou
-      if (this.customerAddresses.length === 0) {
-        this.loadCustomerAddresses().subscribe();
-      } else if (this.selectedAddressId) {
-        // Se já tem endereço selecionado, calcular frete imediatamente
-        this.calculateDeliveryFee(this.selectedAddressId);
+      if (this.selectedCustomer) {
+        if (this.customerAddresses.length === 0) {
+          this.loadCustomerAddresses().subscribe();
+        } else if (this.selectedAddressId) {
+          this.calculateDeliveryFee(this.selectedAddressId);
+        }
+      } else if (!this.quickDeliveryData) {
+        this.openDeliveryPhoneDialog();
       }
     }
+  }
+
+  /**
+   * Abre o modal de identificação por telefone (entrega rápida).
+   * Se encontrar cliente: seleciona e carrega endereços. Se não: preenche quickDeliveryData.
+   */
+  openDeliveryPhoneDialog(): void {
+    const dialogRef = this.dialog.open(DeliveryPhoneDialogComponent, {
+      width: '440px',
+      maxWidth: '95vw',
+      data: {}
+    });
+
+    dialogRef.afterClosed().subscribe((result: { type: 'found'; customer: Customer } | { type: 'quick'; data: QuickDeliveryData } | null) => {
+      if (result === null || result === undefined) {
+        if (!this.selectedCustomer && !this.quickDeliveryData) {
+          this.isPayOnDelivery = false;
+        }
+        return;
+      }
+      if (result.type === 'found') {
+        this.selectCustomer(result.customer);
+        if (this.customerAddresses.length === 0) {
+          this.loadCustomerAddresses().subscribe();
+        } else if (this.selectedAddressId) {
+          this.calculateDeliveryFee(this.selectedAddressId);
+        }
+      } else {
+        this.quickDeliveryData = result.data;
+        this.deliveryFee = result.data.deliveryFeeManual;
+        this.isDeliveryFeeEnabled = result.data.deliveryFeeManual > 0;
+        this.updateTotal();
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  clearQuickDeliveryData(): void {
+    this.quickDeliveryData = null;
+    this.deliveryFee = 0;
+    this.isDeliveryFeeEnabled = false;
+    this.updateTotal();
+  }
+
+  /** Sincroniza o frete editado na tela com quickDeliveryData e recalcula o total. */
+  onQuickDeliveryFeeChange(): void {
+    if (this.quickDeliveryData) {
+      this.quickDeliveryData.deliveryFeeManual = this.deliveryFee ?? 0;
+      this.isDeliveryFeeEnabled = this.deliveryFee > 0;
+    }
+    this.updateTotal();
   }
   
   openNewAddressDialog(): void {
@@ -595,6 +639,7 @@ export class CaixaComponent implements OnInit, OnDestroy {
     this.selectedAddressId = null;
     this.deliveryFee = 0;
     this.estimatedDeliveryTime = '';
+    this.quickDeliveryData = null;
   }
 
   toggleCustomerSearch(): void {
@@ -625,6 +670,16 @@ export class CaixaComponent implements OnInit, OnDestroy {
     });
   }
 
+
+  /** Garante quantity >= 1 após edição direta no input (blur/change). */
+  normalizeQuantity(): void {
+    const n = Number(this.quantity);
+    if (!Number.isFinite(n) || n < 1) {
+      this.quantity = 1;
+    } else {
+      this.quantity = Math.floor(n);
+    }
+  }
 
   selectProduct(product: Product): void {
     this.selectedProduct = product;
@@ -696,7 +751,7 @@ export class CaixaComponent implements OnInit, OnDestroy {
       this.toastr.success(`${bundle.name} adicionado ao carrinho`, '', {
         toastClass: 'modern-toast-notification',
         positionClass: 'toast-bottom-center',
-        timeOut: 2000
+        timeOut: 3000
       });
     });
   }
@@ -709,14 +764,14 @@ export class CaixaComponent implements OnInit, OnDestroy {
       if (this.selectedProduct.current_stock <= 0) {
         this.toastr.warning('Produto sem estoque disponível', 'Estoque Insuficiente', {
           toastClass: 'modern-toast-notification',
-          timeOut: 3000
+          timeOut: 5000
         });
         return;
       }
       if (this.quantity > this.selectedProduct.current_stock) {
         this.toastr.warning(`Quantidade excede o estoque disponível. Restam apenas ${this.selectedProduct.current_stock} unidades.`, 'Estoque Insuficiente', {
           toastClass: 'modern-toast-notification',
-          timeOut: 3000
+          timeOut: 5000
         });
         return;
       }
@@ -728,7 +783,7 @@ export class CaixaComponent implements OnInit, OnDestroy {
       if (this.selectedProduct.current_stock < garrafasNecessarias) {
         this.toastr.warning(`Produto não possui garrafas suficientes para as doses solicitadas (necessário: ${garrafasNecessarias} garrafas)`, 'Estoque Insuficiente', {
           toastClass: 'modern-toast-notification',
-          timeOut: 3000
+          timeOut: 5000
         });
         return;
       }
@@ -754,7 +809,7 @@ export class CaixaComponent implements OnInit, OnDestroy {
         if (newQuantity > this.selectedProduct.current_stock) {
           this.toastr.warning(`Quantidade excede o estoque disponível. Restam apenas ${this.selectedProduct.current_stock} unidades.`, 'Estoque Insuficiente', {
             toastClass: 'modern-toast-notification',
-            timeOut: 3000
+            timeOut: 5000
           });
           return;
         }
@@ -764,7 +819,7 @@ export class CaixaComponent implements OnInit, OnDestroy {
         if (this.selectedProduct.current_stock < garrafasNecessarias) {
           this.toastr.warning(`Quantidade excede as garrafas disponíveis para conversão`, 'Estoque Insuficiente', {
             toastClass: 'modern-toast-notification',
-            timeOut: 3000
+            timeOut: 5000
           });
           return;
         }
@@ -851,6 +906,18 @@ export class CaixaComponent implements OnInit, OnDestroy {
     return this.remainingAmount <= 0;
   }
 
+  /** Mensagem explicando por que o botão Finalizar/Gerar Pedido está bloqueado (para UX). */
+  get finalizeBlockedHint(): string | null {
+    if (!this.cartItems.length) return null;
+    if (this.payments.length === 0) {
+      return 'Adicione ao menos um pagamento: informe o valor e clique em «Adicionar».';
+    }
+    if (this.remainingAmount > 0) {
+      return `Falta cobrir ${this.formatCurrency(this.remainingAmount)}. Adicione outro pagamento ou ajuste o valor.`;
+    }
+    return null;
+  }
+
   addPayment(): void {
     const val = Number(this.inputAmount) || 0;
     if (val <= 0) {
@@ -903,6 +970,7 @@ export class CaixaComponent implements OnInit, OnDestroy {
     this.estimatedDeliveryTime = '';
     this.isPayOnDelivery = false;
     this.isDeliveryFeeEnabled = false;
+    this.quickDeliveryData = null;
     this.customerSearchTerm = '';
     this.customerSearchResults = [];
     this.showCustomerSearch = false;
@@ -1034,65 +1102,58 @@ export class CaixaComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // Se for pagamento na entrega, verificar se cliente tem endereço
+    // Validar entrega: fluxo com cliente cadastrado OU entrega rápida (quickDeliveryData)
     if (this.isPayOnDelivery) {
-      if (this.selectedCustomer) {
-        // Verificar se cliente tem endereços cadastrados
-        if (!this.selectedCustomer.addresses || this.selectedCustomer.addresses.length === 0) {
-          this.toastr.warning('Cliente selecionado não possui endereço cadastrado. Por favor, cadastre um endereço antes de gerar o pedido de entrega.', '', {
+      if (this.quickDeliveryData) {
+        if (!this.quickDeliveryData.customerName?.trim() || !this.quickDeliveryData.customerPhone?.trim()) {
+          this.toastr.warning('Dados da entrega rápida incompletos. Clique em "Alterar" para preencher.', '', {
             toastClass: 'modern-toast-notification',
             positionClass: 'toast-bottom-center',
             timeOut: 5000
+          });
+          return;
+        }
+        if (this.deliveryFee === null || this.deliveryFee === undefined) {
+          this.deliveryFee = this.quickDeliveryData.deliveryFeeManual ?? 0;
+        }
+      } else if (this.selectedCustomer) {
+        if (!this.selectedCustomer.addresses?.length) {
+          this.toastr.warning('Cliente selecionado não possui endereço cadastrado. Cadastre um endereço antes de gerar o pedido.', '', {
+            toastClass: 'modern-toast-notification',
+            positionClass: 'toast-bottom-center',
+            timeOut: 5000
+          });
+          return;
+        }
+        if (!this.selectedAddressId) {
+          this.toastr.warning('Selecione um endereço de entrega para continuar.', '', {
+            toastClass: 'modern-toast-notification',
+            positionClass: 'toast-bottom-center',
+            timeOut: 5000
+          });
+          return;
+        }
+        if (this.deliveryFee === null || this.deliveryFee === undefined) {
+          this.toastr.warning('Aguarde o cálculo do frete antes de finalizar.', '', {
+            toastClass: 'modern-toast-notification',
+            positionClass: 'toast-bottom-center',
+            timeOut: 3000
           });
           return;
         }
       } else {
-        // Se não há cliente selecionado, verificar se tem dados mínimos para criar endereço
-        if (!this.customerName || !this.customerPhone) {
-          this.toastr.warning('Para pedidos de entrega, é necessário selecionar um cliente cadastrado ou informar nome e telefone do cliente.', '', {
-            toastClass: 'modern-toast-notification',
-            positionClass: 'toast-bottom-center',
-            timeOut: 5000
-          });
-          return;
-        }
-      }
-    }
-
-    // Validar entrega antes de continuar
-    if (this.isPayOnDelivery) {
-      if (!this.selectedCustomer) {
-        this.toastr.warning('Para pedidos de entrega, é necessário selecionar um cliente cadastrado.', '', {
+        this.toastr.warning('Informe o cliente/endereço de entrega (clique em "Informar cliente" ou selecione um cliente).', '', {
           toastClass: 'modern-toast-notification',
           positionClass: 'toast-bottom-center',
           timeOut: 5000
         });
         return;
       }
-      
-      if (!this.selectedAddressId) {
-        this.toastr.warning('Selecione um endereço de entrega para continuar.', '', {
-          toastClass: 'modern-toast-notification',
-          positionClass: 'toast-bottom-center',
-          timeOut: 5000
-        });
-        return;
-      }
-
-      // Validar que o frete foi calculado (pode ser 0 se for frete grátis)
-      if (this.deliveryFee === null || this.deliveryFee === undefined) {
-        this.toastr.warning('Aguarde o cálculo do frete antes de finalizar.', '', {
-          toastClass: 'modern-toast-notification',
-          positionClass: 'toast-bottom-center',
-          timeOut: 3000
-        });
-        return;
-      }
     }
 
-    // Determinar qual taxa de entrega será efetivamente cobrada
     const appliedDeliveryFee = (this.isPayOnDelivery && this.isDeliveryFeeEnabled) ? (this.deliveryFee || 0) : 0;
 
+    const isQuickDelivery = this.isPayOnDelivery && this.quickDeliveryData;
     const order: CreateOrderRequest = {
       items: this.cartItems.map(item => {
         const unitPrice = this.getItemUnitPrice(item);
@@ -1115,13 +1176,21 @@ export class CaixaComponent implements OnInit, OnDestroy {
       }),
       total: this.total - appliedDeliveryFee,
       delivery_fee: appliedDeliveryFee,
-      customer_name: this.customerName || undefined,
-      customer_phone: this.customerPhone || undefined,
-      customer_email: this.customerEmail || undefined,
-      customer_document: this.customerDocument || undefined,
+      customer_name: isQuickDelivery ? this.quickDeliveryData!.customerName : (this.customerName || undefined),
+      customer_phone: isQuickDelivery ? this.quickDeliveryData!.customerPhone : (this.customerPhone || undefined),
+      customer_email: isQuickDelivery ? undefined : (this.customerEmail || undefined),
+      customer_document: isQuickDelivery ? undefined : (this.customerDocument || undefined),
       status: this.isPayOnDelivery ? 'pending' : 'completed',
       payment_status: paymentStatus,
-      delivery_address_id: this.isPayOnDelivery && this.selectedAddressId ? this.selectedAddressId : undefined
+      delivery_address_id: this.isPayOnDelivery && !isQuickDelivery && this.selectedAddressId ? this.selectedAddressId : undefined,
+      delivery: isQuickDelivery && this.quickDeliveryData ? {
+        address: this.quickDeliveryData.street,
+        number: this.quickDeliveryData.number,
+        neighborhood: this.quickDeliveryData.neighborhood,
+        city: this.quickDeliveryData.city,
+        state: this.quickDeliveryData.state,
+        zipcode: this.quickDeliveryData.zipcode.length >= 8 ? this.quickDeliveryData.zipcode : '00000000'
+      } : undefined
     };
 
     // PDV: enviar payments array (split)
@@ -1166,13 +1235,9 @@ export class CaixaComponent implements OnInit, OnDestroy {
             this.showPrintConfirmation(response, paymentStatus);
           }
         },
-        error: (error: Error) => {
+        error: (error: unknown) => {
           console.error('Erro ao finalizar venda:', error);
-          this.toastr.error(error.message || 'Erro ao finalizar venda', '', {
-            toastClass: 'modern-toast-notification',
-            positionClass: 'toast-bottom-center',
-            timeOut: 3000
-          });
+          this.showApiError(error, 'Erro ao finalizar venda');
         }
       });
   }
@@ -1230,6 +1295,24 @@ export class CaixaComponent implements OnInit, OnDestroy {
 
   ceil(value: number): number {
     return Math.ceil(value);
+  }
+
+  /**
+   * Extrai mensagem humanizada de erro da API (ex.: 422 com body do Laravel)
+   * e exibe em toast. Prioridade: err.error.error > err.error.message > err.message > fallback.
+   */
+  private showApiError(error: unknown, fallback: string): void {
+    const err = error as { error?: { error?: string; message?: string }; message?: string };
+    const message =
+      (err?.error && typeof err.error === 'object' && (err.error.error || err.error.message)) ||
+      err?.message ||
+      fallback;
+    const text = typeof message === 'string' ? message : fallback;
+    this.toastr.error(text, '', {
+      toastClass: 'modern-toast-notification',
+      positionClass: 'toast-bottom-center',
+      timeOut: 5000
+    });
   }
 
   getProductPrice(product: Product | null | undefined, saleType: 'dose' | 'garrafa'): number {

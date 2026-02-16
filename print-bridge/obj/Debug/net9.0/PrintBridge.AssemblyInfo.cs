@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("PrintBridge")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e8a6bad8e65aeb7151d319f9ecdae5c500a7eb67")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+caed135c606cd3c04ba1b61fe502437b1ccf7d13")]
 [assembly: System.Reflection.AssemblyProductAttribute("PrintBridge")]
 [assembly: System.Reflection.AssemblyTitleAttribute("PrintBridge")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

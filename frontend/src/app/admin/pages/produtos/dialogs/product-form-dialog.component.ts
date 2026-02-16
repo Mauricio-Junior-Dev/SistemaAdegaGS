@@ -1,11 +1,12 @@
 import { Component, Inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, FormControl, Validators, ReactiveFormsModule } from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatIconModule } from '@angular/material/icon';
@@ -13,9 +14,11 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatDividerModule } from '@angular/material/divider';
+import { Observable } from 'rxjs';
+import { startWith, map } from 'rxjs/operators';
 
 import { ProductService, Product, CreateProductDTO } from '../../../services/product.service';
-import { CategoryService } from '../../../services/category.service';
+import { CategoryService, Category } from '../../../services/category.service';
 import { environment } from '../../../../../environments/environment';
 
 @Component({
@@ -35,7 +38,8 @@ import { environment } from '../../../../../environments/environment';
     MatTooltipModule,
     MatSnackBarModule,
     MatExpansionModule,
-    MatDividerModule
+    MatDividerModule,
+    MatAutocompleteModule
   ],
   template: `
     <h2 mat-dialog-title>{{isEdit ? 'Editar' : 'Novo'}} Produto</h2>
@@ -79,11 +83,16 @@ import { environment } from '../../../../../environments/environment';
 
             <mat-form-field appearance="outline">
               <mat-label>Categoria</mat-label>
-              <mat-select formControlName="category_id" required>
-                <mat-option *ngFor="let category of categories" [value]="category.id">
-                  {{category.name}}
+              <input matInput
+                     [matAutocomplete]="categoryAuto"
+                     [formControl]="categoryFilterCtrl"
+                     placeholder="Digite para buscar (ex: whi para Whisk)">
+              <mat-autocomplete #categoryAuto="matAutocomplete"
+                               (optionSelected)="onCategorySelected($event)">
+                <mat-option *ngFor="let category of filteredCategories$ | async" [value]="category">
+                  {{ category.name }}
                 </mat-option>
-              </mat-select>
+              </mat-autocomplete>
               <mat-error *ngIf="productForm.get('category_id')?.hasError('required')">
                 Categoria é obrigatória
               </mat-error>
@@ -756,8 +765,16 @@ import { environment } from '../../../../../environments/environment';
   `]
 })
 export class ProductFormDialogComponent implements OnInit {
+  private static normalizeForSearch(s: string): string {
+    return (s || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/\p{Diacritic}/gu, '');
+  }
   productForm: FormGroup;
-  categories: any[] = [];
+  allCategories: Category[] = [];
+  categoryFilterCtrl = new FormControl<string>('');
+  filteredCategories$!: Observable<Category[]>;
   availableParentProducts: Product[] = [];
   loading = false;
   isEdit = false;
@@ -819,6 +836,13 @@ export class ProductFormDialogComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    this.filteredCategories$ = this.categoryFilterCtrl.valueChanges.pipe(
+      startWith(''),
+      map(term => this.filterCategories(term || ''))
+    );
+    this.categoryFilterCtrl.valueChanges.subscribe(value => {
+      if (!value?.trim()) this.productForm.get('category_id')?.setValue(null, { emitEvent: false });
+    });
     this.loadCategories();
     this.loadParentProducts();
     this.setupValidators();
@@ -842,13 +866,34 @@ export class ProductFormDialogComponent implements OnInit {
   }
 
   private loadCategories(): void {
-    this.categoryService.getCategories().subscribe({
-      next: (response) => this.categories = response.data,
+    this.categoryService.getAllCategories().subscribe({
+      next: (data) => {
+        this.allCategories = data;
+        this.categoryFilterCtrl.setValue(this.categoryFilterCtrl.value ?? '');
+        if (this.isEdit && this.data.product?.category_id) {
+          const cat = this.allCategories.find(c => c.id === this.data.product!.category_id);
+          if (cat) this.categoryFilterCtrl.setValue(cat.name);
+        }
+      },
       error: (error) => {
         console.error('Erro ao carregar categorias:', error);
         this.snackBar.open('Erro ao carregar categorias', 'Fechar', { duration: 3000 });
       }
     });
+  }
+
+  private filterCategories(term: string): Category[] {
+    const normalized = ProductFormDialogComponent.normalizeForSearch(term);
+    if (!normalized) return this.allCategories.slice();
+    return this.allCategories.filter(c =>
+      ProductFormDialogComponent.normalizeForSearch(c.name).includes(normalized)
+    );
+  }
+
+  onCategorySelected(event: { option: { value: Category } }): void {
+    const category = event.option.value;
+    this.productForm.get('category_id')?.setValue(category.id);
+    this.categoryFilterCtrl.setValue(category.name);
   }
 
   private loadParentProducts(): void {

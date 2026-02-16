@@ -25,6 +25,9 @@ use App\Services\PrintService;
 
 class OrderController extends Controller
 {
+    /** CEP usado no cadastro rápido de entrega (deve existir em Admin > Zonas de Entrega). */
+    private const CEP_AVULSO = '00011111';
+
     public function index(Request $request)
     {
         $query = Order::with([
@@ -608,8 +611,10 @@ class OrderController extends Controller
                         if ($estoquePai < $unidadesPaiNecessarias) {
                             DB::rollBack();
                             return response()->json([
-                                'error' => "Estoque insuficiente para {$product->name} (Pack). Necessário: {$unidadesPaiNecessarias} unidades do produto base ({$parentProduct->name}), disponível: {$estoquePai}"
-                            ], 400);
+                                'error' => 'Estoque Insuficiente',
+                                'message' => "Não temos estoque suficiente do item {$product->name}. Necessário: {$unidadesPaiNecessarias} unidades do produto base ({$parentProduct->name}), disponível: {$estoquePai}.",
+                                'product_id' => $parentProduct->id
+                            ], 422);
                         }
                     } else {
                         // VALIDAÇÃO NORMAL: Produto não é Pack
@@ -618,8 +623,10 @@ class OrderController extends Controller
                             if ($currentStock < $item['quantity']) {
                                 DB::rollBack();
                                 return response()->json([
-                                    'error' => "Estoque insuficiente para {$product->name}. Restam apenas {$currentStock} unidades."
-                                ], 400);
+                                    'error' => 'Estoque Insuficiente',
+                                    'message' => "Não temos estoque suficiente do item {$product->name}. Restam apenas {$currentStock} unidades.",
+                                    'product_id' => $product->id
+                                ], 422);
                             }
                         } else {
                             // Para doses, verificar se há garrafas suficientes para converter
@@ -630,8 +637,10 @@ class OrderController extends Controller
                             if ($currentStock < $garrafasNecessarias) {
                                 DB::rollBack();
                                 return response()->json([
-                                    'error' => "Estoque insuficiente para {$product->name}. Restam apenas {$currentStock} garrafas para as doses solicitadas."
-                                ], 400);
+                                    'error' => 'Estoque Insuficiente',
+                                    'message' => "Não temos estoque suficiente do item {$product->name}. Restam apenas {$currentStock} garrafas para as doses solicitadas.",
+                                    'product_id' => $product->id
+                                ], 422);
                             }
                         }
                     }
@@ -706,8 +715,10 @@ class OrderController extends Controller
                             if ($currentStock < $qty) {
                                 DB::rollBack();
                                 return response()->json([
-                                    'error' => "Estoque insuficiente para {$product->name}. Restam apenas {$currentStock} unidades."
-                                ], 400);
+                                    'error' => 'Estoque Insuficiente',
+                                    'message' => "O item \"{$product->name}\" (parte do combo) não possui estoque suficiente. Restam apenas {$currentStock} unidades.",
+                                    'product_id' => $product->id
+                                ], 422);
                             }
                         } else {
                             $garrafasNecessarias = (int) ceil($qty / ($product->doses_por_garrafa ?: 1));
@@ -715,8 +726,10 @@ class OrderController extends Controller
                             if ($currentStock < $garrafasNecessarias) {
                                 DB::rollBack();
                                 return response()->json([
-                                    'error' => "Estoque insuficiente para {$product->name}. Restam apenas {$currentStock} garrafas."
-                                ], 400);
+                                    'error' => 'Estoque Insuficiente',
+                                    'message' => "O item \"{$product->name}\" (parte do combo) não possui estoque suficiente. Restam apenas {$currentStock} garrafas.",
+                                    'product_id' => $product->id
+                                ], 422);
                             }
                         }
                         $product->atualizarEstoquePorVenda($qty, $saleType);
@@ -761,6 +774,13 @@ class OrderController extends Controller
                     if ($deliveryZone) {
                         $frete = (float) $deliveryZone->valor_frete;
                     } else {
+                        // CEP Avulso (cadastro rápido): exige que exista nas zonas para não quebrar se o admin apagar
+                        if ($cleanZipcode === self::CEP_AVULSO) {
+                            DB::rollBack();
+                            return response()->json([
+                                'error' => 'O CEP para cadastro rápido (' . self::CEP_AVULSO . ') não está configurado nas Zonas de Entrega. Peça ao administrador para cadastrá-lo em Admin > Zonas de Entrega (ex.: "CEP Avulso") para liberar entregas rápidas.'
+                            ], 422);
+                        }
                         // Se não encontrou zona de entrega, mas o frontend enviou delivery_fee (pode ser frete grátis manual)
                         $frontendFrete = (float) $request->input('delivery_fee', 0);
                         if ($frontendFrete > 0) {
@@ -1348,15 +1368,23 @@ class OrderController extends Controller
                 'search' => 'required|string|min:2'
             ]);
 
-            $searchTerm = $request->search;
-            
+            $searchTerm = trim($request->search);
+            $searchTermDigits = preg_replace('/\D/', '', $searchTerm);
+
             $customers = User::where('type', 'customer')
                 ->where('is_active', true)
-                ->where(function($query) use ($searchTerm) {
+                ->where(function($query) use ($searchTerm, $searchTermDigits) {
                     $query->where('name', 'like', "%{$searchTerm}%")
                           ->orWhere('email', 'like', "%{$searchTerm}%")
-                          ->orWhere('phone', 'like', "%{$searchTerm}%")
                           ->orWhere('document_number', 'like', "%{$searchTerm}%");
+                    // Busca por telefone: comparação literal e por dígitos (aceita (11) 93419-9864 ou 11934199864)
+                    $query->orWhere('phone', 'like', "%{$searchTerm}%");
+                    if (strlen($searchTermDigits) >= 8) {
+                        $query->orWhereRaw(
+                            "REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(phone,''), ' ', ''), '-', ''), '(', ''), ')', ''), '+', ''), '.', '') LIKE ?",
+                            ['%' . $searchTermDigits . '%']
+                        );
+                    }
                 })
                 ->with(['addresses' => function($query) {
                     $query->where('is_active', true)->orderBy('is_default', 'desc');

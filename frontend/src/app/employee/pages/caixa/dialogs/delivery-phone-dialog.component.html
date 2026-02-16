@@ -1,0 +1,83 @@
+<div class="delivery-phone-dialog">
+  <div mat-dialog-title class="dialog-header">
+    <mat-icon>local_shipping</mat-icon>
+    <h2>{{ step === 'phone' ? 'Cliente / Telefone' : 'Dados da Entrega' }}</h2>
+  </div>
+
+  <div mat-dialog-content class="dialog-content">
+    <!-- Step 1: Telefone -->
+    <form *ngIf="step === 'phone'" [formGroup]="phoneForm" (ngSubmit)="searchByPhone()" class="step-phone">
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Telefone do cliente</mat-label>
+        <input matInput
+               formControlName="phone"
+               placeholder="(11) 99999-9999">
+        <mat-icon matSuffix>phone</mat-icon>
+        <mat-error>Informe o telefone (mín. 8 dígitos)</mat-error>
+      </mat-form-field>
+      <div class="search-actions">
+        <button mat-raised-button color="primary" type="submit"
+                [disabled]="phoneForm.invalid || loading">
+          <mat-spinner *ngIf="loading" diameter="20"></mat-spinner>
+          <mat-icon *ngIf="!loading">search</mat-icon>
+          {{ loading ? 'Buscando...' : 'Buscar' }}
+        </button>
+      </div>
+      <!-- Múltiplos resultados: escolher um -->
+      <div *ngIf="!loading && searchResults.length > 1" class="customer-list">
+        <p class="list-label">Mais de um cliente encontrado. Selecione:</p>
+        <button type="button" mat-stroked-button *ngFor="let c of searchResults" class="customer-option"
+                (click)="selectCustomer(c)">
+          <span class="name">{{ c.name }}</span>
+          <span class="phone" *ngIf="c.phone">{{ c.phone }}</span>
+        </button>
+      </div>
+    </form>
+
+    <!-- Step 2: Formulário rápido (cliente não encontrado) - apenas rua, número e frete; cidade/UF/CEP fixos -->
+    <form *ngIf="step === 'quick'" [formGroup]="quickForm" (ngSubmit)="submitQuickForm()" class="step-quick">
+      <p class="quick-hint">Cliente não encontrado. Preencha os dados para a entrega:</p>
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Nome *</mat-label>
+        <input matInput formControlName="customerName" placeholder="Nome do cliente">
+        <mat-icon matSuffix>person</mat-icon>
+        <mat-error>Nome é obrigatório</mat-error>
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Telefone</mat-label>
+        <input matInput formControlName="customerPhone" readonly placeholder="Telefone">
+        <mat-icon matSuffix>phone</mat-icon>
+      </mat-form-field>
+      <h4 class="section-label"><mat-icon>location_on</mat-icon> Endereço (São Paulo, SP)</h4>
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Rua *</mat-label>
+        <input matInput formControlName="street" placeholder="Nome da rua">
+        <mat-icon matSuffix>place</mat-icon>
+        <mat-error>Informe a rua</mat-error>
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="number-field">
+        <mat-label>Número *</mat-label>
+        <input matInput formControlName="number" placeholder="Nº">
+        <mat-error>Informe o número</mat-error>
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="full-width fee-field">
+        <mat-label>Taxa de Entrega (R$)</mat-label>
+        <input matInput type="number" formControlName="deliveryFeeManual" min="0" step="0.01" placeholder="0,00">
+        <mat-icon matSuffix>local_shipping</mat-icon>
+        <mat-error>Informe o valor (0 para grátis)</mat-error>
+      </mat-form-field>
+    </form>
+  </div>
+
+  <div mat-dialog-actions class="dialog-actions">
+    <button mat-button type="button" (click)="step === 'quick' ? backToPhone() : cancel()">
+      <mat-icon>{{ step === 'quick' ? 'arrow_back' : 'close' }}</mat-icon>
+      {{ step === 'quick' ? 'Voltar' : 'Cancelar' }}
+    </button>
+    <button *ngIf="step === 'quick'" mat-raised-button color="primary"
+            (click)="submitQuickForm()" [disabled]="quickForm.invalid">
+      <mat-icon>check</mat-icon>
+      Usar estes dados
+    </button>
+  </div>
+</div>

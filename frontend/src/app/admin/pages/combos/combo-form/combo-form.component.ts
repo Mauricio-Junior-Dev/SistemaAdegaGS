@@ -59,6 +59,7 @@ export class ComboFormComponent implements OnInit, OnDestroy {
   products: Product[] = [];
   loading = false;
   isEdit = false;
+  isSubmitted = false;
   bundleId?: number;
   originalPrice = 0;
   selectedImages: File[] = [];
@@ -486,12 +487,13 @@ export class ComboFormComponent implements OnInit, OnDestroy {
       if (!firstInvalidField) {
         const invalidInputs = document.querySelectorAll('input.ng-invalid, textarea.ng-invalid');
         if (invalidInputs.length > 0) {
-          // Encontrar o mat-form-field pai
           const input = invalidInputs[0] as HTMLElement;
           firstInvalidField = input.closest('.mat-form-field') || input;
         }
       }
-      
+      if (!firstInvalidField) {
+        firstInvalidField = document.querySelector('.group-error-highlight') as HTMLElement;
+      }
       if (firstInvalidField) {
         firstInvalidField.scrollIntoView({ 
           behavior: 'smooth', 
@@ -523,19 +525,16 @@ export class ComboFormComponent implements OnInit, OnDestroy {
     const isValid = this.bundleForm.valid && this.hasValidGroups();
     
     if (!isValid) {
-      
-      // Mostrar mensagem de erro
+      this.isSubmitted = true;
       this.snackBar.open(
         'Verifique os campos obrigatórios e grupos',
         'Fechar',
         { duration: 3000 }
       );
-      
-      // Scroll até o primeiro campo inválido
       this.scrollToFirstInvalidField();
-      
       return;
     }
+    this.isSubmitted = false;
     
     // Se válido, prosseguir com o envio
     this.loading = true;

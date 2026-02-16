@@ -71,7 +71,8 @@
             <mat-expansion-panel *ngFor="let group of groupsFormArray.controls; let groupIndex = index" 
                                 [formGroupName]="groupIndex" 
                                 class="group-panel"
-                                [class.group-required]="group.get('min_selections')?.value > 0">
+                                [class.group-required]="group.get('min_selections')?.value > 0"
+                                [class.group-error-highlight]="group.invalid && (group.touched || isSubmitted)">
               <mat-expansion-panel-header class="group-panel-header">
                 <mat-panel-title class="group-panel-title">
                   <span class="group-name-display">{{ group.get('name')?.value || 'Seleção ' + (groupIndex + 1) }}</span>
@@ -172,6 +173,18 @@
                     <mat-icon>add</mat-icon>
                     Adicionar produto
                   </button>
+                </div>
+                <div class="group-error-message" *ngIf="group.invalid && (group.touched || isSubmitted)">
+                  <mat-icon>error</mat-icon>
+                  <span *ngIf="getGroupOptionsFormArray(groupIndex).length === 0">
+                    Este grupo precisa de pelo menos 1 produto selecionado.
+                  </span>
+                  <span *ngIf="getGroupOptionsFormArray(groupIndex).length > 0 && group.get('name')?.invalid">
+                    Preencha o nome do grupo.
+                  </span>
+                  <span *ngIf="getGroupOptionsFormArray(groupIndex).length > 0 && group.get('name')?.valid && group.invalid">
+                    Verifique os campos obrigatórios deste grupo.
+                  </span>
                 </div>
               </div>
             </mat-expansion-panel>

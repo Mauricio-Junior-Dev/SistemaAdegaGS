@@ -1201,8 +1201,9 @@ export class CheckoutComponent implements OnInit, OnDestroy {
             );
             return;
           }
-          const errorMessage = err?.error?.message || 'Erro ao criar seu pedido. Verifique os dados.';
-          this.toastr.error(errorMessage, 'Falha');
+          const errorMessage = err?.error?.message ?? err?.error?.error ?? 'Erro ao criar seu pedido. Verifique os dados.';
+          const errorTitle = err?.error?.error && err?.error?.error !== errorMessage ? err.error.error : 'Falha';
+          this.toastr.error(errorMessage, errorTitle);
         }
       });
     } catch (error) {
