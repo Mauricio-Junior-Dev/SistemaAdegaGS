@@ -19,6 +19,9 @@ import { Subject, takeUntil } from 'rxjs';
 import { DeliveryZoneService } from '../../../services/delivery-zone.service';
 import { DeliveryZone } from '../../../models/delivery-zone.model';
 import { DeliveryZoneFormDialogComponent } from './dialogs/delivery-zone-form-dialog.component';
+import { BlockedZipCodeService } from '../../../services/blocked-zip-code.service';
+import { BlockedZipCode } from '../../../models/blocked-zip-code.model';
+import { BlockedZipFormDialogComponent } from './dialogs/blocked-zip-form-dialog.component';
 
 @Component({
   selector: 'app-delivery-zones',
@@ -49,6 +52,8 @@ export class DeliveryZonesComponent implements OnInit, OnDestroy {
   loading = false;
   searchTerm = '';
   statusFilter = 'all';
+  blockedZips: BlockedZipCode[] = [];
+  loadingBlockedZips = false;
   
   displayedColumns: string[] = [
     'nome_bairro',
@@ -62,17 +67,36 @@ export class DeliveryZonesComponent implements OnInit, OnDestroy {
 
   constructor(
     private deliveryZoneService: DeliveryZoneService,
+    private blockedZipCodeService: BlockedZipCodeService,
     private dialog: MatDialog,
     private snackBar: MatSnackBar
   ) {}
 
   ngOnInit(): void {
     this.loadDeliveryZones();
+    this.loadBlockedZips();
   }
 
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  loadBlockedZips(): void {
+    this.loadingBlockedZips = true;
+    this.blockedZipCodeService.getAll()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (items) => {
+          this.blockedZips = items;
+          this.loadingBlockedZips = false;
+        },
+        error: (error) => {
+          console.error('Erro ao carregar CEPs bloqueados:', error);
+          this.snackBar.open('Erro ao carregar CEPs bloqueados', 'Fechar', { duration: 3000 });
+          this.loadingBlockedZips = false;
+        }
+      });
   }
 
   loadDeliveryZones(): void {
@@ -134,6 +158,48 @@ export class DeliveryZonesComponent implements OnInit, OnDestroy {
         this.loadDeliveryZones();
       }
     });
+  }
+
+  openBlockedZipDialog(): void {
+    const dialogRef = this.dialog.open(BlockedZipFormDialogComponent, {
+      width: '420px',
+      data: {}
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        this.blockedZipCodeService.create(result)
+          .pipe(takeUntil(this.destroy$))
+          .subscribe({
+            next: () => {
+              this.snackBar.open('CEP bloqueado cadastrado com sucesso', 'Fechar', { duration: 3000 });
+              this.loadBlockedZips();
+            },
+            error: (error) => {
+              console.error('Erro ao salvar CEP bloqueado:', error);
+              this.snackBar.open('Erro ao salvar CEP bloqueado', 'Fechar', { duration: 3000 });
+            }
+          });
+      }
+    });
+  }
+
+  deleteBlockedZip(item: BlockedZipCode): void {
+    if (!confirm(`Remover o bloqueio para o CEP ${item.zip_code}?`)) {
+      return;
+    }
+    this.blockedZipCodeService.delete(item.id)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: () => {
+          this.snackBar.open('CEP bloqueado removido com sucesso', 'Fechar', { duration: 3000 });
+          this.loadBlockedZips();
+        },
+        error: (error) => {
+          console.error('Erro ao remover CEP bloqueado:', error);
+          this.snackBar.open('Erro ao remover CEP bloqueado', 'Fechar', { duration: 3000 });
+        }
+      });
   }
 
   deleteDeliveryZone(zone: DeliveryZone): void {

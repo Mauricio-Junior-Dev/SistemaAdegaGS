@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\DeliveryZone;
+use App\Models\BlockedZipCode;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\ValidationException;
@@ -103,6 +104,20 @@ class DeliveryZoneController extends Controller
         // Limpa o hífen/formatação do CEP do cliente para comparar com o banco
         // (O Model DeliveryZone já faz isso ao salvar, então os dados no DB estão limpos)
         $clientCep = preg_replace('/[^0-9]/', '', $validated['cep']);
+
+        // Antes de tudo, verificar se o CEP está na lista de exceções (CEPs bloqueados)
+        $isBlocked = BlockedZipCode::where('zip_code', $clientCep)
+            ->where('active', true)
+            ->exists();
+
+        if ($isBlocked) {
+            return response()->json([
+                'error' => 'CEP bloqueado',
+                'message' => 'Infelizmente não realizamos entregas para este CEP específico por restrições logísticas.',
+                'valor_frete' => null,
+                'tempo_estimado' => null,
+            ], 422);
+        }
 
         // Procura por uma zona ativa onde o CEP do cliente está DENTRO da faixa
         $deliveryZone = DeliveryZone::ativo()

@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\Admin\ReportController;
 use App\Http\Controllers\Api\Admin\SettingController;
 use App\Http\Controllers\Api\Admin\StockMovementController;
 use App\Http\Controllers\DeliveryZoneController;
+use App\Http\Controllers\BlockedZipCodeController;
 
 Route::middleware(['admin'])->group(function () {
     // Categorias
@@ -106,6 +107,12 @@ Route::middleware(['admin'])->group(function () {
     Route::post('/delivery-zones', [DeliveryZoneController::class, 'store']);
     Route::put('/delivery-zones/{deliveryZone}', [DeliveryZoneController::class, 'update']);
     Route::delete('/delivery-zones/{deliveryZone}', [DeliveryZoneController::class, 'destroy']);
+
+    // CEPs Bloqueados (Exceções dentro de zonas atendidas)
+    Route::get('/blocked-zip-codes', [BlockedZipCodeController::class, 'index']);
+    Route::post('/blocked-zip-codes', [BlockedZipCodeController::class, 'store']);
+    Route::put('/blocked-zip-codes/{blockedZipCode}', [BlockedZipCodeController::class, 'update']);
+    Route::delete('/blocked-zip-codes/{blockedZipCode}', [BlockedZipCodeController::class, 'destroy']);
 
     // Endpoint de teste para debug
     Route::post('/settings/test', function(\Illuminate\Http\Request $request) {

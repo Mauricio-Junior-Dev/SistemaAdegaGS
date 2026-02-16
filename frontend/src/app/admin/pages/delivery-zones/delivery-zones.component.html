@@ -40,7 +40,7 @@
         <p>Carregando zonas de entrega...</p>
       </div>
 
-      <!-- Tabela -->
+      <!-- Tabela de Zonas de Entrega -->
       <div *ngIf="!loading" class="table-container">
         <table mat-table [dataSource]="filteredZones" class="delivery-zones-table">
           
@@ -128,6 +128,61 @@
             </button>
           </p>
         </div>
+      </div>
+    </mat-card>
+
+    <!-- Seção de CEPs Bloqueados (Exceções) -->
+    <mat-card class="blocked-zips-card">
+      <div class="blocked-header">
+        <div>
+          <h2>CEPs Bloqueados (Exceções)</h2>
+          <p>Bloqueie ruas/CEPs específicos dentro de áreas atendidas (área de risco, via interditada, etc).</p>
+        </div>
+        <button mat-stroked-button color="primary" (click)="openBlockedZipDialog()">
+          <mat-icon>add</mat-icon>
+          Adicionar CEP Bloqueado
+        </button>
+      </div>
+
+      <div *ngIf="loadingBlockedZips" class="loading-container blocked">
+        <mat-spinner diameter="32"></mat-spinner>
+        <p>Carregando CEPs bloqueados...</p>
+      </div>
+
+      <div *ngIf="!loadingBlockedZips">
+        <div *ngIf="blockedZips.length === 0" class="no-data blocked">
+          <mat-icon>block</mat-icon>
+          <h3>Nenhum CEP bloqueado cadastrado</h3>
+          <p>Use esta seção para registrar exceções (ruas/CEPs específicos que não devem receber entregas).</p>
+        </div>
+
+        <table *ngIf="blockedZips.length > 0" class="blocked-zips-table">
+          <thead>
+            <tr>
+              <th>CEP</th>
+              <th>Motivo</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let item of blockedZips">
+              <td>{{ item.zip_code }}</td>
+              <td>
+                <span *ngIf="item.reason; else noReason">
+                  {{ item.reason }}
+                </span>
+                <ng-template #noReason>
+                  <span class="muted">Não informado</span>
+                </ng-template>
+              </td>
+              <td>
+                <button mat-icon-button color="warn" (click)="deleteBlockedZip(item)" matTooltip="Remover bloqueio">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </mat-card>
   </div>

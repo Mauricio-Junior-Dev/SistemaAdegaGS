@@ -11,6 +11,7 @@ use App\Models\OrderItemSelection;
 use App\Models\Address;
 use App\Models\User;
 use App\Models\DeliveryZone;
+use App\Models\BlockedZipCode;
 use App\Models\CashSession;
 use App\Models\CashTransaction;
 use App\Models\OrderPayment;
@@ -765,6 +766,18 @@ class OrderController extends Controller
                 $address = Address::find($deliveryAddressId);
                 if ($address && $address->zipcode) {
                     $cleanZipcode = preg_replace('/[^0-9]/', '', $address->zipcode);
+
+                    // Segurança dupla: verificar blacklist de CEPs antes de qualquer cálculo de zona
+                    $isBlockedZip = BlockedZipCode::where('zip_code', $cleanZipcode)
+                        ->where('active', true)
+                        ->exists();
+                    if ($isBlockedZip) {
+                        DB::rollBack();
+                        return response()->json([
+                            'error' => 'CEP bloqueado',
+                            'message' => 'Endereço de entrega não atendido (Zona Bloqueada).'
+                        ], 422);
+                    }
                     
                     $deliveryZone = DeliveryZone::ativo()
                         ->where('cep_inicio', '<=', $cleanZipcode)

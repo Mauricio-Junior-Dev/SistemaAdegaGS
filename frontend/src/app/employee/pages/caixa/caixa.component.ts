@@ -120,6 +120,8 @@ export class CaixaComponent implements OnInit, OnDestroy {
   isPayOnDelivery = false;
   // Controle se a taxa de entrega será cobrada no total/pedido
   isDeliveryFeeEnabled = false;
+  // Controle se o frete atual é válido (CEP atendido e não bloqueado)
+  isFreightValid = false;
   
   // Método de Pagamento Selecionado
   selectedPaymentMethod: PaymentMethod | null = null;
@@ -441,6 +443,7 @@ export class CaixaComponent implements OnInit, OnDestroy {
       // Ao limpar endereço ou quando não é entrega, não considerar taxa de entrega
       this.deliveryFee = 0;
       this.estimatedDeliveryTime = '';
+      this.isFreightValid = false;
       this.updateTotal();
     }
   }
@@ -448,6 +451,7 @@ export class CaixaComponent implements OnInit, OnDestroy {
   calculateDeliveryFee(addressId: number): void {
     if (!this.isPayOnDelivery || !addressId) {
       this.deliveryFee = 0;
+      this.isFreightValid = false;
       return;
     }
     
@@ -479,6 +483,7 @@ export class CaixaComponent implements OnInit, OnDestroy {
         next: (response) => {
           this.deliveryFee = parseFloat(String(response?.valor_frete ?? '0')) || 0;
           this.estimatedDeliveryTime = response?.tempo_estimado || '';
+          this.isFreightValid = true;
           this.loadingDeliveryFee = false;
           this.updateTotal();
         },
@@ -487,8 +492,23 @@ export class CaixaComponent implements OnInit, OnDestroy {
           this.deliveryFee = 0;
           this.estimatedDeliveryTime = '';
           this.loadingDeliveryFee = false;
+          this.isFreightValid = false;
           this.updateTotal();
-          if (error.status === 404) {
+          const backendMessage =
+            (error?.error && typeof error.error === 'object' && (error.error.message || error.error.error)) ||
+            null;
+
+          if (error.status === 422) {
+            this.toastr.warning(
+              backendMessage || 'Infelizmente não realizamos entregas para este CEP específico por restrições logísticas.',
+              '',
+              {
+                toastClass: 'modern-toast-notification',
+                positionClass: 'toast-bottom-center',
+                timeOut: 6000
+              }
+            );
+          } else if (error.status === 404) {
             this.toastr.warning('Infelizmente, ainda não atendemos este CEP.', '', {
               toastClass: 'modern-toast-notification',
               positionClass: 'toast-bottom-center',
@@ -513,6 +533,7 @@ export class CaixaComponent implements OnInit, OnDestroy {
       this.isDeliveryFeeEnabled = false;
       this.estimatedDeliveryTime = '';
       this.quickDeliveryData = null;
+       this.isFreightValid = false;
       this.updateTotal();
     } else {
       this.isDeliveryFeeEnabled = true;
@@ -557,6 +578,7 @@ export class CaixaComponent implements OnInit, OnDestroy {
         this.quickDeliveryData = result.data;
         this.deliveryFee = result.data.deliveryFeeManual;
         this.isDeliveryFeeEnabled = result.data.deliveryFeeManual > 0;
+        this.isFreightValid = true;
         this.updateTotal();
         this.cdr.detectChanges();
       }
@@ -567,6 +589,7 @@ export class CaixaComponent implements OnInit, OnDestroy {
     this.quickDeliveryData = null;
     this.deliveryFee = 0;
     this.isDeliveryFeeEnabled = false;
+    this.isFreightValid = false;
     this.updateTotal();
   }
 
@@ -640,6 +663,7 @@ export class CaixaComponent implements OnInit, OnDestroy {
     this.deliveryFee = 0;
     this.estimatedDeliveryTime = '';
     this.quickDeliveryData = null;
+    this.isFreightValid = false;
   }
 
   toggleCustomerSearch(): void {
@@ -1074,6 +1098,15 @@ export class CaixaComponent implements OnInit, OnDestroy {
   }
 
   finalizeSale(paymentStatus: 'pending' | 'completed' = 'completed'): void {
+    // Se for pedido de entrega, impedir finalização se o frete não for válido (CEP bloqueado ou não atendido)
+    if (this.isPayOnDelivery && !this.isFreightValid) {
+      this.toastr.warning('Endereço de entrega não atendido. Verifique o CEP/frete antes de gerar o pedido.', '', {
+        toastClass: 'modern-toast-notification',
+        positionClass: 'toast-bottom-center',
+        timeOut: 5000
+      });
+      return;
+    }
     // Bloquear se métodos estiverem desabilitados nas configurações
     if (this.settings && Array.isArray(this.settings.accepted_payment_methods)) {
       const map: Record<string, string> = {

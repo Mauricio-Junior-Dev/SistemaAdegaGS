@@ -1,7 +1,7 @@
 import { Component, Inject, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, FormControl, Validators, ReactiveFormsModule } from '@angular/forms';
-import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
+import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -19,6 +19,7 @@ import { startWith, map } from 'rxjs/operators';
 
 import { ProductService, Product, CreateProductDTO } from '../../../services/product.service';
 import { CategoryService, Category } from '../../../services/category.service';
+import { CategoryFormDialogComponent } from '../../categorias/dialogs/category-form-dialog.component';
 import { environment } from '../../../../../environments/environment';
 
 @Component({
@@ -87,6 +88,14 @@ import { environment } from '../../../../../environments/environment';
                      [matAutocomplete]="categoryAuto"
                      [formControl]="categoryFilterCtrl"
                      placeholder="Digite para buscar (ex: whi para Whisk)">
+              <button
+                mat-icon-button
+                matSuffix
+                type="button"
+                matTooltip="Nova Categoria"
+                (click)="openNewCategoryDialog($event)">
+                <mat-icon>add</mat-icon>
+              </button>
               <mat-autocomplete #categoryAuto="matAutocomplete"
                                (optionSelected)="onCategorySelected($event)">
                 <mat-option *ngFor="let category of filteredCategories$ | async" [value]="category">
@@ -788,6 +797,7 @@ export class ProductFormDialogComponent implements OnInit {
     private productService: ProductService,
     private categoryService: CategoryService,
     private snackBar: MatSnackBar,
+    private dialog: MatDialog,
     public dialogRef: MatDialogRef<ProductFormDialogComponent>,
     @Inject(MAT_DIALOG_DATA) public data: { product?: Product }
   ) {
@@ -890,6 +900,29 @@ export class ProductFormDialogComponent implements OnInit {
     return this.allCategories.filter(c =>
       ProductFormDialogComponent.normalizeForSearch(c.name).includes(normalized)
     );
+  }
+
+  /**
+   * Abre o diálogo de Nova Categoria sem sair do formulário de Produto.
+   * Após salvar, recarrega as categorias e limpa o filtro para exibir a nova.
+   */
+  openNewCategoryDialog(event: MouseEvent): void {
+    event.stopPropagation();
+
+    const dialogRef = this.dialog.open(CategoryFormDialogComponent, {
+      width: '520px',
+      maxWidth: '95vw',
+      data: {}
+    });
+
+    dialogRef.afterClosed().subscribe((result) => {
+      // O CategoryFormDialogComponent atualmente retorna apenas true/false
+      if (result) {
+        this.loadCategories();
+        // UX: limpar o filtro para mostrar toda a lista, incluindo a recém-criada
+        this.categoryFilterCtrl.setValue('', { emitEvent: true });
+      }
+    });
   }
 
   onCategorySelected(event: { option: { value: Category } }): void {

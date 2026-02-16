@@ -466,7 +466,7 @@
               <button mat-raised-button 
                       color="accent"
                       class="finalize-button"
-                      [disabled]="!cartItems.length || !canFinalize || payments.length === 0"
+                      [disabled]="!cartItems.length || !canFinalize || payments.length === 0 || (isPayOnDelivery && !isFreightValid)"
                       (click)="confirmAndFinalizeSale()">
                 <mat-icon>{{isPayOnDelivery ? 'local_shipping' : 'check_circle'}}</mat-icon>
                 {{isPayOnDelivery ? 'Gerar Pedido de Entrega' : 'Finalizar Venda'}}

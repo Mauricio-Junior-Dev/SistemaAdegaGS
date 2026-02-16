@@ -254,8 +254,20 @@ export class CheckoutComponent implements OnInit, OnDestroy {
         // Definir flag de erro - área fora de entrega
         this.isDeliveryAreaValid = false;
         this.loadingDeliveryZones = false;
-        if (error.status === 404) {
+        const backendMessage =
+          (error?.error && typeof error.error === 'object' && (error.error.message || error.error.error)) ||
+          null;
+
+        if (error.status === 422) {
+          this.snackBar.open(
+            backendMessage || 'Infelizmente não realizamos entregas para este CEP específico por restrições logísticas.',
+            'Fechar',
+            { duration: 5000 }
+          );
+        } else if (error.status === 404) {
           this.snackBar.open('Infelizmente, ainda não atendemos este CEP.', 'Fechar', { duration: 5000 });
+        } else {
+          this.snackBar.open('Erro ao calcular frete. Tente novamente.', 'Fechar', { duration: 4000 });
         }
       }
     });
