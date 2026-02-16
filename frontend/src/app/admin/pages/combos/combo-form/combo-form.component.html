@@ -309,19 +309,51 @@
         <mat-card-subtitle>Configure as opções de exibição do combo</mat-card-subtitle>
       </mat-card-header>
       <mat-card-content>
-        <div class="checkbox-group">
-          <mat-checkbox formControlName="is_active">
-            Bundle Ativo
-          </mat-checkbox>
-          <mat-checkbox formControlName="featured">
-            Em Destaque
-          </mat-checkbox>
-          <mat-checkbox formControlName="offers">
-            Oferta
-          </mat-checkbox>
-          <mat-checkbox formControlName="popular">
-            Popular
-          </mat-checkbox>
+        <div class="form-row settings-row">
+          <div class="toggle-wrapper">
+            <mat-slide-toggle formControlName="is_active" color="primary">
+              Combo Ativo
+            </mat-slide-toggle>
+            <mat-icon
+              matTooltip="Define se este combo pode ser vendido no sistema."
+              matTooltipPosition="right"
+              class="info-icon">
+              help_outline
+            </mat-icon>
+          </div>
+          <div class="toggle-wrapper">
+            <mat-slide-toggle formControlName="featured" color="primary">
+              Em Destaque
+            </mat-slide-toggle>
+            <mat-icon
+              matTooltip="Exibe o combo na seção de destaques da página inicial/app."
+              matTooltipPosition="right"
+              class="info-icon">
+              help_outline
+            </mat-icon>
+          </div>
+          <div class="toggle-wrapper">
+            <mat-slide-toggle formControlName="offers" color="primary">
+              Oferta Especial
+            </mat-slide-toggle>
+            <mat-icon
+              matTooltip="Adiciona uma etiqueta de oferta visual ao combo."
+              matTooltipPosition="right"
+              class="info-icon">
+              help_outline
+            </mat-icon>
+          </div>
+          <div class="toggle-wrapper">
+            <mat-slide-toggle formControlName="popular" color="primary">
+              Combo Popular
+            </mat-slide-toggle>
+            <mat-icon
+              matTooltip="Marca o combo como um dos mais vendidos (pode influenciar a ordenação)."
+              matTooltipPosition="right"
+              class="info-icon">
+              help_outline
+            </mat-icon>
+          </div>
         </div>
       </mat-card-content>
     </mat-card>

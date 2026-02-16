@@ -285,12 +285,24 @@ import { environment } from '../../../../../environments/environment';
                   <div class="form-row">
                     <mat-form-field appearance="outline">
                       <mat-label>Produto Pai (Unidade Base)</mat-label>
-                      <mat-select formControlName="parent_product_id" required>
-                        <mat-option [value]="null">Selecione o produto base</mat-option>
-                        <mat-option *ngFor="let parentProduct of availableParentProducts" [value]="parentProduct.id">
-                          {{parentProduct.name}}
+                      <input matInput
+                             [matAutocomplete]="autoParent"
+                             [formControl]="parentProductFilterCtrl"
+                             placeholder="Digite para buscar (ex: Skol)">
+                      <button mat-icon-button
+                              matSuffix
+                              type="button"
+                              matTooltip="Limpar seleção"
+                              (click)="clearParentProduct()">
+                        <mat-icon>close</mat-icon>
+                      </button>
+                      <mat-autocomplete #autoParent="matAutocomplete"
+                                       [displayWith]="displayProductFn"
+                                       (optionSelected)="onParentProductSelected($event)">
+                        <mat-option *ngFor="let parentProduct of filteredParentProducts$ | async" [value]="parentProduct">
+                          {{ parentProduct.name }}
                         </mat-option>
-                      </mat-select>
+                      </mat-autocomplete>
                       <mat-error *ngIf="productForm.get('parent_product_id')?.hasError('required')">
                         Produto pai é obrigatório para Caixa/Fardo
                       </mat-error>
@@ -797,6 +809,8 @@ export class ProductFormDialogComponent implements OnInit {
   categoryFilterCtrl = new FormControl<string>('');
   filteredCategories$!: Observable<Category[]>;
   availableParentProducts: Product[] = [];
+  parentProductFilterCtrl = new FormControl<string | Product | null>(null);
+  filteredParentProducts$!: Observable<Product[]>;
   loading = false;
   isEdit = false;
   imagePreview: string | null = null;
@@ -865,6 +879,16 @@ export class ProductFormDialogComponent implements OnInit {
     this.categoryFilterCtrl.valueChanges.subscribe(value => {
       if (!value?.trim()) this.productForm.get('category_id')?.setValue(null, { emitEvent: false });
     });
+    this.filteredParentProducts$ = this.parentProductFilterCtrl.valueChanges.pipe(
+      startWith(this.parentProductFilterCtrl.value),
+      map(v => this.filterParentProducts(typeof v === 'string' ? v : (v?.name ?? '')))
+    );
+    this.parentProductFilterCtrl.valueChanges.subscribe(value => {
+      const isProduct = value instanceof Object && value !== null && 'id' in value;
+      if (!isProduct) {
+        this.productForm.get('parent_product_id')?.setValue(null, { emitEvent: false });
+      }
+    });
     this.loadCategories();
     this.loadParentProducts();
     this.setupValidators();
@@ -918,6 +942,30 @@ export class ProductFormDialogComponent implements OnInit {
     return this.allCategories.filter(c =>
       ProductFormDialogComponent.normalizeForSearch(c.name).includes(normalized)
     );
+  }
+
+  displayProductFn(value: string | Product | null): string {
+    if (value instanceof Object && value !== null && 'name' in value) return (value as Product).name ?? '';
+    return (value ?? '') as string;
+  }
+
+  private filterParentProducts(term: string): Product[] {
+    const normalized = ProductFormDialogComponent.normalizeForSearch(term);
+    if (!normalized) return this.availableParentProducts.slice();
+    return this.availableParentProducts.filter(p =>
+      ProductFormDialogComponent.normalizeForSearch(p.name).includes(normalized)
+    );
+  }
+
+  onParentProductSelected(event: { option: { value: Product } }): void {
+    const product = event.option.value;
+    this.productForm.get('parent_product_id')?.setValue(product.id);
+    this.parentProductFilterCtrl.setValue(product);
+  }
+
+  clearParentProduct(): void {
+    this.productForm.get('parent_product_id')?.setValue(null);
+    this.parentProductFilterCtrl.setValue('');
   }
 
   /**
@@ -983,9 +1031,15 @@ export class ProductFormDialogComponent implements OnInit {
     // Carregar produtos que podem ser pais (excluindo o produto atual se estiver editando)
     this.productService.getProducts({ per_page: 1000, is_active: true }).subscribe({
       next: (response) => {
-        this.availableParentProducts = response.data.filter(p => 
+        this.availableParentProducts = response.data.filter(p =>
           !this.isEdit || p.id !== this.data.product?.id
         );
+        if (this.isEdit && this.data.product?.parent_product_id) {
+          const parent = this.availableParentProducts.find(p => p.id === this.data.product!.parent_product_id);
+          if (parent) this.parentProductFilterCtrl.setValue(parent, { emitEvent: false });
+        } else {
+          this.parentProductFilterCtrl.setValue(this.parentProductFilterCtrl.value, { emitEvent: true });
+        }
       },
       error: (error) => {
         console.error('Erro ao carregar produtos para Pack:', error);
@@ -1046,6 +1100,7 @@ export class ProductFormDialogComponent implements OnInit {
           parentProductControl.clearValidators();
           stockMultiplierControl.clearValidators();
           parentProductControl.setValue(null);
+          this.parentProductFilterCtrl.setValue('');
           stockMultiplierControl.setValue(1);
           
           // Reabilitar estoque e restaurar validação

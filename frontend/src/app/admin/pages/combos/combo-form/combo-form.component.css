@@ -192,15 +192,37 @@
   flex: 1;
 }
 
-/* Configurações */
-.checkbox-group {
+/* Configurações (toggles + ícones de ajuda) */
+.settings-row {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 24px;
+  margin-top: 8px;
 }
 
-.checkbox-group mat-checkbox {
-  margin-bottom: 8px;
+.settings-row .toggle-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 200px;
+}
+
+.settings-row .toggle-wrapper mat-slide-toggle {
+  flex: 1;
+}
+
+.settings-row .info-icon {
+  color: #999;
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+  cursor: help;
+}
+
+.settings-row .info-icon:hover {
+  color: var(--primary, #673ab7);
 }
 
 /* Botões de Ação */
@@ -283,9 +305,13 @@
     gap: 12px;
   }
   
-  .checkbox-group {
+  .settings-row {
     flex-direction: column;
     gap: 16px;
+  }
+
+  .settings-row .toggle-wrapper {
+    min-width: 100%;
   }
   
   .form-actions {

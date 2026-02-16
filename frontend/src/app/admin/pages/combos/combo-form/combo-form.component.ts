@@ -7,6 +7,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatSelectModule } from '@angular/material/select';
 import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBarModule, MatSnackBar } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -42,6 +43,7 @@ import { AuthService } from '../../../../core/services/auth.service';
     MatCardModule,
     MatSelectModule,
     MatCheckboxModule,
+    MatSlideToggleModule,
     MatIconModule,
     MatSnackBarModule,
     MatProgressSpinnerModule,
