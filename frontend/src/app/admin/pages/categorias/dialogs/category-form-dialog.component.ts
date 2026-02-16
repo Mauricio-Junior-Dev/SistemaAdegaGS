@@ -71,16 +71,6 @@ import { environment } from '../../../../../environments/environment';
                 Nome é obrigatório
               </mat-error>
             </mat-form-field>
-
-            <mat-form-field appearance="outline">
-              <mat-label>Categoria Pai</mat-label>
-              <mat-select formControlName="parent_id">
-                <mat-option [value]="null">Nenhuma</mat-option>
-                <mat-option *ngFor="let category of categories" [value]="category.id">
-                  {{category.name}}
-                </mat-option>
-              </mat-select>
-            </mat-form-field>
           </div>
 
           <mat-form-field appearance="outline">
