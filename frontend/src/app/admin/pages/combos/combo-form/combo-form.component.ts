@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, inject, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, ChangeDetectorRef, ViewChildren, QueryList } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormArray, FormsModule, FormControl } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -14,7 +14,7 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
-import { MatExpansionModule } from '@angular/material/expansion';
+import { MatExpansionModule, MatExpansionPanel } from '@angular/material/expansion';
 import { Router, ActivatedRoute } from '@angular/router';
 import { Subject, Observable, of } from 'rxjs';
 import { startWith, map, debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
@@ -65,6 +65,9 @@ export class ComboFormComponent implements OnInit, OnDestroy {
   selectedImages: File[] = [];
   existingImages: string[] = [];
   imagePreviewUrls: string[] = []; // URLs de preview para evitar NG0100
+
+  // Painéis de expansão dos grupos (para abrir automaticamente os inválidos no submit)
+  @ViewChildren(MatExpansionPanel) groupPanels!: QueryList<MatExpansionPanel>;
 
   // Sistema de busca de produtos por opção (cada opção tem seu próprio controle e observable)
   filteredProducts$: Map<string, Observable<Product[]>> = new Map(); // key: 'groupIndex_optionIndex'
@@ -470,6 +473,21 @@ export class ComboFormComponent implements OnInit, OnDestroy {
 
 
   /**
+   * Abre os painéis (acordeão) dos grupos inválidos para o usuário ver os campos a preencher.
+   * Evita o bug visual de painel fechado com classe de erro e melhora a UX no submit.
+   */
+  openInvalidGroupPanels(): void {
+    setTimeout(() => {
+      const panels = this.groupPanels?.toArray() ?? [];
+      this.groupsFormArray.controls.forEach((groupControl, i) => {
+        if (groupControl.invalid && panels[i]) {
+          panels[i].open();
+        }
+      });
+    }, 0);
+  }
+
+  /**
    * Encontra o primeiro campo inválido na tela e faz scroll até ele
    */
   scrollToFirstInvalidField(): void {
@@ -526,6 +544,7 @@ export class ComboFormComponent implements OnInit, OnDestroy {
     
     if (!isValid) {
       this.isSubmitted = true;
+      this.openInvalidGroupPanels();
       this.snackBar.open(
         'Verifique os campos obrigatórios e grupos',
         'Fechar',

@@ -1,4 +1,4 @@
-import { Component, Inject, OnInit } from '@angular/core';
+import { Component, Inject, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
@@ -11,7 +11,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { MatStepperModule } from '@angular/material/stepper';
+import { MatStepperModule, MatStepper } from '@angular/material/stepper';
 import { MatDividerModule } from '@angular/material/divider';
 
 import { UserService, User, CreateUserDTO } from '../../../services/user.service';
@@ -279,6 +279,8 @@ import { UserService, User, CreateUserDTO } from '../../../services/user.service
   `]
 })
 export class UserFormDialogComponent implements OnInit {
+  @ViewChild(MatStepper) stepper!: MatStepper;
+
   basicInfoForm: FormGroup;
   passwordForm: FormGroup;
   addressForm: FormGroup;
@@ -361,34 +363,47 @@ export class UserFormDialogComponent implements OnInit {
 
 
   onSubmit(): void {
-    if (this.basicInfoForm.valid && 
-        this.passwordForm.valid && 
-        this.addressForm.valid) {
-      this.loading = true;
+    this.basicInfoForm.markAllAsTouched();
+    this.passwordForm.markAllAsTouched();
+    this.addressForm.markAllAsTouched();
 
-      const userData: CreateUserDTO = {
-        ...this.basicInfoForm.value,
-        ...this.passwordForm.value,
-        address: Object.keys(this.addressForm.value).some(key => this.addressForm.value[key])
-          ? this.addressForm.value
-          : undefined
-      };
-
-
-      const request = this.isEdit
-        ? this.userService.updateUser({ id: this.data.user!.id, ...userData })
-        : this.userService.createUser(userData);
-
-      request.subscribe({
-        next: () => {
-          this.dialogRef.close(true);
-        },
-        error: (error) => {
-          console.error('Erro ao salvar usuário:', error);
-          this.snackBar.open('Erro ao salvar usuário', 'Fechar', { duration: 3000 });
-          this.loading = false;
+    if (!this.basicInfoForm.valid || !this.passwordForm.valid || !this.addressForm.valid) {
+      if (this.stepper) {
+        if (!this.basicInfoForm.valid) {
+          this.stepper.selectedIndex = 0;
+        } else if (!this.passwordForm.valid) {
+          this.stepper.selectedIndex = 1;
+        } else {
+          this.stepper.selectedIndex = 2;
         }
-      });
+      }
+      this.snackBar.open('Verifique os campos obrigatórios', 'Fechar', { duration: 3000 });
+      return;
     }
+
+    this.loading = true;
+
+    const userData: CreateUserDTO = {
+      ...this.basicInfoForm.value,
+      ...this.passwordForm.value,
+      address: Object.keys(this.addressForm.value).some(key => this.addressForm.value[key])
+        ? this.addressForm.value
+        : undefined
+    };
+
+    const request = this.isEdit
+      ? this.userService.updateUser({ id: this.data.user!.id, ...userData })
+      : this.userService.createUser(userData);
+
+    request.subscribe({
+      next: () => {
+        this.dialogRef.close(true);
+      },
+      error: (error) => {
+        console.error('Erro ao salvar usuário:', error);
+        this.snackBar.open('Erro ao salvar usuário', 'Fechar', { duration: 3000 });
+        this.loading = false;
+      }
+    });
   }
 }

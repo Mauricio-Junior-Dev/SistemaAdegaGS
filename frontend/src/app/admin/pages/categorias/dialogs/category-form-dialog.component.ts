@@ -107,7 +107,7 @@ import { environment } from '../../../../../environments/environment';
         <button type="submit"
                 mat-raised-button
                 color="primary"
-                [disabled]="categoryForm.invalid || loading">
+                [disabled]="loading">
           <mat-icon *ngIf="loading">
             <mat-spinner diameter="20"></mat-spinner>
           </mat-icon>
@@ -284,9 +284,13 @@ export class CategoryFormDialogComponent implements OnInit {
   }
 
   onSubmit(): void {
-    if (this.categoryForm.valid) {
-      this.loading = true;
-      const raw = this.categoryForm.value;
+    this.categoryForm.markAllAsTouched();
+    if (!this.categoryForm.valid) {
+      this.snackBar.open('Verifique os campos obrigatórios', 'Fechar', { duration: 3000 });
+      return;
+    }
+    this.loading = true;
+    const raw = this.categoryForm.value;
       const categoryData: CreateCategoryDTO = {
         name: raw.name,
         description: raw.description || undefined,
@@ -322,7 +326,6 @@ export class CategoryFormDialogComponent implements OnInit {
           this.loading = false;
         }
       });
-    }
   }
 
   resolvePreview(previewUrl: string): string {

@@ -421,14 +421,19 @@ mat-card-subtitle {
   height: 22px;
 }
 
-/* Destaque visual quando o grupo está inválido no submit */
+/* Destaque visual quando o grupo está inválido no submit (container = mat-expansion-panel) */
 :host ::ng-deep .group-error-highlight {
   border: 2px solid #d32f2f !important;
-  border-radius: 4px;
+  border-radius: 12px; /* igual ao painel para não quebrar na animação de abertura */
 }
 
 :host ::ng-deep .group-error-highlight .mat-expansion-panel-header {
   background-color: #ffebee !important;
+}
+
+/* Garantir que o conteúdo expandido não quebre o layout durante a animação */
+:host ::ng-deep .group-error-highlight.mat-expansion-panel .mat-expansion-panel-body {
+  overflow: visible;
 }
 
 .group-error-message {

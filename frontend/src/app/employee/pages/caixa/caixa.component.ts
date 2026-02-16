@@ -689,6 +689,7 @@ export class CaixaComponent implements OnInit, OnDestroy {
     this.saleType = product.can_sell_by_dose ? 'garrafa' : 'garrafa';
     this.searchTerm = '';
     this.searchResults = [];
+    this.searchSubject.next('');
   }
 
   addToCart(): void {
@@ -748,6 +749,7 @@ export class CaixaComponent implements OnInit, OnDestroy {
       this.quantity = 1;
       this.searchTerm = '';
       this.searchResults = [];
+      this.searchSubject.next('');
       this.toastr.success(`${bundle.name} adicionado ao carrinho`, '', {
         toastClass: 'modern-toast-notification',
         positionClass: 'toast-bottom-center',

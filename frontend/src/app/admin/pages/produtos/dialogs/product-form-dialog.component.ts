@@ -1,4 +1,4 @@
-import { Component, Inject, OnInit } from '@angular/core';
+import { Component, Inject, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, FormControl, Validators, ReactiveFormsModule } from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
@@ -12,7 +12,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { MatExpansionModule } from '@angular/material/expansion';
+import { MatExpansionModule, MatExpansionPanel } from '@angular/material/expansion';
 import { MatDividerModule } from '@angular/material/divider';
 import { Observable } from 'rxjs';
 import { startWith, map } from 'rxjs/operators';
@@ -175,7 +175,7 @@ import { environment } from '../../../../../environments/environment';
           </div>
 
           <!-- Painel de Configurações Avançadas -->
-          <mat-expansion-panel [expanded]="false" class="advanced-settings-panel">
+          <mat-expansion-panel #advancedPanel [expanded]="false" class="advanced-settings-panel">
             <mat-expansion-panel-header>
               <mat-panel-title>
                 ⚙️ Configurações Avançadas
@@ -423,7 +423,7 @@ import { environment } from '../../../../../environments/environment';
         <button type="submit"
                 mat-raised-button
                 color="primary"
-                [disabled]="productForm.invalid || loading">
+                [disabled]="loading">
           <mat-icon *ngIf="loading">
             <mat-spinner diameter="20"></mat-spinner>
           </mat-icon>
@@ -765,6 +765,8 @@ import { environment } from '../../../../../environments/environment';
   `]
 })
 export class ProductFormDialogComponent implements OnInit {
+  @ViewChild('advancedPanel') advancedPanel!: MatExpansionPanel;
+
   private static normalizeForSearch(s: string): string {
     return (s || '')
       .toLowerCase()
@@ -1083,8 +1085,18 @@ export class ProductFormDialogComponent implements OnInit {
   }
 
   onSubmit(): void {
-    if (this.productForm.valid) {
-      this.loading = true;
+    this.productForm.markAllAsTouched();
+    if (!this.productForm.valid) {
+      const ctrl = this.productForm;
+      const advancedKeys = ['parent_product_id', 'stock_multiplier', 'doses_por_garrafa', 'delivery_price', 'original_price', 'dose_price'];
+      const hasErrorInPanel = advancedKeys.some(key => ctrl.get(key)?.invalid);
+      if (hasErrorInPanel && this.advancedPanel) {
+        this.advancedPanel.open();
+      }
+      this.snackBar.open('Verifique os campos obrigatórios', 'Fechar', { duration: 3000 });
+      return;
+    }
+    this.loading = true;
       
       // Usar getRawValue() para incluir campos desabilitados (como current_stock quando é Pack)
       const formValue = this.productForm.getRawValue();
@@ -1156,7 +1168,6 @@ export class ProductFormDialogComponent implements OnInit {
           this.loading = false;
         }
       });
-    }
   }
 
   resolvePreview(previewUrl: string): string {
