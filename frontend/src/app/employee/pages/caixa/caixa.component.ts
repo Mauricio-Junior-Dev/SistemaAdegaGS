@@ -122,6 +122,8 @@ export class CaixaComponent implements OnInit, OnDestroy {
   isDeliveryFeeEnabled = false;
   // Controle se o frete atual é válido (CEP atendido e não bloqueado)
   isFreightValid = false;
+  // Mensagem de erro visível e persistente relacionada à entrega/frete
+  deliveryErrorMessage: string | null = null;
   
   // Método de Pagamento Selecionado
   selectedPaymentMethod: PaymentMethod | null = null;
@@ -438,12 +440,15 @@ export class CaixaComponent implements OnInit, OnDestroy {
   onAddressChange(addressId: number | null): void {
     this.selectedAddressId = addressId;
     if (addressId && this.isPayOnDelivery) {
+      // Ao trocar de endereço, limpar erro anterior e recalcular frete
+      this.deliveryErrorMessage = null;
       this.calculateDeliveryFee(addressId);
     } else {
       // Ao limpar endereço ou quando não é entrega, não considerar taxa de entrega
       this.deliveryFee = 0;
       this.estimatedDeliveryTime = '';
       this.isFreightValid = false;
+      this.deliveryErrorMessage = null;
       this.updateTotal();
     }
   }
@@ -452,6 +457,7 @@ export class CaixaComponent implements OnInit, OnDestroy {
     if (!this.isPayOnDelivery || !addressId) {
       this.deliveryFee = 0;
       this.isFreightValid = false;
+      this.deliveryErrorMessage = null;
       return;
     }
     
@@ -477,6 +483,7 @@ export class CaixaComponent implements OnInit, OnDestroy {
   
   fetchDeliveryFee(zipcode: string): void {
     this.loadingDeliveryFee = true;
+    this.deliveryErrorMessage = null;
     this.deliveryZoneService.calculateFrete(zipcode)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
@@ -484,6 +491,7 @@ export class CaixaComponent implements OnInit, OnDestroy {
           this.deliveryFee = parseFloat(String(response?.valor_frete ?? '0')) || 0;
           this.estimatedDeliveryTime = response?.tempo_estimado || '';
           this.isFreightValid = true;
+          this.deliveryErrorMessage = null;
           this.loadingDeliveryFee = false;
           this.updateTotal();
         },
@@ -493,34 +501,38 @@ export class CaixaComponent implements OnInit, OnDestroy {
           this.estimatedDeliveryTime = '';
           this.loadingDeliveryFee = false;
           this.isFreightValid = false;
-          this.updateTotal();
           const backendMessage =
             (error?.error && typeof error.error === 'object' && (error.error.message || error.error.error)) ||
             null;
 
           if (error.status === 422) {
-            this.toastr.warning(
-              backendMessage || 'Infelizmente não realizamos entregas para este CEP específico por restrições logísticas.',
-              '',
-              {
-                toastClass: 'modern-toast-notification',
-                positionClass: 'toast-bottom-center',
-                timeOut: 6000
-              }
-            );
+            const message =
+              backendMessage ||
+              'Infelizmente não realizamos entregas para este CEP específico por restrições logísticas.';
+            this.deliveryErrorMessage = message;
+            this.toastr.warning(message, '', {
+              toastClass: 'modern-toast-notification',
+              positionClass: 'toast-bottom-center',
+              timeOut: 6000
+            });
           } else if (error.status === 404) {
-            this.toastr.warning('Infelizmente, ainda não atendemos este CEP.', '', {
+            const message = 'Infelizmente, ainda não atendemos este CEP.';
+            this.deliveryErrorMessage = message;
+            this.toastr.warning(message, '', {
               toastClass: 'modern-toast-notification',
               positionClass: 'toast-bottom-center',
               timeOut: 5000
             });
           } else {
-            this.toastr.error('Erro ao calcular frete. Tente novamente.', '', {
+            const message = backendMessage || 'Erro ao calcular frete. Tente novamente.';
+            this.deliveryErrorMessage = message;
+            this.toastr.error(message, '', {
               toastClass: 'modern-toast-notification',
               positionClass: 'toast-bottom-center',
               timeOut: 3000
             });
           }
+          this.updateTotal();
         }
       });
   }
@@ -534,9 +546,11 @@ export class CaixaComponent implements OnInit, OnDestroy {
       this.estimatedDeliveryTime = '';
       this.quickDeliveryData = null;
        this.isFreightValid = false;
+      this.deliveryErrorMessage = null;
       this.updateTotal();
     } else {
       this.isDeliveryFeeEnabled = true;
+      this.deliveryErrorMessage = null;
       if (this.selectedCustomer) {
         if (this.customerAddresses.length === 0) {
           this.loadCustomerAddresses().subscribe();
@@ -579,6 +593,7 @@ export class CaixaComponent implements OnInit, OnDestroy {
         this.deliveryFee = result.data.deliveryFeeManual;
         this.isDeliveryFeeEnabled = result.data.deliveryFeeManual > 0;
         this.isFreightValid = true;
+        this.deliveryErrorMessage = null;
         this.updateTotal();
         this.cdr.detectChanges();
       }
@@ -590,6 +605,7 @@ export class CaixaComponent implements OnInit, OnDestroy {
     this.deliveryFee = 0;
     this.isDeliveryFeeEnabled = false;
     this.isFreightValid = false;
+    this.deliveryErrorMessage = null;
     this.updateTotal();
   }
 
@@ -664,6 +680,7 @@ export class CaixaComponent implements OnInit, OnDestroy {
     this.estimatedDeliveryTime = '';
     this.quickDeliveryData = null;
     this.isFreightValid = false;
+    this.deliveryErrorMessage = null;
   }
 
   toggleCustomerSearch(): void {

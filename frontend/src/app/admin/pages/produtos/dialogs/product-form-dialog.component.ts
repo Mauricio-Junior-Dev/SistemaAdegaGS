@@ -881,10 +881,18 @@ export class ProductFormDialogComponent implements OnInit {
     this.categoryService.getAllCategories().subscribe({
       next: (data) => {
         this.allCategories = data;
-        this.categoryFilterCtrl.setValue(this.categoryFilterCtrl.value ?? '');
+        const currentFilter = this.categoryFilterCtrl.value ?? '';
+
+        // Se já há uma categoria selecionada (edição), manter coerência do filtro
         if (this.isEdit && this.data.product?.category_id) {
           const cat = this.allCategories.find(c => c.id === this.data.product!.category_id);
-          if (cat) this.categoryFilterCtrl.setValue(cat.name);
+          if (cat) {
+            this.categoryFilterCtrl.setValue(cat.name, { emitEvent: false });
+          } else {
+            this.categoryFilterCtrl.setValue(currentFilter, { emitEvent: false });
+          }
+        } else {
+          this.categoryFilterCtrl.setValue(currentFilter, { emitEvent: false });
         }
       },
       error: (error) => {
@@ -904,7 +912,7 @@ export class ProductFormDialogComponent implements OnInit {
 
   /**
    * Abre o diálogo de Nova Categoria sem sair do formulário de Produto.
-   * Após salvar, recarrega as categorias e limpa o filtro para exibir a nova.
+   * Após salvar, recarrega as categorias e tenta selecionar automaticamente a recém-criada.
    */
   openNewCategoryDialog(event: MouseEvent): void {
     event.stopPropagation();
@@ -916,11 +924,41 @@ export class ProductFormDialogComponent implements OnInit {
     });
 
     dialogRef.afterClosed().subscribe((result) => {
-      // O CategoryFormDialogComponent atualmente retorna apenas true/false
+      // O CategoryFormDialogComponent fecha com "true" em caso de sucesso
       if (result) {
-        this.loadCategories();
-        // UX: limpar o filtro para mostrar toda a lista, incluindo a recém-criada
-        this.categoryFilterCtrl.setValue('', { emitEvent: true });
+        // Recarregar categorias e tentar auto-selecionar a nova com base no nome digitado
+        const previousName = (this.categoryFilterCtrl.value || '').toString().trim();
+        this.categoryService.getAllCategories().subscribe({
+          next: (data) => {
+            this.allCategories = data;
+
+            let selected: Category | undefined;
+
+            if (previousName) {
+              const normalizedPrevious = ProductFormDialogComponent.normalizeForSearch(previousName);
+              selected = this.allCategories.find(c =>
+                ProductFormDialogComponent.normalizeForSearch(c.name) === normalizedPrevious
+              );
+            }
+
+            if (!selected && this.allCategories.length) {
+              // Fallback: usar a última categoria criada (maior id)
+              selected = [...this.allCategories].sort((a, b) => (a.id || 0) - (b.id || 0)).at(-1);
+            }
+
+            if (selected) {
+              this.productForm.get('category_id')?.setValue(selected.id);
+              this.categoryFilterCtrl.setValue(selected.name, { emitEvent: false });
+            } else {
+              // Se não encontrou, apenas limpar filtro para exibir lista completa
+              this.categoryFilterCtrl.setValue('', { emitEvent: true });
+            }
+          },
+          error: (error) => {
+            console.error('Erro ao recarregar categorias após criação:', error);
+            this.loadCategories();
+          }
+        });
       }
     });
   }

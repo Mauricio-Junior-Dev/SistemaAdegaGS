@@ -204,284 +204,296 @@
             <mat-card-title>Finalizar Venda</mat-card-title>
           </mat-card-header>
           <mat-card-content>
-            <!-- Informações do Cliente -->
-            <div class="customer-info">
-              <div class="customer-search-header">
-                <h4>Cliente</h4>
-              </div>
+            <!-- Área rolável de conteúdo (cliente, entrega, pagamentos) -->
+            <div class="checkout-scroll">
+              <!-- Informações do Cliente -->
+              <div class="customer-info">
+                <div class="customer-search-header">
+                  <h4>Cliente</h4>
+                </div>
 
-              <!-- Campo único de busca inteligente -->
-              <div *ngIf="!selectedCustomer && !customerName" class="customer-search">
-                <mat-form-field appearance="outline" class="full-width">
-                  <mat-label>Buscar cliente por nome, CPF ou telefone...</mat-label>
-                  <input matInput
-                         [(ngModel)]="customerSearchTerm"
-                         (ngModelChange)="onCustomerSearch($event)"
-                         [matAutocomplete]="customerAuto"
-                         placeholder="Digite para buscar ou criar cliente avulso">
-                  <mat-icon matPrefix>search</mat-icon>
-                  <button mat-icon-button
-                          matSuffix
-                          type="button"
-                          color="primary"
-                          (click)="openQuickCustomerDialog(); $event.stopPropagation()"
-                          matTooltip="Cadastrar Novo Cliente"
-                          aria-label="Cadastrar novo cliente">
-                    <mat-icon>person_add</mat-icon>
-                  </button>
-                </mat-form-field>
+                <!-- Campo único de busca inteligente -->
+                <div *ngIf="!selectedCustomer && !customerName" class="customer-search">
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Buscar cliente por nome, CPF ou telefone...</mat-label>
+                    <input matInput
+                           [(ngModel)]="customerSearchTerm"
+                           (ngModelChange)="onCustomerSearch($event)"
+                           [matAutocomplete]="customerAuto"
+                           placeholder="Digite para buscar ou criar cliente avulso">
+                    <mat-icon matPrefix>search</mat-icon>
+                    <button mat-icon-button
+                            matSuffix
+                            type="button"
+                            color="primary"
+                            (click)="openQuickCustomerDialog(); $event.stopPropagation()"
+                            matTooltip="Cadastrar Novo Cliente"
+                            aria-label="Cadastrar novo cliente">
+                      <mat-icon>person_add</mat-icon>
+                    </button>
+                  </mat-form-field>
 
-                <mat-autocomplete #customerAuto="matAutocomplete"
-                                  (optionSelected)="selectCustomer($event.option.value)">
-                  <mat-option *ngFor="let customer of customerSearchResults" [value]="customer">
-                    <div class="customer-option">
-                      <span class="name">{{ customer.name }}</span>
-                      <span class="info">
-                        <span *ngIf="customer.phone">{{ customer.phone }}</span>
-                        <span *ngIf="!customer.phone && customer.email">{{ customer.email }}</span>
+                  <mat-autocomplete #customerAuto="matAutocomplete"
+                                    (optionSelected)="selectCustomer($event.option.value)">
+                    <mat-option *ngFor="let customer of customerSearchResults" [value]="customer">
+                      <div class="customer-option">
+                        <span class="name">{{ customer.name }}</span>
+                        <span class="info">
+                          <span *ngIf="customer.phone">{{ customer.phone }}</span>
+                          <span *ngIf="!customer.phone && customer.email">{{ customer.email }}</span>
+                        </span>
+                      </div>
+                    </mat-option>
+
+                    <!-- Opção fixa para cliente avulso / rápido -->
+                    <mat-option *ngIf="customerSearchTerm && customerSearchTerm.length >= 2"
+                                (click)="useQuickCustomerName()">
+                      Usar "{{ customerSearchTerm }}" como nome no pedido (cliente avulso)
+                    </mat-option>
+                  </mat-autocomplete>
+                </div>
+
+                <!-- Card de Cliente Selecionado (cadastrado ou avulso) -->
+                <div *ngIf="selectedCustomer || customerName" class="selected-customer">
+                  <div class="customer-details">
+                    <mat-icon>person</mat-icon>
+                    <div class="customer-data">
+                      <span class="name">
+                        {{ selectedCustomer?.name || customerName }}
+                      </span>
+                      <span class="email" *ngIf="selectedCustomer?.email">
+                        {{ selectedCustomer?.email }}
+                      </span>
+                      <span class="phone" *ngIf="selectedCustomer?.phone">
+                        {{ selectedCustomer?.phone }}
+                      </span>
+                      <span class="tag" *ngIf="!selectedCustomer && customerName">
+                        Cliente avulso
                       </span>
                     </div>
-                  </mat-option>
-
-                  <!-- Opção fixa para cliente avulso / rápido -->
-                  <mat-option *ngIf="customerSearchTerm && customerSearchTerm.length >= 2"
-                              (click)="useQuickCustomerName()">
-                    Usar "{{ customerSearchTerm }}" como nome no pedido (cliente avulso)
-                  </mat-option>
-                </mat-autocomplete>
-              </div>
-
-              <!-- Card de Cliente Selecionado (cadastrado ou avulso) -->
-              <div *ngIf="selectedCustomer || customerName" class="selected-customer">
-                <div class="customer-details">
-                  <mat-icon>person</mat-icon>
-                  <div class="customer-data">
-                    <span class="name">
-                      {{ selectedCustomer?.name || customerName }}
-                    </span>
-                    <span class="email" *ngIf="selectedCustomer?.email">
-                      {{ selectedCustomer?.email }}
-                    </span>
-                    <span class="phone" *ngIf="selectedCustomer?.phone">
-                      {{ selectedCustomer?.phone }}
-                    </span>
-                    <span class="tag" *ngIf="!selectedCustomer && customerName">
-                      Cliente avulso
-                    </span>
                   </div>
-                </div>
-                <button mat-icon-button
-                        type="button"
-                        (click)="clearCustomer()"
-                        color="warn"
-                        matTooltip="Remover cliente">
-                  <mat-icon>close</mat-icon>
-                </button>
-              </div>
-            </div>
-
-            <!-- Total e Restante -->
-            <div class="total-section">
-              <div class="total-row">
-                <span class="total-label">Total:</span>
-                <span class="total-value">{{formatCurrency(total)}}</span>
-              </div>
-              <div class="remaining-row" [class.remaining-positive]="remainingAmount > 0">
-                <span class="remaining-label">Restante:</span>
-                <span class="remaining-value">{{formatCurrency(remainingAmount)}}</span>
-              </div>
-            </div>
-
-            <!-- Toggle Pagamento na Entrega -->
-            <div class="delivery-payment-section">
-              <mat-checkbox [(ngModel)]="isPayOnDelivery" 
-                            [disabled]="!cartItems.length"
-                            (change)="onPayOnDeliveryChange()"
-                            class="delivery-checkbox">
-                Pedido para entrega
-              </mat-checkbox>
-              <p class="delivery-hint" *ngIf="isPayOnDelivery">
-                <mat-icon>info</mat-icon>
-                O pedido será gerado como pendente e aparecerá na lista de "Novos Pedidos" para despacho.
-              </p>
-            </div>
-
-              <!-- Seleção de Endereço (apenas se Entrega estiver marcado) -->
-            <div *ngIf="isPayOnDelivery" class="address-selection-section">
-              <!-- Entrega rápida: dados informados no modal (sem cliente cadastrado) -->
-              <div *ngIf="quickDeliveryData" class="quick-delivery-summary">
-                <div class="address-header">
-                  <h4>Entrega Rápida</h4>
-                  <button mat-icon-button color="primary" (click)="openDeliveryPhoneDialog()" matTooltip="Alterar dados">
-                    <mat-icon>edit</mat-icon>
-                  </button>
-                  <button mat-icon-button (click)="clearQuickDeliveryData()" matTooltip="Limpar e informar de novo">
+                  <button mat-icon-button
+                          type="button"
+                          (click)="clearCustomer()"
+                          color="warn"
+                          matTooltip="Remover cliente">
                     <mat-icon>close</mat-icon>
                   </button>
                 </div>
-                <div class="quick-summary-text">
-                  <span class="name">{{ quickDeliveryData.customerName }}</span>
-                  <span class="phone">{{ quickDeliveryData.customerPhone }}</span>
-                  <span class="address">{{ quickDeliveryData.street }}, {{ quickDeliveryData.number }} — {{ quickDeliveryData.city }}, {{ quickDeliveryData.state }}</span>
-                </div>
-                <div class="fee-toggle">
-                  <mat-slide-toggle [(ngModel)]="isDeliveryFeeEnabled" (change)="onDeliveryFeeToggleChange()">
-                    Cobrar Taxa de Entrega
-                  </mat-slide-toggle>
-                </div>
-                <div class="fee-edit-row">
-                  <mat-form-field appearance="outline" class="fee-input">
-                    <mat-label>Valor do frete (R$)</mat-label>
-                    <input matInput type="number" [(ngModel)]="deliveryFee" min="0" step="0.01" (ngModelChange)="onQuickDeliveryFeeChange()">
-                  </mat-form-field>
-                </div>
-                <div class="fee-info" *ngIf="deliveryFee >= 0">
-                  <mat-icon>local_shipping</mat-icon>
-                  <span class="fee-label">Frete:</span>
-                  <span class="fee-value">{{ formatCurrency(deliveryFee) }}</span>
-                </div>
               </div>
 
-              <!-- Sem cliente nem entrega rápida: botão para abrir modal -->
-              <div *ngIf="!selectedCustomer && !quickDeliveryData" class="delivery-identify-cta">
-                <button mat-raised-button color="primary" (click)="openDeliveryPhoneDialog()">
-                  <mat-icon>phone</mat-icon>
-                  Informar cliente / endereço
-                </button>
+              <!-- Toggle Pagamento na Entrega -->
+              <div class="delivery-payment-section">
+                <mat-checkbox [(ngModel)]="isPayOnDelivery" 
+                              [disabled]="!cartItems.length"
+                              (change)="onPayOnDeliveryChange()"
+                              class="delivery-checkbox">
+                  Pedido para entrega
+                </mat-checkbox>
+                <p class="delivery-hint" *ngIf="isPayOnDelivery">
+                  <mat-icon>info</mat-icon>
+                  O pedido será gerado como pendente e aparecerá na lista de "Novos Pedidos" para despacho.
+                </p>
               </div>
-              
-              <!-- Cliente cadastrado: seleção de endereço -->
-              <ng-container *ngIf="selectedCustomer && !quickDeliveryData">
-                <div class="address-header">
-                  <h4>Endereço de Entrega</h4>
-                  <button mat-icon-button color="primary" (click)="openNewAddressDialog()" matTooltip="Adicionar novo endereço">
-                    <mat-icon>add</mat-icon>
-                  </button>
-                </div>
-                <div *ngIf="customerAddresses.length === 0" class="address-warning">
-                  <mat-icon color="warn">warning</mat-icon>
-                  <span>Cliente não possui endereços. Adicione um endereço para continuar.</span>
-                </div>
-                <mat-form-field appearance="outline" class="full-width" *ngIf="customerAddresses.length > 0">
-                  <mat-label>Selecione o endereço</mat-label>
-                  <mat-select [(ngModel)]="selectedAddressId" (selectionChange)="onAddressChange($event.value)" [required]="isPayOnDelivery">
-                    <mat-option *ngFor="let address of customerAddresses" [value]="address.id">
-                      <div class="address-option">
-                        <span class="address-full">{{ address.street }}, {{ address.number }} - {{ address.neighborhood }}
-                          <span *ngIf="address.complement"> ({{ address.complement }})</span>
-                          <span *ngIf="address.name && !address.complement"> ({{ address.name }})</span>
-                        </span>
-                        <mat-icon *ngIf="address.is_default" class="default-badge">star</mat-icon>
-                      </div>
-                    </mat-option>
-                  </mat-select>
-                </mat-form-field>
-                <div *ngIf="selectedAddressId" class="delivery-fee-display">
+
+              <!-- Seleção de Endereço (apenas se Entrega estiver marcado) -->
+              <div *ngIf="isPayOnDelivery" class="address-selection-section">
+                <!-- Entrega rápida: dados informados no modal (sem cliente cadastrado) -->
+                <div *ngIf="quickDeliveryData" class="quick-delivery-summary">
+                  <div class="address-header">
+                    <h4>Entrega Rápida</h4>
+                    <button mat-icon-button color="primary" (click)="openDeliveryPhoneDialog()" matTooltip="Alterar dados">
+                      <mat-icon>edit</mat-icon>
+                    </button>
+                    <button mat-icon-button (click)="clearQuickDeliveryData()" matTooltip="Limpar e informar de novo">
+                      <mat-icon>close</mat-icon>
+                    </button>
+                  </div>
+                  <div class="quick-summary-text">
+                    <span class="name">{{ quickDeliveryData.customerName }}</span>
+                    <span class="phone">{{ quickDeliveryData.customerPhone }}</span>
+                    <span class="address">{{ quickDeliveryData.street }}, {{ quickDeliveryData.number }} — {{ quickDeliveryData.city }}, {{ quickDeliveryData.state }}</span>
+                  </div>
                   <div class="fee-toggle">
                     <mat-slide-toggle [(ngModel)]="isDeliveryFeeEnabled" (change)="onDeliveryFeeToggleChange()">
                       Cobrar Taxa de Entrega
                     </mat-slide-toggle>
                   </div>
-                  <div *ngIf="deliveryFee > 0" class="fee-info">
+                  <div class="fee-edit-row">
+                    <mat-form-field appearance="outline" class="fee-input">
+                      <mat-label>Valor do frete (R$)</mat-label>
+                      <input matInput type="number" [(ngModel)]="deliveryFee" min="0" step="0.01" (ngModelChange)="onQuickDeliveryFeeChange()">
+                    </mat-form-field>
+                  </div>
+                  <div class="fee-info" *ngIf="deliveryFee >= 0">
                     <mat-icon>local_shipping</mat-icon>
-                    <div class="fee-details">
-                      <span class="fee-label">Frete:</span>
-                      <span class="fee-value">{{ formatCurrency(deliveryFee) }}</span>
-                      <span *ngIf="estimatedDeliveryTime" class="delivery-time">{{ estimatedDeliveryTime }}</span>
-                    </div>
+                    <span class="fee-label">Frete:</span>
+                    <span class="fee-value">{{ formatCurrency(deliveryFee) }}</span>
                   </div>
                 </div>
-                <div *ngIf="loadingDeliveryFee" class="loading-fee">
-                  <mat-spinner diameter="20"></mat-spinner>
-                  <span>Calculando frete...</span>
-                </div>
-              </ng-container>
-            </div>
 
-            <!-- Interface de Pagamentos Múltiplos (Split) -->
-            <div class="payments-section" *ngIf="cartItems.length > 0">
-              <h4 class="payments-title">Pagamentos</h4>
-              
-              <!-- Input: Método + Valor + Adicionar -->
-              <div class="payment-input-row">
-                <mat-form-field appearance="outline" class="method-select">
-                  <mat-label>Método</mat-label>
-                  <mat-select [(ngModel)]="selectedMethod">
-                    <mat-option value="dinheiro">Dinheiro</mat-option>
-                    <mat-option value="pix">PIX</mat-option>
-                    <mat-option value="cartão de crédito">Cartão Crédito</mat-option>
-                    <mat-option value="cartão de débito">Cartão Débito</mat-option>
-                  </mat-select>
-                </mat-form-field>
-                <mat-form-field appearance="outline" class="amount-input">
-                  <mat-label>Valor</mat-label>
-                  <input matInput 
-                         type="number" 
-                         [(ngModel)]="inputAmount"
-                         placeholder="0.00"
-                         step="0.01"
-                         min="0">
-                  <span matTextPrefix>R$&nbsp;</span>
-                </mat-form-field>
-                <button mat-raised-button 
-                        color="primary"
-                        class="add-payment-btn"
-                        [disabled]="!cartItems.length"
-                        (click)="addPayment()">
-                  <mat-icon>add</mat-icon>
-                  Adicionar
-                </button>
-              </div>
-              
-              <!-- Troco (quando dinheiro com valor a mais) -->
-              <div *ngIf="totalChange > 0" class="change-display">
-                <div class="change-label">Troco:</div>
-                <div class="change-value">{{formatCurrency(totalChange)}}</div>
-              </div>
-              
-              <!-- Lista de pagamentos adicionados -->
-              <div class="payments-list" *ngIf="payments.length > 0">
-                <div *ngFor="let p of payments; let i = index" class="payment-item">
-                  <span class="payment-detail">{{getPaymentMethodName(p.method)}} - {{formatCurrency(p.amount)}}</span>
-                  <span *ngIf="p.change && p.change > 0" class="payment-change">(troco {{formatCurrency(p.change)}})</span>
-                  <button mat-icon-button 
-                          color="warn" 
-                          class="remove-payment-btn"
-                          (click)="removePayment(i)"
-                          matTooltip="Remover">
-                    <mat-icon>close</mat-icon>
+                <!-- Sem cliente nem entrega rápida: botão para abrir modal -->
+                <div *ngIf="!selectedCustomer && !quickDeliveryData" class="delivery-identify-cta">
+                  <button mat-raised-button color="primary" (click)="openDeliveryPhoneDialog()">
+                    <mat-icon>phone</mat-icon>
+                    Informar cliente / endereço
                   </button>
                 </div>
+                
+                <!-- Cliente cadastrado: seleção de endereço -->
+                <ng-container *ngIf="selectedCustomer && !quickDeliveryData">
+                  <div class="address-header">
+                    <h4>Endereço de Entrega</h4>
+                    <button mat-icon-button color="primary" (click)="openNewAddressDialog()" matTooltip="Adicionar novo endereço">
+                      <mat-icon>add</mat-icon>
+                    </button>
+                  </div>
+                  <div *ngIf="customerAddresses.length === 0" class="address-warning">
+                    <mat-icon color="warn">warning</mat-icon>
+                    <span>Cliente não possui endereços. Adicione um endereço para continuar.</span>
+                  </div>
+                  <mat-form-field appearance="outline" class="full-width" *ngIf="customerAddresses.length > 0">
+                    <mat-label>Selecione o endereço</mat-label>
+                    <mat-select [(ngModel)]="selectedAddressId" (selectionChange)="onAddressChange($event.value)" [required]="isPayOnDelivery">
+                      <mat-option *ngFor="let address of customerAddresses" [value]="address.id">
+                        <div class="address-option">
+                          <span class="address-full">{{ address.street }}, {{ address.number }} - {{ address.neighborhood }}
+                            <span *ngIf="address.complement"> ({{ address.complement }})</span>
+                            <span *ngIf="address.name && !address.complement"> ({{ address.name }})</span>
+                          </span>
+                          <mat-icon *ngIf="address.is_default" class="default-badge">star</mat-icon>
+                        </div>
+                      </mat-option>
+                    </mat-select>
+                  </mat-form-field>
+                  <div *ngIf="selectedAddressId" class="delivery-fee-display">
+                    <div class="fee-toggle">
+                      <mat-slide-toggle [(ngModel)]="isDeliveryFeeEnabled" (change)="onDeliveryFeeToggleChange()">
+                        Cobrar Taxa de Entrega
+                      </mat-slide-toggle>
+                    </div>
+                    <div *ngIf="deliveryFee > 0" class="fee-info">
+                      <mat-icon>local_shipping</mat-icon>
+                      <div class="fee-details">
+                        <span class="fee-label">Frete:</span>
+                        <span class="fee-value">{{ formatCurrency(deliveryFee) }}</span>
+                        <span *ngIf="estimatedDeliveryTime" class="delivery-time">{{ estimatedDeliveryTime }}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div *ngIf="loadingDeliveryFee" class="loading-fee">
+                    <mat-spinner diameter="20"></mat-spinner>
+                    <span>Calculando frete...</span>
+                  </div>
+                </ng-container>
+
+                <!-- Alerta persistente de erro de entrega -->
+                <div *ngIf="isPayOnDelivery && deliveryErrorMessage" class="delivery-error-alert">
+                  <mat-icon>error</mat-icon>
+                  <span>{{ deliveryErrorMessage }}</span>
+                </div>
               </div>
-            </div>
 
-            <!-- Indicativo do que falta para finalizar (UX) -->
-            <div *ngIf="finalizeBlockedHint" class="finalize-hint">
-              <mat-icon>info</mat-icon>
-              <span>{{ finalizeBlockedHint }}</span>
-            </div>
+              <!-- Interface de Pagamentos Múltiplos (Split) -->
+              <div class="payments-section" *ngIf="cartItems.length > 0">
+                <h4 class="payments-title">Pagamentos</h4>
+                
+                <!-- Input: Método + Valor + Adicionar -->
+                <div class="payment-input-row">
+                  <mat-form-field appearance="outline" class="method-select">
+                    <mat-label>Método</mat-label>
+                    <mat-select [(ngModel)]="selectedMethod">
+                      <mat-option value="dinheiro">Dinheiro</mat-option>
+                      <mat-option value="pix">PIX</mat-option>
+                      <mat-option value="cartão de crédito">Cartão Crédito</mat-option>
+                      <mat-option value="cartão de débito">Cartão Débito</mat-option>
+                    </mat-select>
+                  </mat-form-field>
+                  <mat-form-field appearance="outline" class="amount-input">
+                    <mat-label>Valor</mat-label>
+                    <input matInput 
+                           type="number" 
+                           [(ngModel)]="inputAmount"
+                           placeholder="0.00"
+                           step="0.01"
+                           min="0">
+                    <span matTextPrefix>R$&nbsp;</span>
+                  </mat-form-field>
+                  <button mat-raised-button 
+                          color="primary"
+                          class="add-payment-btn"
+                          [disabled]="!cartItems.length"
+                          (click)="addPayment()">
+                    <mat-icon>add</mat-icon>
+                    Adicionar
+                  </button>
+                </div>
+                
+                <!-- Troco (quando dinheiro com valor a mais) -->
+                <div *ngIf="totalChange > 0" class="change-display">
+                  <div class="change-label">Troco:</div>
+                  <div class="change-value">{{formatCurrency(totalChange)}}</div>
+                </div>
+                
+                <!-- Lista de pagamentos adicionados -->
+                <div class="payments-list" *ngIf="payments.length > 0">
+                  <div *ngFor="let p of payments; let i = index" class="payment-item">
+                    <span class="payment-detail">{{getPaymentMethodName(p.method)}} - {{formatCurrency(p.amount)}}</span>
+                    <span *ngIf="p.change && p.change > 0" class="payment-change">(troco {{formatCurrency(p.change)}})</span>
+                    <button mat-icon-button 
+                            color="warn" 
+                            class="remove-payment-btn"
+                            (click)="removePayment(i)"
+                            matTooltip="Remover">
+                      <mat-icon>close</mat-icon>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div> <!-- /checkout-scroll -->
 
-            <!-- Botão Finalizar -->
-            <div class="finalize-section">
-              <button mat-raised-button 
-                      color="accent"
-                      class="finalize-button"
-                      [disabled]="!cartItems.length || !canFinalize || payments.length === 0 || (isPayOnDelivery && !isFreightValid)"
-                      (click)="confirmAndFinalizeSale()">
-                <mat-icon>{{isPayOnDelivery ? 'local_shipping' : 'check_circle'}}</mat-icon>
-                {{isPayOnDelivery ? 'Gerar Pedido de Entrega' : 'Finalizar Venda'}}
+            <!-- Rodapé fixo dentro do card: resumo financeiro + ações -->
+            <div class="checkout-sticky-footer">
+              <!-- Total e Restante -->
+              <div class="total-section">
+                <div class="total-row">
+                  <span class="total-label">Total:</span>
+                  <span class="total-value">{{formatCurrency(total)}}</span>
+                </div>
+                <div class="remaining-row" [class.remaining-positive]="remainingAmount > 0">
+                  <span class="remaining-label">Restante:</span>
+                  <span class="remaining-value">{{formatCurrency(remainingAmount)}}</span>
+                </div>
+              </div>
+
+              <!-- Indicativo do que falta para finalizar (UX) -->
+              <div *ngIf="finalizeBlockedHint" class="finalize-hint">
+                <mat-icon>info</mat-icon>
+                <span>{{ finalizeBlockedHint }}</span>
+              </div>
+
+              <!-- Botão Finalizar -->
+              <div class="finalize-section">
+                <button mat-raised-button 
+                        color="accent"
+                        class="finalize-button"
+                        [disabled]="!cartItems.length || !canFinalize || payments.length === 0 || (isPayOnDelivery && !isFreightValid)"
+                        (click)="confirmAndFinalizeSale()">
+                  <mat-icon>{{isPayOnDelivery ? 'local_shipping' : 'check_circle'}}</mat-icon>
+                  {{isPayOnDelivery ? 'Gerar Pedido de Entrega' : 'Finalizar Venda'}}
+                </button>
+              </div>
+
+              <!-- Botão Limpar -->
+              <button mat-stroked-button 
+                      color="warn"
+                      class="clear-button"
+                      [disabled]="!cartItems.length"
+                      (click)="clearCart()">
+                <mat-icon>clear_all</mat-icon>
+                Limpar Venda
               </button>
-            </div>
-
-            <!-- Botão Limpar -->
-            <button mat-stroked-button 
-                    color="warn"
-                    class="clear-button"
-                    [disabled]="!cartItems.length"
-                    (click)="clearCart()">
-              <mat-icon>clear_all</mat-icon>
-              Limpar Venda
-            </button>
+            </div> <!-- /checkout-sticky-footer -->
           </mat-card-content>
         </mat-card>
       </div>
