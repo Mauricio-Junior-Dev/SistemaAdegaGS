@@ -24,12 +24,31 @@
 
           <mat-form-field appearance="outline" class="category-field">
             <mat-label>Categoria</mat-label>
-            <mat-select formControlName="category_id" (selectionChange)="onCategoryChange($event.value)">
-              <mat-option [value]="null">Todas as categorias</mat-option>
-              <mat-option [value]="category.id" *ngFor="let category of categories">
-                {{category.name}}
+            <input
+              matInput
+              [formControl]="categorySearchCtrl"
+              [matAutocomplete]="categoryAuto"
+              placeholder="Digite para buscar categoria">
+            <button
+              *ngIf="categorySearchCtrl.value"
+              mat-icon-button
+              matSuffix
+              type="button"
+              (click)="clearCategoryFilter()">
+              <mat-icon>close</mat-icon>
+            </button>
+            <mat-autocomplete
+              #categoryAuto="matAutocomplete"
+              (optionSelected)="onCategorySelected($event)">
+              <mat-option [value]="null">
+                Todas as categorias
               </mat-option>
-            </mat-select>
+              <mat-option
+                *ngFor="let category of filteredCategories$ | async"
+                [value]="category.id">
+                {{ category.name }}
+              </mat-option>
+            </mat-autocomplete>
           </mat-form-field>
 
           <button 

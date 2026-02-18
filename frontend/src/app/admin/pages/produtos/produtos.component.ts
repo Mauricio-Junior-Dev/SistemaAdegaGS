@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy, AfterViewInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, FormGroup } from '@angular/forms';
+import { ReactiveFormsModule, FormBuilder, FormGroup, FormControl } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { MatTableModule, MatTable } from '@angular/material/table';
 import { MatCardModule } from '@angular/material/card';
@@ -18,7 +18,8 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { Subject, debounceTime, distinctUntilChanged, takeUntil, switchMap, startWith, combineLatest, merge, of } from 'rxjs';
+import { Subject, debounceTime, distinctUntilChanged, takeUntil, switchMap, startWith, combineLatest, merge, of, Observable } from 'rxjs';
+import { MatAutocompleteModule, MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
 
 import { ProductService, Product, ProductResponse } from '../../services/product.service';
 import { CategoryService, Category } from '../../services/category.service';
@@ -50,7 +51,8 @@ type StatusFilter = 'all' | 'active' | 'inactive';
     MatSelectModule,
     MatChipsModule,
     MatTooltipModule,
-    MatProgressSpinnerModule
+    MatProgressSpinnerModule,
+    MatAutocompleteModule
   ],
   templateUrl: './produtos.component.html',
   styleUrls: ['./produtos.component.scss']
@@ -63,6 +65,9 @@ export class ProdutosComponent implements OnInit, AfterViewInit, OnDestroy {
   currentPage = 0;
   loading = false;
   categories: Category[] = [];
+  allCategories: Category[] = [];
+  categorySearchCtrl = new FormControl<string>('');
+  filteredCategories$!: Observable<Category[]>;
   
   // Formulário único com todos os filtros
   filterForm!: FormGroup;
@@ -103,6 +108,7 @@ export class ProdutosComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnInit(): void {
     this.loadCategories();
+    this.setupCategoryAutocomplete();
     this.initializeFromUrl();
     this.setupFiltersPipeline();
   }
@@ -134,6 +140,13 @@ export class ProdutosComponent implements OnInit, AfterViewInit, OnDestroy {
       this.currentPage = parseInt(params['page'] || '1', 10) - 1;
       this.pageSize = parseInt(params['per_page'] || '10', 10);
     }
+  }
+
+  private static normalizeForSearch(value: string): string {
+    return (value || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/\p{Diacritic}/gu, '');
   }
 
   // ========== PIPELINE DE FILTROS ==========
@@ -222,6 +235,33 @@ export class ProdutosComponent implements OnInit, AfterViewInit, OnDestroy {
         this.snackBar.open('Erro ao carregar produtos', 'Fechar', { duration: 3000 });
       }
     });
+  }
+
+  private setupCategoryAutocomplete(): void {
+    // Observable de categorias filtradas baseado no texto digitado
+    this.filteredCategories$ = this.categorySearchCtrl.valueChanges.pipe(
+      startWith(this.categorySearchCtrl.value ?? ''),
+      map(term => {
+        const normalized = ProdutosComponent.normalizeForSearch(term || '');
+        if (!normalized) return this.allCategories.slice();
+        return this.allCategories.filter(category =>
+          ProdutosComponent.normalizeForSearch(category.name).includes(normalized)
+        );
+      })
+    );
+
+    // Quando o texto for limpo manualmente, limpar o filtro real de categoria
+    this.categorySearchCtrl.valueChanges
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(value => {
+        if (!value?.toString().trim()) {
+          if (this.filterForm.get('category_id')?.value !== null) {
+            this.currentPage = 0;
+            this.filterForm.patchValue({ category_id: null }, { emitEvent: true });
+            this.manualTrigger$.next();
+          }
+        }
+      });
   }
 
   // ========== BUSCA DE PRODUTOS ==========
@@ -451,6 +491,28 @@ export class ProdutosComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
+  // ========== AUTOCOMPLETE DE CATEGORIA ==========
+
+  onCategorySelected(event: MatAutocompleteSelectedEvent): void {
+    const categoryId = event.option.value as number | null;
+    this.currentPage = 0;
+    this.filterForm.patchValue({ category_id: categoryId }, { emitEvent: true });
+
+    const selected = this.allCategories.find(c => c.id === categoryId);
+    if (selected) {
+      this.categorySearchCtrl.setValue(selected.name, { emitEvent: false });
+    }
+
+    this.manualTrigger$.next();
+  }
+
+  clearCategoryFilter(): void {
+    this.currentPage = 0;
+    this.categorySearchCtrl.setValue('', { emitEvent: false });
+    this.filterForm.patchValue({ category_id: null }, { emitEvent: true });
+    this.manualTrigger$.next();
+  }
+
   // ========== MÉTODOS DE UI ==========
 
   getImageUrl(product: Product): string {
@@ -488,6 +550,15 @@ export class ProdutosComponent implements OnInit, AfterViewInit, OnDestroy {
       .subscribe({
         next: (categories) => {
           this.categories = categories;
+          this.allCategories = categories;
+
+          const currentCategoryId = this.filterForm.get('category_id')?.value;
+          if (currentCategoryId) {
+            const selected = this.allCategories.find(c => c.id === currentCategoryId);
+            if (selected) {
+              this.categorySearchCtrl.setValue(selected.name, { emitEvent: false });
+            }
+          }
         },
         error: (error) => {
           console.error('Erro ao carregar categorias:', error);
