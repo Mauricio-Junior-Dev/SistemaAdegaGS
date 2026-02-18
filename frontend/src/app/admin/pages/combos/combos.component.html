@@ -3,12 +3,12 @@
   <div class="header">
     <div class="title-section">
       <h1>Product Bundles</h1>
-      <p>Gerencie os bundles de produtos (combos dinâmicos)</p>
+      <p>Gerencie os combos de produtos (combos dinâmicos)</p>
     </div>
     <div class="actions-section">
       <button mat-raised-button color="primary" routerLink="/admin/combos/novo">
         <mat-icon>add</mat-icon>
-        Novo Bundle
+        Novo Combo
       </button>
     </div>
   </div>
@@ -18,7 +18,7 @@
     <mat-card-content>
       <div class="filters-row">
         <mat-form-field appearance="outline" class="search-field">
-          <mat-label>Buscar bundles</mat-label>
+          <mat-label>Buscar combos</mat-label>
           <input matInput [(ngModel)]="searchTerm" (keyup.enter)="onSearch()" placeholder="Nome ou código de barras">
           <mat-icon matSuffix>search</mat-icon>
         </mat-form-field>
