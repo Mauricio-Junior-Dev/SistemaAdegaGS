@@ -19,6 +19,7 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { Subject, debounceTime, distinctUntilChanged, takeUntil, switchMap, startWith, combineLatest, merge, of, Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { MatAutocompleteModule, MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
 
 import { ProductService, Product, ProductResponse } from '../../services/product.service';
@@ -241,7 +242,7 @@ export class ProdutosComponent implements OnInit, AfterViewInit, OnDestroy {
     // Observable de categorias filtradas baseado no texto digitado
     this.filteredCategories$ = this.categorySearchCtrl.valueChanges.pipe(
       startWith(this.categorySearchCtrl.value ?? ''),
-      map(term => {
+      map((term: string | null) => {
         const normalized = ProdutosComponent.normalizeForSearch(term || '');
         if (!normalized) return this.allCategories.slice();
         return this.allCategories.filter(category =>
