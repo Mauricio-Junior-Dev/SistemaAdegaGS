@@ -38,7 +38,7 @@ import { BottomNavComponent } from '../../shared/components/bottom-nav/bottom-na
     }
 
     .public-content {
-      padding-top: 80px; /* Altura do header (64px) + respiro (16px) */
+      padding-top: 65px; /* Altura do header (64px) + respiro (16px) */
       min-height: 100vh;
       background-color: var(--background, #f5f5f5);
       flex: 1;

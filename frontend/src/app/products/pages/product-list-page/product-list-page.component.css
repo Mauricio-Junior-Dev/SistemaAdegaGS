@@ -1,7 +1,8 @@
 .products-page {
   min-height: 100vh;
   background-color: var(--background);
-  padding-top: 64px; /* Altura do header fixo */
+  /* Reduzir o espaço entre o header fixo e a barra de busca */
+  padding-top: 5px;
 }
 
 .container {

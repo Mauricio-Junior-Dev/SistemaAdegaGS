@@ -40,6 +40,9 @@ class CategoryController extends Controller
             })
             ->with(['products' => function ($q) {
                 $q->where('is_active', true)
+                  // Primeiro, produtos com estoque disponível (current_stock > 0), depois esgotados
+                  ->orderByRaw('current_stock > 0 DESC')
+                  // Em seguida, ordenação alfabética por nome
                   ->orderBy('name');
             }])
             ->orderBy('position')

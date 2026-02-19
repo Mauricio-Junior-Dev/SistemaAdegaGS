@@ -196,16 +196,33 @@ export class ProductListPageComponent implements OnInit, OnDestroy {
       return;
     }
 
-    let groups = this.menuData.map(g => ({
-      category: g.category,
-      products: term
+    let groups = this.menuData.map(g => {
+      const filteredProducts = term
         ? g.products.filter(p => {
             const name = this.normalizeString(p.name);
             const desc = p.description ? this.normalizeString(p.description) : '';
             return name.includes(normalizedSearch) || desc.includes(normalizedSearch);
           })
-        : g.products,
-    }));
+        : g.products;
+
+      // Ordenar produtos da categoria: disponíveis primeiro, depois esgotados, e então por nome
+      const sortedProducts = [...filteredProducts].sort((a, b) => {
+        const aDisponivel = a.current_stock > 0 ? 1 : 0;
+        const bDisponivel = b.current_stock > 0 ? 1 : 0;
+
+        if (aDisponivel !== bDisponivel) {
+          // Produtos disponíveis (1) devem vir antes dos esgotados (0)
+          return bDisponivel - aDisponivel;
+        }
+
+        return a.name.localeCompare(b.name);
+      });
+
+      return {
+        category: g.category,
+        products: sortedProducts,
+      };
+    });
 
     if (this.selectedCategory != null) {
       groups = groups.filter(g => g.category.id === this.selectedCategory);

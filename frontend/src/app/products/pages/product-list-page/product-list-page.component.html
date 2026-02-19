@@ -41,8 +41,9 @@
         </button>
       </div>
 
-      <!-- Seção de Combos (Montar = ir para detalhes; não adicionar direto ao carrinho) -->
-      <div *ngIf="filteredCombos.length > 0" class="category-group combo-section">
+      <!-- Seção de Combos (Montar = ir para detalhes; não adicionar direto ao carrinho)
+           Exibida apenas quando não há categoria específica selecionada -->
+      <div *ngIf="!selectedCategory && filteredCombos.length > 0" class="category-group combo-section">
         <h2 class="category-separator">Combos</h2>
         
         <div class="menu-items">
