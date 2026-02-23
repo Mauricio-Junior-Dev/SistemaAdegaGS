@@ -514,6 +514,131 @@
   animation: slideDown 0.3s ease-out;
 }
 
+.cash-hint-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+/* Input customizado de Troco - Outlined, com label flutuante isolada de conflitos globais */
+.custom-input-group {
+  position: relative;
+  margin-top: 25px;
+  margin-bottom: 10px;
+  width: 100%;
+}
+
+.custom-input-field {
+  width: 100%;
+  height: 50px;
+  padding: 10px 15px;
+  font-size: 16px;
+  font-family: 'Inter', sans-serif;
+  color: #333;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.custom-input-field:focus {
+  border-color: #ff914d;
+  box-shadow: 0 0 0 3px rgba(255, 145, 77, 0.1);
+}
+
+.custom-input-label {
+  position: absolute;
+  top: 50%;
+  left: 15px;
+  transform: translateY(-50%);
+  background-color: transparent;
+  padding: 0 5px;
+  color: #777;
+  font-size: 16px;
+  pointer-events: none;
+  transition: all 0.2s ease;
+}
+
+.custom-input-field:focus ~ .custom-input-label,
+.custom-input-field:not(:placeholder-shown) ~ .custom-input-label {
+  top: 0;
+  font-size: 12px;
+  color: #ff914d;
+  font-weight: 600;
+  background-color: #fff;
+}
+
+.hint-text {
+  font-size: 12px;
+  color: #888;
+  margin-left: 5px;
+}
+
+.exact-value-link {
+  border: none;
+  background: transparent;
+  color: #ff914d;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.exact-value-link:hover {
+  color: #e67f40;
+}
+
+/* ===========================
+   CAMPOS CONDICIONAIS (CPF/TELEFONE) - DENSO
+   Deixar os campos mais compactos visualmente
+   =========================== */
+.user-data-block .mat-mdc-form-field {
+  width: 100%;
+}
+
+.user-data-block .mat-mdc-form-field-infix {
+  min-height: 44px !important;
+  padding-top: 6px !important;
+  padding-bottom: 6px !important;
+}
+
+.user-data-block .mdc-text-field__input {
+  padding-top: 10px !important;
+  padding-bottom: 10px !important;
+  font-size: 14px !important;
+}
+
+.user-data-block .user-data-field {
+  height: auto !important;
+}
+
+/* ===========================
+   FORMULÁRIO DE ENDEREÇO (CEP/ENDEREÇO) - DENSO
+   =========================== */
+.address-form .mat-mdc-form-field {
+  width: 100%;
+}
+
+.address-form .mat-mdc-form-field-infix {
+  min-height: 44px !important;
+  padding-top: 6px !important;
+  padding-bottom: 6px !important;
+}
+
+.address-form .mdc-text-field__input {
+  padding-top: 10px !important;
+  padding-bottom: 10px !important;
+  font-size: 14px !important;
+}
+
+.address-form textarea.mdc-text-field__input,
+.address-form textarea.mat-mdc-input-element {
+  min-height: 72px !important;
+}
+
 .change-info {
   display: flex;
   align-items: center;

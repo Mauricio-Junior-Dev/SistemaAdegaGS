@@ -1,16 +1,18 @@
 <div class="products-page">
-  <!-- Barra de Busca Sticky -->
+  <!-- Barra de Busca Sticky - Estilo minimalista (iFood/Zé) -->
   <div class="search-bar-sticky">
     <div class="container">
-      <div class="search-wrapper">
-        <mat-icon class="search-icon">search</mat-icon>
-        <input 
-          type="text" 
+      <div class="search-wrapper modern-search-bar">
+        <mat-icon class="search-icon" aria-hidden="true">search</mat-icon>
+        <input
+          type="search"
+          name="search"
           [(ngModel)]="searchTerm"
           (input)="onSearchInput($event)"
-          placeholder="Buscar produtos..." 
-          class="search-input">
-        <button *ngIf="searchTerm" (click)="searchTerm = ''; applyMenuFilters()" class="clear-search" mat-icon-button>
+          placeholder="Buscar produtos..."
+          class="search-input"
+          autocomplete="off">
+        <button *ngIf="searchTerm" (click)="searchTerm = ''; applyMenuFilters()" class="clear-search" mat-icon-button type="button" aria-label="Limpar busca">
           <mat-icon>close</mat-icon>
         </button>
       </div>

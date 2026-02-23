@@ -11,57 +11,69 @@
   padding: 0 1rem;
 }
 
-/* Barra de Busca Sticky */
+/* Barra de Busca Sticky - Minimalismo Funcional (iFood/Zé) */
 .search-bar-sticky {
+  padding: 10px 15px;
+  background-color: #fff;
   position: sticky;
   top: 64px;
-  z-index: 998;
-  background-color: #ffffff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  padding: 1rem 0;
-  margin-bottom: 1rem;
+  z-index: 50;
+  margin-bottom: 0.5rem;
 }
 
-.search-wrapper {
+.search-wrapper.modern-search-bar {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  background-color: #f5f5f5;
-  border-radius: 24px;
-  padding: 0.75rem 1rem;
-  position: relative;
+  background-color: #f3f4f6;
+  border-radius: 9999px;
+  padding: 12px 16px;
+  min-height: 48px;
+  border: 1px solid transparent;
+  transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.search-wrapper.modern-search-bar:focus-within {
+  background-color: #fff;
+  border-color: #ff914d;
+  box-shadow: 0 4px 15px rgba(255, 145, 77, 0.15);
 }
 
 .search-icon {
-  color: #666;
-  font-size: 24px;
-  width: 24px;
-  height: 24px;
+  color: #6b7280;
+  font-size: 22px;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
 }
 
 .search-input {
   flex: 1;
   border: none;
-  background: none;
+  background: transparent;
+  width: 100%;
+  font-size: 16px;
+  color: #333;
   outline: none;
-  font-size: 1rem;
-  color: #1a1a1a;
+  margin-left: 10px;
+  min-height: 24px;
+  min-width: 0;
 }
 
 .search-input::placeholder {
-  color: #999;
+  color: #9ca3af;
 }
 
 .clear-search {
-  color: #666;
-  width: 32px;
-  height: 32px;
+  color: #6b7280;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
 }
 
 .clear-search mat-icon {
-  font-size: 18px;
-  width: 18px;
-  height: 18px;
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
 }
 
 /* Lista de Menu */
@@ -448,6 +460,19 @@
 
 /* Responsividade */
 @media (max-width: 767px) {
+  .search-bar-sticky {
+    padding: 12px 16px;
+  }
+
+  .search-wrapper.modern-search-bar {
+    min-height: 52px;
+    padding: 14px 18px;
+  }
+
+  .search-input {
+    font-size: 16px; /* Evita zoom no iOS ao focar */
+  }
+
   .menu-item-image {
     width: 70px;
     height: 70px;

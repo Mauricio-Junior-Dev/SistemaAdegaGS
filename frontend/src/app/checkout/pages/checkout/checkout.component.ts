@@ -715,6 +715,24 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     }, 100);
   }
 
+  /**
+   * Define automaticamente o valor exato em dinheiro (total do pedido)
+   * para o campo de troco, facilitando quando o cliente não precisa de troco.
+   */
+  async setExactCashAmount(): Promise<void> {
+    const cartTotal = await firstValueFrom(this.cartTotal$);
+    const normalizedCartTotal = Number.isFinite(cartTotal) ? Number(cartTotal) : 0;
+    const orderTotal = normalizedCartTotal + this.deliveryFee;
+
+    if (orderTotal <= 0) {
+      return;
+    }
+
+    const formatted = orderTotal.toFixed(2).replace('.', ',');
+    this.paymentForm.patchValue({ received_amount: formatted });
+    this.paymentForm.get('received_amount')?.markAsDirty();
+  }
+
   /** Retorna CPF ou e-mail atual (guest ou logado) para passar ao login ao redirecionar. */
   private getIdentifierForLogin(): string {
     const raw = this.isGuestUser

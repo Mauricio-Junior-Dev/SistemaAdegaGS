@@ -349,18 +349,28 @@
               </button>
             </div>
 
-            <!-- Campo de Troco (Dinheiro) -->
+            <!-- Campo de Troco (Dinheiro) - Input customizado estilo Outlined -->
             <div class="change-field-expandable" *ngIf="paymentForm.get('method')?.value === 'cash'">
-              <mat-form-field class="full-width">
-                <mat-label>Valor a ser pago</mat-label>
-                <input 
-                  id="received-amount-input" 
-                  matInput 
-                  formControlName="received_amount" 
-                  type="text" 
-                  placeholder="0,00 ou 0.00"
+              <div class="custom-input-group">
+                <input
+                  id="received-amount-input"
+                  class="custom-input-field"
+                  type="text"
+                  formControlName="received_amount"
+                  placeholder=" "
+                  inputmode="decimal"
                   (blur)="onReceivedAmountBlur($event)">
-              </mat-form-field>
+                <label for="received-amount-input" class="custom-input-label">
+                  Valor que será entregue (R$)
+                </label>
+              </div>
+              <div class="cash-hint-row">
+                <small class="hint-text">Informe o valor em dinheiro para calcularmos o troco.</small>
+                <button type="button" class="exact-value-link" (click)="setExactCashAmount()">
+                  Tenho o valor exato
+                </button>
+              </div>
+
               <div class="change-info" *ngIf="getSanitizedReceivedAmount() > ((cartTotal$ | async) || 0) + deliveryFee">
                 <mat-icon>info</mat-icon>
                 <span>Troco: R$ {{ (getSanitizedReceivedAmount() - ((cartTotal$ | async) || 0) - deliveryFee) | number:'1.2-2' }}</span>

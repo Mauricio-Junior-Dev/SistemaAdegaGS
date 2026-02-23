@@ -29,10 +29,13 @@ export const appConfig: ApplicationConfig = {
     ),
     provideAnimations(),
     provideToastr({
-      preventDuplicates: true, // Previne toasts duplicados
-      closeButton: true,
+      positionClass: 'toast-top-center',
+      preventDuplicates: true,
+      closeButton: false,
       progressBar: true,
-      timeOut: 30000
+      timeOut: 3000,
+      enableHtml: false,
+      tapToDismiss: true
     }),
     { provide: LOCALE_ID, useValue: 'pt-BR' }
   ]

@@ -3,184 +3,147 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 /* ==========================================
-   TOASTR MODERN NOTIFICATION STYLES
-   Classe customizada: modern-toast-notification
+   TOASTR - Pílula Slim (top-center, título oculto)
    ========================================== */
 
-/* Container do Toast - Posicionamento Flutuante */
+/* Configuração Global do Container - Top Center */
 #toast-container {
-  position: fixed;
+  position: fixed !important;
   z-index: 10000;
+  top: 20px !important;
+  bottom: auto !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  width: auto !important;
+  max-width: 90vw !important;
+  pointer-events: none;
 }
 
-/* Toast Bottom Center - Margem para não cobrir o menu inferior */
-#toast-container.toast-bottom-center {
-  left: 50%;
-  transform: translateX(-50%);
+#toast-container.toast-top-center {
+  left: 50% !important;
+  transform: translateX(-50%) !important;
 }
 
-/* Container Individual do Toast - Estilo Moderno */
-#toast-container.toast-bottom-center > div.modern-toast-notification,
-#toast-container > div.modern-toast-notification {
-  background-color: #ffffff !important;
-  border-radius: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.1);
+/* A Pílula (Slim) */
+#toast-container .toast,
+#toast-container > div {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-direction: row !important;
+  width: auto !important;
+  min-width: 300px !important;
+  max-width: 90vw !important;
+  padding: 8px 20px !important;
+  border-radius: 50px !important;
   border: none !important;
-  padding: 0;
-  margin: 0 0 12px 0;
-  min-height: auto;
-  max-width: 90vw;
-  width: auto;
-  min-width: 280px;
-  max-width: 400px;
-  position: relative;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15) !important;
+  background-image: none !important;
+  opacity: 1 !important;
+  margin: 0 auto 10px auto !important;
+  pointer-events: auto;
   overflow: hidden;
-  display: flex;
-  align-items: center;
-  font-family: 'Inter', sans-serif;
 }
 
-/* Estrutura interna do toast */
-#toast-container > div.modern-toast-notification > div {
-  display: flex;
-  align-items: center;
+#toast-container .toast > div,
+#toast-container > div > div {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex-direction: row !important;
+  gap: 8px;
   width: 100%;
-  gap: 12px;
   background: transparent !important;
   border: none !important;
 }
 
-/* Remover qualquer background ou borda padrão do toastr */
-#toast-container > div.modern-toast-notification {
-  background-image: none !important;
-  background: #ffffff !important;
-}
-
-/* Garantir que não há elementos de fundo estranhos */
-#toast-container > div.modern-toast-notification::before,
-#toast-container > div.modern-toast-notification::after {
+/* Esconder botão fechar */
+#toast-container .toast-close-button,
+#toast-container .toast .toast-close-button {
   display: none !important;
-  content: none !important;
 }
 
-/* Borda Lateral Esquerda por Tipo */
-#toast-container > div.modern-toast-notification.toast-success {
-  border-left: 5px solid #10b981;
+/* Título omitido para toasts rápidos (economiza espaço) */
+#toast-container .toast-title {
+  display: none !important;
 }
 
-#toast-container > div.modern-toast-notification.toast-warning {
-  border-left: 5px solid #f59e0b;
+/* Texto e Fonte */
+#toast-container .toast-message {
+  font-family: 'Inter', sans-serif !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  text-align: center !important;
+  line-height: 1.2 !important;
+  color: #ffffff !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  white-space: normal !important;
+  word-break: normal !important;
 }
 
-#toast-container > div.modern-toast-notification.toast-error {
-  border-left: 5px solid #ef4444;
-}
-
-#toast-container > div.modern-toast-notification.toast-info {
-  border-left: 5px solid #3b82f6;
-}
-
-/* Conteúdo do Toast */
-#toast-container > div.modern-toast-notification .toast-message,
-#toast-container > div.modern-toast-notification .toast-title {
-  color: #1f2937;
-  font-weight: 500;
-  font-size: 14px;
-  line-height: 1.5;
-  padding: 0;
-  margin: 0;
-}
-
-#toast-container > div.modern-toast-notification .toast-title {
-  font-weight: 600;
-  font-size: 15px;
-  margin-bottom: 4px;
-}
-
-/* Container do Conteúdo */
-#toast-container > div.modern-toast-notification.toast {
-  padding: 16px 20px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-/* Ícones do Toastr - Estilização */
-#toast-container > div.modern-toast-notification .toast-icon {
+#toast-container .toast-icon {
   flex-shrink: 0;
-  width: 24px;
-  height: 24px;
-  display: inline-block;
+  width: 18px;
+  height: 18px;
   margin-right: 0;
+  color: #ffffff !important;
 }
 
-#toast-container > div.modern-toast-notification.toast-success .toast-icon {
-  color: #10b981;
+/* Sucesso - Verde Esmeralda */
+#toast-container .toast-success,
+#toast-container > div.toast-success {
+  background-color: #059669 !important;
+  color: #ffffff !important;
 }
 
-#toast-container > div.modern-toast-notification.toast-warning .toast-icon {
-  color: #f59e0b;
+#toast-container .toast-success .toast-progress {
+  background-color: rgba(255, 255, 255, 0.35) !important;
+  height: 2px;
+  border-radius: 0 0 50px 50px;
 }
 
-#toast-container > div.modern-toast-notification.toast-error .toast-icon {
-  color: #ef4444;
+/* Aviso/Erro - Laranja da marca */
+#toast-container .toast-warning,
+#toast-container .toast-error,
+#toast-container > div.toast-warning,
+#toast-container > div.toast-error {
+  background-color: #ff914d !important;
+  color: #ffffff !important;
 }
 
-#toast-container > div.modern-toast-notification.toast-info .toast-icon {
-  color: #3b82f6;
+#toast-container .toast-warning .toast-progress,
+#toast-container .toast-error .toast-progress {
+  background-color: rgba(255, 255, 255, 0.35) !important;
+  height: 2px;
+  border-radius: 0 0 50px 50px;
 }
 
-/* Botão de Fechar */
-#toast-container > div.modern-toast-notification .toast-close-button {
-  color: #6b7280;
-  opacity: 0.6;
-  font-size: 18px;
-  font-weight: 400;
-  line-height: 1;
-  padding: 4px;
-  margin-left: auto;
-  flex-shrink: 0;
-  transition: opacity 0.2s, color 0.2s;
-  background: none;
-  border: none;
-  cursor: pointer;
+/* Info */
+#toast-container .toast-info,
+#toast-container > div.toast-info {
+  background-color: #0F4C81 !important;
+  color: #ffffff !important;
 }
 
-#toast-container > div.modern-toast-notification .toast-close-button:hover {
-  opacity: 1;
-  color: #1f2937;
+#toast-container .toast-info .toast-progress {
+  background-color: rgba(255, 255, 255, 0.35) !important;
+  height: 2px;
+  border-radius: 0 0 50px 50px;
 }
 
-/* Progress Bar */
-#toast-container > div.modern-toast-notification .toast-progress {
-  height: 3px;
-  border-radius: 0 0 12px 12px;
-}
-
-#toast-container > div.modern-toast-notification.toast-success .toast-progress {
-  background-color: rgba(16, 185, 129, 0.3);
-}
-
-#toast-container > div.modern-toast-notification.toast-warning .toast-progress {
-  background-color: rgba(245, 158, 11, 0.3);
-}
-
-#toast-container > div.modern-toast-notification.toast-error .toast-progress {
-  background-color: rgba(239, 68, 68, 0.3);
-}
-
-#toast-container > div.modern-toast-notification.toast-info .toast-progress {
-  background-color: rgba(59, 130, 246, 0.3);
-}
-
-/* Animações Suaves */
-#toast-container > div.modern-toast-notification {
-  animation: toastSlideIn 0.3s ease-out;
+#toast-container .toast-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  border-radius: 0 0 50px 50px;
 }
 
 @keyframes toastSlideIn {
   from {
-    transform: translateY(20px);
+    transform: translateY(-12px);
     opacity: 0;
   }
   to {
@@ -189,24 +152,9 @@
   }
 }
 
-/* Responsividade - Mobile */
-@media (max-width: 768px) {
-  #toast-container.toast-bottom-center {
-    bottom: 100px; /* Margem acima do bottom-nav (60px) + botão flutuante (20px) + espaço (20px) */
-  }
-
-  #toast-container.toast-bottom-center > div.modern-toast-notification {
-    max-width: calc(100vw - 32px);
-    width: calc(100% - 32px);
-    min-width: auto;
-  }
-}
-
-/* Desktop - Centralizar melhor */
-@media (min-width: 769px) {
-  #toast-container.toast-bottom-center {
-    bottom: 24px; /* Menos margem no desktop (sem bottom-nav) */
-  }
+#toast-container .toast,
+#toast-container > div {
+  animation: toastSlideIn 0.3s ease-out;
 }
 
 /* Variáveis CSS (funcionam na maioria dos navegadores modernos) */
@@ -479,15 +427,14 @@ button.mat-accent,
   color: #212529 !important;
 }
 
-/* Input base do Material */
+/* Input base do Material - sem borda no input (borda fica no .mdc-notched-outline) */
 input.mat-mdc-input-element,
 input.mdc-text-field__input,
 textarea.mat-mdc-input-element,
 textarea.mdc-text-field__input {
   background-color: var(--white) !important;
   color: #212529 !important;
-  border: 1px solid #ced4da !important;
-  padding: 12px 14px !important; /* Reduzido de 16px para 14px para layout mais compacto */
+  border: none !important;
   border-radius: 4px;
   transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
 }
@@ -809,12 +756,9 @@ mat-progress-spinner .mat-mdc-progress-spinner,
    ALINHAMENTO VERTICAL DOS INPUTS
    ========================================== */
 
-/* Material Form Field Infix - Centralizar verticalmente */
+/* Material Form Field Infix - ajustes mínimos globais (sem forçar altura) */
 .mat-mdc-form-field-infix {
   display: block !important;
-  padding-top: 16px !important;
-  padding-bottom: 16px !important;
-  min-height: 56px !important;
   box-sizing: border-box !important;
   line-height: normal !important;
 }
@@ -900,24 +844,22 @@ mat-progress-spinner .mat-mdc-progress-spinner,
   min-height: 32px !important;
 }
 
-/* Input dentro do infix - alinhamento vertical correto */
+/* Input dentro do infix - alinhamento vertical (não zerar padding; deixa MDC controlar) */
 .mat-mdc-form-field-infix input,
 .mat-mdc-form-field-infix textarea,
 .mat-mdc-form-field-infix .mdc-text-field__input {
   display: block !important;
   line-height: 1.5 !important;
-  padding-top: 0 !important;
-  padding-bottom: 0 !important;
   box-sizing: border-box !important;
   margin: 0 !important;
   height: auto !important;
 }
 
-/* Remover padding-top excessivo do infix */
+/* Manter espaço do infix para a label flutuante do Material */
 .mdc-text-field--filled .mat-mdc-form-field-infix,
 .mdc-text-field--outlined .mat-mdc-form-field-infix {
-  padding-top: 0 !important;
-  padding-bottom: 0 !important;
+  padding-top: 16px !important;
+  padding-bottom: 16px !important;
 }
 
 /* Ajustar para inputs densos */
