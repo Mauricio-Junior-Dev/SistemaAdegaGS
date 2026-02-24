@@ -6,6 +6,8 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { interval, Subscription } from 'rxjs';
+import { skip, switchMap } from 'rxjs/operators';
 import { OrderService } from '../../../core/services/order.service';
 import { Order } from '../../../core/models/order.model';
 import { OrderDetailsDialogComponent } from './dialogs/order-details-dialog.component';
@@ -30,10 +32,12 @@ import { environment } from '../../../../environments/environment';
   ]
 })
 export class OrdersListComponent implements OnInit, OnDestroy {
+  private static readonly POLLING_INTERVAL_MS = 30000;
   orders: Order[] = [];
   loading = true;
   error: string | null = null;
-  private countdownInterval?: any;
+  private countdownInterval?: ReturnType<typeof setInterval>;
+  private pollingSubscription?: Subscription;
 
   constructor(
     private orderService: OrderService,
@@ -45,11 +49,44 @@ export class OrdersListComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.loadOrders();
     this.startCountdown();
+    this.startPolling();
   }
 
   ngOnDestroy(): void {
     if (this.countdownInterval) {
       clearInterval(this.countdownInterval);
+    }
+    this.pollingSubscription?.unsubscribe();
+  }
+
+  /**
+   * Polling a cada 30s (após o primeiro intervalo). Atualiza a lista em background e avisa se algum status mudou.
+   */
+  private startPolling(): void {
+    this.pollingSubscription = interval(OrdersListComponent.POLLING_INTERVAL_MS).pipe(
+      skip(1),
+      switchMap(() => this.orderService.getOrders())
+    ).subscribe({
+      next: (newOrders) => this.onOrdersRefreshed(newOrders),
+      error: () => { /* silencioso: não altera loading/error na tela */ }
+    });
+  }
+
+  /**
+   * Compara pedidos novos com os atuais; se algum status mudou, exibe toast e atualiza a lista.
+   */
+  private onOrdersRefreshed(newOrders: Order[]): void {
+    const oldMap = new Map(this.orders.map(o => [o.id, o.status]));
+    const hasStatusChange = newOrders.some(o => oldMap.get(o.id) !== o.status);
+    this.orders = newOrders;
+    this.startCountdown();
+    this.cdr.detectChanges();
+    if (hasStatusChange) {
+      this.snackBar.open('Seu pedido foi atualizado!', 'Fechar', {
+        duration: 4000,
+        horizontalPosition: 'center',
+        verticalPosition: 'top'
+      });
     }
   }
 
@@ -57,21 +94,22 @@ export class OrdersListComponent implements OnInit, OnDestroy {
     this.loading = true;
     this.error = null;
 
-    console.log('OrdersListComponent: Loading orders...');
-
     this.orderService.getOrders().subscribe({
       next: (orders) => {
-        console.log('OrdersListComponent: Orders received:', orders);
         this.orders = orders;
         this.loading = false;
         this.startCountdown();
       },
       error: (error) => {
-        console.error('OrdersListComponent: Error loading orders:', error);
         this.error = error.error?.message || 'Erro ao carregar pedidos';
         this.loading = false;
       }
     });
+  }
+
+  /** Atualizar agora (botão manual). */
+  refreshNow(): void {
+    this.loadOrders();
   }
 
   startCountdown(): void {

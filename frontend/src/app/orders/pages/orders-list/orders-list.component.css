@@ -12,6 +12,21 @@
 
 .orders-header {
   margin-bottom: 2rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.orders-header-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.orders-header .btn-refresh mat-icon {
+  margin-right: 4px;
+  vertical-align: middle;
 }
 
 .orders-header h1 {

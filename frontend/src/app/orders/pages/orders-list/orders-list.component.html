@@ -1,8 +1,19 @@
 <div class="orders-page">
   <div class="container">
     <div class="orders-header">
-      <h1>Meus Pedidos</h1>
-      <p class="subtitle">Acompanhe o status dos seus pedidos</p>
+      <div class="orders-header-text">
+        <h1>Meus Pedidos</h1>
+        <p class="subtitle">Acompanhe o status dos seus pedidos</p>
+      </div>
+      <button mat-stroked-button
+              color="primary"
+              (click)="refreshNow()"
+              [disabled]="loading"
+              class="btn-refresh"
+              aria-label="Atualizar lista de pedidos">
+        <mat-icon>refresh</mat-icon>
+        Atualizar Agora
+      </button>
     </div>
 
     <!-- Loading -->
