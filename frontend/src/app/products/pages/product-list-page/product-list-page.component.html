@@ -116,8 +116,8 @@
                   *ngIf="getQuantity(product) === 0" 
                   (click)="increase(product)" 
                   class="btn-add" 
-                  [disabled]="product.current_stock <= 0">
-                  {{ product.current_stock > 0 ? 'Adicionar' : 'Esgotado' }}
+                  [disabled]="(product.effective_stock ?? product.current_stock) <= 0">
+                  {{ (product.effective_stock ?? product.current_stock) > 0 ? 'Adicionar' : 'Esgotado' }}
                 </button>
                 
                 <!-- Controles de Quantidade (quando quantidade > 0) -->
@@ -131,7 +131,7 @@
                   <button 
                     (click)="increase(product)" 
                     class="qty-btn plus"
-                    [disabled]="getQuantity(product) >= product.current_stock">
+                    [disabled]="getQuantity(product) >= (product.effective_stock ?? product.current_stock)">
                     +
                   </button>
                 </div>

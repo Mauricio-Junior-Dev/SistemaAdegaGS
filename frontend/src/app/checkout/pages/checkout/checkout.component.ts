@@ -1306,7 +1306,8 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     if (newQuantity > 0) {
       // Validar estoque antes de aumentar (apenas para produtos, não combos)
       if (change > 0 && item.product && !item.isCombo) {
-        if (newQuantity > item.product.current_stock) {
+        const maxStock = (item.product as any).effective_stock ?? item.product.current_stock;
+        if (newQuantity > maxStock) {
           return; // O CartService já mostrará o toastr
         }
       }
@@ -1344,7 +1345,8 @@ export class CheckoutComponent implements OnInit, OnDestroy {
     if (item.isCombo || !item.product) {
       return true; // Combos não têm limite de estoque
     }
-    return item.quantity < item.product.current_stock;
+    const maxStock = (item.product as any).effective_stock ?? item.product.current_stock;
+    return item.quantity < maxStock;
   }
 
   /**

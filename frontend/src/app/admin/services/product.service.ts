@@ -85,6 +85,8 @@ export class ProductService {
     offers?: boolean;
     is_pack?: boolean;
     visible_online?: boolean;
+    /** Quando true, retorna apenas produtos unitários (sem packs) para uso como Produto Pai */
+    eligible_as_parent?: boolean;
     sort_by?: string;
     sort_order?: 'asc' | 'desc';
   } = {}): Observable<ProductResponse> {

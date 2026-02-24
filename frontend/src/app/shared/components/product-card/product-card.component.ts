@@ -93,19 +93,24 @@ export class ProductCardComponent {
     return 'assets/images/no-image.jpg';
   }
 
+  /** Estoque para vitrine: effective_stock (Packs) ou current_stock (unitário/combos). */
+  getDisplayStock(product: Product): number {
+    return (product as any).effective_stock ?? product.current_stock ?? 0;
+  }
+
   getLowStock(product: Product): boolean {
-    const current = (product as any).current_stock ?? 0;
+    const current = this.getDisplayStock(product);
     const min = (product as any).min_stock ?? 0;
     return current <= min;
   }
 
   hasLowStock(product: Product): boolean {
-    const current = product.current_stock ?? 0;
+    const current = this.getDisplayStock(product);
     return current < 5 && current > 0;
   }
 
   getStockMessage(product: Product): string {
-    const current = product.current_stock ?? 0;
+    const current = this.getDisplayStock(product);
     if (current < 5 && current > 0) {
       return `Restam apenas ${current} unidades`;
     }

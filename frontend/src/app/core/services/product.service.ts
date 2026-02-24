@@ -106,7 +106,8 @@ export class ProductService {
   }
 
   getLowStock(product: Product): boolean {
-    return product.current_stock <= product.min_stock;
+    const stock = (product as any).effective_stock ?? product.current_stock;
+    return stock <= product.min_stock;
   }
 
   getSuggestions(cartIds: number[], limit: number = 6): Observable<Product[]> {

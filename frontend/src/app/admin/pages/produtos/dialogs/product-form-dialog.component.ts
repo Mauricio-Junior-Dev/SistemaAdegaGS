@@ -1028,8 +1028,12 @@ export class ProductFormDialogComponent implements OnInit {
   }
 
   private loadParentProducts(): void {
-    // Carregar produtos que podem ser pais (excluindo o produto atual se estiver editando)
-    this.productService.getProducts({ per_page: 1000, is_active: true }).subscribe({
+    // Carregar apenas produtos unitários (eligible_as_parent), até 500 itens para o autocomplete
+    this.productService.getProducts({
+      per_page: 500,
+      is_active: true,
+      eligible_as_parent: true
+    }).subscribe({
       next: (response) => {
         this.availableParentProducts = response.data.filter(p =>
           !this.isEdit || p.id !== this.data.product?.id

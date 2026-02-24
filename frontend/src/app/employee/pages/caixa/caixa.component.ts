@@ -799,20 +799,27 @@ export class CaixaComponent implements OnInit, OnDestroy {
     });
   }
 
+  /** Estoque para exibição e validação no PDV: effective_stock (Packs) ou current_stock. */
+  getDisplayStock(product: Product): number {
+    return (product as any).effective_stock ?? product.current_stock ?? 0;
+  }
+
   private addToCartWithPrice(priceToUse: number): void {
     if (!this.selectedProduct || this.quantity < 1) return;
 
+    const maxStock = this.getDisplayStock(this.selectedProduct);
+
     // Verificar disponibilidade baseada no tipo de venda
     if (this.saleType === 'garrafa') {
-      if (this.selectedProduct.current_stock <= 0) {
+      if (maxStock <= 0) {
         this.toastr.warning('Produto sem estoque disponível', 'Estoque Insuficiente', {
           toastClass: 'modern-toast-notification',
           timeOut: 5000
         });
         return;
       }
-      if (this.quantity > this.selectedProduct.current_stock) {
-        this.toastr.warning(`Quantidade excede o estoque disponível. Restam apenas ${this.selectedProduct.current_stock} unidades.`, 'Estoque Insuficiente', {
+      if (this.quantity > maxStock) {
+        this.toastr.warning(`Quantidade excede o estoque disponível. Restam apenas ${maxStock} unidades.`, 'Estoque Insuficiente', {
           toastClass: 'modern-toast-notification',
           timeOut: 5000
         });
@@ -823,7 +830,7 @@ export class CaixaComponent implements OnInit, OnDestroy {
       const dosesNecessarias = this.quantity;
       const garrafasNecessarias = Math.ceil(dosesNecessarias / this.selectedProduct.doses_por_garrafa);
       
-      if (this.selectedProduct.current_stock < garrafasNecessarias) {
+      if (maxStock < garrafasNecessarias) {
         this.toastr.warning(`Produto não possui garrafas suficientes para as doses solicitadas (necessário: ${garrafasNecessarias} garrafas)`, 'Estoque Insuficiente', {
           toastClass: 'modern-toast-notification',
           timeOut: 5000
@@ -846,11 +853,12 @@ export class CaixaComponent implements OnInit, OnDestroy {
 
     if (existingItem) {
       const newQuantity = existingItem.quantity + this.quantity;
-      
+      const maxStockCart = this.getDisplayStock(this.selectedProduct);
+
       // Verificar novamente a disponibilidade
       if (this.saleType === 'garrafa') {
-        if (newQuantity > this.selectedProduct.current_stock) {
-          this.toastr.warning(`Quantidade excede o estoque disponível. Restam apenas ${this.selectedProduct.current_stock} unidades.`, 'Estoque Insuficiente', {
+        if (newQuantity > maxStockCart) {
+          this.toastr.warning(`Quantidade excede o estoque disponível. Restam apenas ${maxStockCart} unidades.`, 'Estoque Insuficiente', {
             toastClass: 'modern-toast-notification',
             timeOut: 5000
           });
@@ -859,7 +867,7 @@ export class CaixaComponent implements OnInit, OnDestroy {
       } else {
         const dosesNecessarias = newQuantity;
         const garrafasNecessarias = Math.ceil(dosesNecessarias / this.selectedProduct.doses_por_garrafa);
-        if (this.selectedProduct.current_stock < garrafasNecessarias) {
+        if (maxStockCart < garrafasNecessarias) {
           this.toastr.warning(`Quantidade excede as garrafas disponíveis para conversão`, 'Estoque Insuficiente', {
             toastClass: 'modern-toast-notification',
             timeOut: 5000
@@ -898,15 +906,15 @@ export class CaixaComponent implements OnInit, OnDestroy {
     if (newQuantity < 1) return;
 
     if (item.sale_type === 'garrafa') {
-      if (item.product && newQuantity > item.product.current_stock) {
-        return;
+      if (item.product) {
+        const maxStock = this.getDisplayStock(item.product);
+        if (newQuantity > maxStock) return;
       }
     } else if (item.product) {
       const dosesNecessarias = newQuantity;
       const garrafasNecessarias = Math.ceil(dosesNecessarias / item.product.doses_por_garrafa);
-      if (item.product.current_stock < garrafasNecessarias) {
-        return;
-      }
+      const maxStock = this.getDisplayStock(item.product);
+      if (maxStock < garrafasNecessarias) return;
     }
 
     const unitPrice = this.getItemUnitPrice(item);
@@ -1314,6 +1322,7 @@ export class CaixaComponent implements OnInit, OnDestroy {
   /**
    * Constrói o objeto Order enriquecido para impressão via API.
    * Garante payment_status e payments corretos (evita "Pagar na entrega: Misto" quando Pago no Caixa).
+   * Fallback: se Cadastro Rápido e a API não trouxe delivery_address, usa quickDeliveryData para o cupom.
    */
   private buildOrderForPrint(response: CreateOrderResponse, paymentStatus: 'pending' | 'completed'): CreateOrderResponse {
     const dinheiroPayment = this.payments.find(p => p.method === 'dinheiro');
@@ -1328,13 +1337,30 @@ export class CaixaComponent implements OnInit, OnDestroy {
       change_amount: p.method === 'dinheiro' ? p.change : undefined
     }));
 
+    const hasAddressFromApi = response.delivery_address && (response.delivery_address as any).street != null;
+    const deliveryAddress =
+      hasAddressFromApi
+        ? response.delivery_address
+        : (this.quickDeliveryData && (this.quickDeliveryData.street || this.quickDeliveryData.city))
+          ? {
+              street: this.quickDeliveryData.street ?? '',
+              number: this.quickDeliveryData.number ?? '',
+              neighborhood: this.quickDeliveryData.neighborhood ?? '',
+              city: this.quickDeliveryData.city ?? '',
+              state: this.quickDeliveryData.state ?? '',
+              zipcode: this.quickDeliveryData.zipcode ?? '',
+              complement: undefined
+            }
+          : response.delivery_address;
+
     return {
       ...response,
       status: response.status || (paymentStatus === 'completed' ? 'completed' : 'pending'),
       payment_status: paymentStatus,
       payment: paymentArray as any,
       received_amount: receivedAmount,
-      change_amount: changeAmount
+      change_amount: changeAmount,
+      delivery_address: deliveryAddress as CreateOrderResponse['delivery_address']
     };
   }
 

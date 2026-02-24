@@ -27,13 +27,13 @@
           </span>
         </div>
         
-        <div class="product-stock" [class.low-stock]="product.current_stock <= 5">
+        <div class="product-stock" [class.low-stock]="(product.effective_stock ?? product.current_stock) <= 5">
           <mat-icon>inventory</mat-icon>
-          <span *ngIf="product.current_stock > 5">Em estoque</span>
-          <span *ngIf="product.current_stock <= 5 && product.current_stock > 0">
-            Últimas {{ product.current_stock }} unidades
+          <span *ngIf="(product.effective_stock ?? product.current_stock) > 5">Em estoque</span>
+          <span *ngIf="(product.effective_stock ?? product.current_stock) <= 5 && (product.effective_stock ?? product.current_stock) > 0">
+            Últimas {{ product.effective_stock ?? product.current_stock }} unidades
           </span>
-          <span *ngIf="product.current_stock === 0" class="out-of-stock">Indisponível</span>
+          <span *ngIf="(product.effective_stock ?? product.current_stock) === 0" class="out-of-stock">Indisponível</span>
         </div>
       </div>
       
@@ -43,7 +43,7 @@
           color="primary" 
           class="add-button"
           (click)="addToCart(product)"
-          [disabled]="product.current_stock === 0">
+          [disabled]="(product.effective_stock ?? product.current_stock) === 0">
           Adicionar
         </button>
       </div>

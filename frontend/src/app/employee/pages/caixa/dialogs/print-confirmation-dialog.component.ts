@@ -115,55 +115,6 @@ export interface PrintConfirmationData {
         </div>
       </div>
 
-      <!-- Modo Impressão (após finalizar) -->
-      <div *ngIf="!data.isConfirmation" class="print-mode">
-        <div class="dialog-header">
-          <mat-icon class="success-icon">check_circle</mat-icon>
-          <h2>Venda Realizada com Sucesso!</h2>
-        </div>
-        
-        <div class="order-info">
-          <div class="info-item" *ngIf="data.orderNumber">
-            <span class="label">Pedido:</span>
-            <span class="value">#{{ data.orderNumber }}</span>
-          </div>
-          <div class="info-item">
-            <span class="label">Total:</span>
-            <span class="value">{{ formatCurrency(data.total) }}</span>
-          </div>
-          <div class="info-item">
-            <span class="label">Pagamento:</span>
-            <span class="value">{{ data.paymentMethod }}</span>
-          </div>
-          <div *ngIf="data.customerName" class="info-item">
-            <span class="label">Cliente:</span>
-            <span class="value">{{ data.customerName }}</span>
-          </div>
-          <div *ngIf="data.changeAmount && data.changeAmount > 0" class="info-item">
-            <span class="label">Troco:</span>
-            <span class="value">{{ formatCurrency(data.changeAmount) }}</span>
-          </div>
-        </div>
-
-        <div class="dialog-content">
-          <p>Deseja imprimir o comprovante de venda?</p>
-        </div>
-
-        <div class="dialog-actions">
-          <button mat-stroked-button 
-                  color="warn" 
-                  (click)="onNoClick()">
-            <mat-icon>close</mat-icon>
-            Não Imprimir
-          </button>
-          <button mat-raised-button 
-                  color="primary" 
-                  (click)="onYesClick()">
-            <mat-icon>print</mat-icon>
-            Sim, Imprimir
-          </button>
-        </div>
-      </div>
     </div>
   `,
   styles: [`
@@ -179,13 +130,6 @@ export interface PrintConfirmationData {
       margin-bottom: 24px;
       text-align: center;
       justify-content: center;
-    }
-
-    .success-icon {
-      font-size: 48px;
-      height: 48px;
-      width: 48px;
-      color: #4caf50;
     }
 
     .dialog-header h2 {
@@ -221,17 +165,6 @@ export interface PrintConfirmationData {
     .value {
       font-weight: 600;
       color: #1976d2;
-    }
-
-    .dialog-content {
-      text-align: center;
-      margin-bottom: 24px;
-    }
-
-    .dialog-content p {
-      margin: 0;
-      font-size: 16px;
-      color: rgba(0, 0, 0, 0.7);
     }
 
     .dialog-actions {

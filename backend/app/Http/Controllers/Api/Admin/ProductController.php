@@ -90,6 +90,12 @@ class ProductController extends Controller
             }
         });
 
+        // Listagem para seleção de "Produto Pai" (Pack): apenas unitários, sem packs
+        $eligibleAsParent = filter_var($request->input('eligible_as_parent'), FILTER_VALIDATE_BOOLEAN);
+        if ($eligibleAsParent) {
+            $query->whereNull('parent_product_id');
+        }
+
         // Ordenação
         $sortBy = $request->get('sort_by', 'name');
         $sortOrder = strtolower($request->get('sort_order', 'asc'));
@@ -108,8 +114,10 @@ class ProductController extends Controller
             }
         }
 
-        // Paginação
-        $perPage = min($request->get('per_page', 10), 100);
+        // Paginação: limite maior apenas para listagem de candidatos a Produto Pai
+        $maxPerPage = $eligibleAsParent ? 500 : 100;
+        $perPage = min((int) $request->get('per_page', $eligibleAsParent ? 500 : 10), $maxPerPage);
+        $perPage = max(1, $perPage);
         $products = $query->paginate($perPage);
 
         return response()->json([

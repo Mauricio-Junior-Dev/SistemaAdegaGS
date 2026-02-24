@@ -17,9 +17,12 @@ class StockService
 {
     public function getProductStock(int $productId): Product
     {
-        return Product::with(['stockMovements' => function ($query) {
-            $query->latest()->limit(10);
-        }])->findOrFail($productId);
+        return Product::with([
+            'parentProduct:id,current_stock',
+            'stockMovements' => function ($query) {
+                $query->latest()->limit(10);
+            }
+        ])->findOrFail($productId);
     }
 
     public function getAllStock(array $filters = []): LengthAwarePaginator
@@ -27,7 +30,7 @@ class StockService
         $perPage = isset($filters['per_page']) && (int)$filters['per_page'] > 0 ? (int)$filters['per_page'] : 15;
 
         $query = Product::query()
-            ->with(['category'])
+            ->with(['category', 'parentProduct:id,current_stock'])
             // Filtrar apenas produtos ativos
             ->where('is_active', true)
             // Filtro por categoria

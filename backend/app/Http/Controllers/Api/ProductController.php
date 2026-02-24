@@ -53,8 +53,8 @@ class ProductController extends Controller
 
     public function show($id)
     {
-        $product = Product::with(['category']) // Carrega relacionamentos
-            ->where('is_active', true) // Garante que não acessa inativo por link direto
+        $product = Product::with(['category', 'parentProduct:id,current_stock'])
+            ->where('is_active', true)
             ->findOrFail($id);
 
         return response()->json($product);

@@ -929,6 +929,7 @@ class OrderController extends Controller
                 'items.productBundle.groups.options.product',
                 'items.selections.product',
                 'user',
+                'delivery_address',
                 'orderPayments',
                 'payment' => function ($query) {
                     // Garantir que received_amount e change_amount sejam selecionados explicitamente

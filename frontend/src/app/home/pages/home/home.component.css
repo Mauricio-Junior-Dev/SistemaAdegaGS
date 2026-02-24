@@ -97,35 +97,60 @@
   margin: 0;
 }
 
+/* Container da lista de categorias: sempre linha única com scroll lateral */
 .categories-scroll {
   display: flex;
+  flex-wrap: nowrap !important;
   overflow-x: auto;
   gap: 10px;
+  padding-bottom: 10px;
   white-space: nowrap;
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-  padding: 0;
+  scrollbar-width: thin;
+  scrollbar-color: #ff914d #f1f1f1;
 }
 
+/* Scrollbar visível e estilizada no Desktop (Chrome, Edge, Safari) */
 .categories-scroll::-webkit-scrollbar {
-  display: none;
+  height: 6px;
 }
 
-/* Regras Desktop para Categorias */
+.categories-scroll::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.categories-scroll::-webkit-scrollbar-thumb {
+  background: #ff914d;
+  border-radius: 10px;
+}
+
+.categories-scroll::-webkit-scrollbar-thumb:hover {
+  background: #e68244;
+}
+
+/* Desktop: wrapper com mais destaque */
 @media (min-width: 768px) {
   .categories-wrapper {
-    justify-content: center;
     box-shadow: 0 4px 12px rgba(0,0,0,0.08);
     padding: 16px 0;
   }
 
   .categories-scroll {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    overflow-x: visible;
     gap: 16px;
+  }
+}
+
+/* Mobile: esconder a barra visualmente, manter scroll por toque */
+@media (max-width: 767px) {
+  .categories-scroll {
+    scrollbar-width: none;
+  }
+
+  .categories-scroll::-webkit-scrollbar {
+    display: none;
+    height: 0;
+    width: 0;
   }
 }
 

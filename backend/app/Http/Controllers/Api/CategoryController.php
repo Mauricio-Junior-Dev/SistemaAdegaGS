@@ -40,9 +40,7 @@ class CategoryController extends Controller
             })
             ->with(['products' => function ($q) {
                 $q->where('is_active', true)
-                  // Primeiro, produtos com estoque disponível (current_stock > 0), depois esgotados
-                  ->orderByRaw('current_stock > 0 DESC')
-                  // Em seguida, ordenação alfabética por nome
+                  ->with('parentProduct:id,current_stock')
                   ->orderBy('name');
             }])
             ->orderBy('position')
@@ -53,6 +51,20 @@ class CategoryController extends Controller
         }
 
         $categories = $query->get();
+
+        // Ordenar produtos por estoque efetivo (disponíveis primeiro) e depois por nome.
+        // Feito em Collection para suportar Packs (effective_stock vem do accessor no Model).
+        $categories->each(function (Category $category) {
+            $category->setRelation('products', $category->products->sort(function ($a, $b) {
+                $aAvailable = $a->effective_stock > 0 ? 1 : 0;
+                $bAvailable = $b->effective_stock > 0 ? 1 : 0;
+                if ($aAvailable !== $bAvailable) {
+                    return $bAvailable - $aAvailable;
+                }
+                return strcmp($a->name, $b->name);
+            })->values());
+        });
+
         return response()->json($categories);
     }
 

@@ -207,8 +207,8 @@ export class ProductListPageComponent implements OnInit, OnDestroy {
 
       // Ordenar produtos da categoria: disponíveis primeiro, depois esgotados, e então por nome
       const sortedProducts = [...filteredProducts].sort((a, b) => {
-        const aDisponivel = a.current_stock > 0 ? 1 : 0;
-        const bDisponivel = b.current_stock > 0 ? 1 : 0;
+        const aDisponivel = (a.effective_stock ?? a.current_stock) > 0 ? 1 : 0;
+        const bDisponivel = (b.effective_stock ?? b.current_stock) > 0 ? 1 : 0;
 
         if (aDisponivel !== bDisponivel) {
           // Produtos disponíveis (1) devem vir antes dos esgotados (0)
@@ -313,7 +313,8 @@ export class ProductListPageComponent implements OnInit, OnDestroy {
     const currentQuantity = this.getQuantity(product);
     
     // Validação de estoque
-    if (currentQuantity >= product.current_stock) {
+    const maxStock = product.effective_stock ?? product.current_stock;
+    if (currentQuantity >= maxStock) {
       return;
     }
     

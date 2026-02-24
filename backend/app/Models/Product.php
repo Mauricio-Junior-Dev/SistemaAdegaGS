@@ -58,7 +58,7 @@ class Product extends Model
         'stock_multiplier' => 'integer'
     ];
 
-    protected $appends = ['low_stock', 'discount_percentage', 'has_discount'];
+    protected $appends = ['low_stock', 'discount_percentage', 'has_discount', 'effective_stock'];
 
     public function category()
     {
@@ -111,11 +111,31 @@ class Product extends Model
         return $this->parentProduct;
     }
 
+    /**
+     * Estoque efetivo (virtual) para vitrine e disponibilidade.
+     * Pack: floor(estoque do pai / stock_multiplier). Unitário: current_stock.
+     */
+    public function getEffectiveStockAttribute(): int
+    {
+        if (!$this->isPack()) {
+            return (int) $this->current_stock;
+        }
+        $parent = $this->getParentProduct();
+        if (!$parent) {
+            return 0;
+        }
+        $multiplier = (int) $this->stock_multiplier;
+        if ($multiplier < 1) {
+            return 0;
+        }
+        return (int) floor($parent->current_stock / $multiplier);
+    }
+
     public function getLowStockAttribute(): bool
     {
-        $currentStock = $this->current_stock;
+        $effectiveStock = $this->effective_stock;
         $minStock = $this->min_stock;
-        return $currentStock <= $minStock;
+        return $effectiveStock <= $minStock;
     }
 
     /**

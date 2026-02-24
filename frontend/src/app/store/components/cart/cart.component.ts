@@ -28,8 +28,11 @@ export class CartComponent {
       // Para combos, não verificar estoque
       if (item.isCombo) {
         this.cartService.updateQuantity(item.id, newQuantity);
-      } else if (item.product && newQuantity <= item.product.current_stock) {
-        this.cartService.updateQuantity(item.product.id, newQuantity);
+      } else if (item.product) {
+        const maxStock = (item.product as any).effective_stock ?? item.product.current_stock;
+        if (newQuantity <= maxStock) {
+          this.cartService.updateQuantity(item.product.id, newQuantity);
+        }
       }
     }
   }
@@ -38,7 +41,8 @@ export class CartComponent {
     if (item.isCombo || !item.product) {
       return true; // Combos não têm limite de estoque
     }
-    return item.quantity < item.product.current_stock;
+    const maxStock = (item.product as any).effective_stock ?? item.product.current_stock;
+    return item.quantity < maxStock;
   }
 
   removeItem(item: CartItem): void {

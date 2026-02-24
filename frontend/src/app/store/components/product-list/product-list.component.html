@@ -47,16 +47,16 @@
             {{ product.price | currency:'BRL' }}
           </span>
           <span class="text-sm text-gray-500">
-            {{ product.current_stock }} em estoque
+            {{ product.effective_stock ?? product.current_stock }} em estoque
           </span>
         </div>
 
         <!-- Botão Adicionar -->
         <button 
           class="w-full py-2 px-4 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
-          [disabled]="product.current_stock === 0"
+          [disabled]="(product.effective_stock ?? product.current_stock) === 0"
           (click)="addToCart(product)">
-          {{ product.current_stock > 0 ? 'Adicionar ao Carrinho' : 'Fora de Estoque' }}
+          {{ (product.effective_stock ?? product.current_stock) > 0 ? 'Adicionar ao Carrinho' : 'Fora de Estoque' }}
         </button>
       </div>
     </div>

@@ -28,6 +28,8 @@ export type PaymentStatus = 'pending' | 'completed' | 'failed' | 'refunded';
 
 export interface Product extends CoreProduct {
   current_stock: number;
+  /** Estoque efetivo (Packs = floor(estoque pai / multiplier)). Usar na vitrine/PDV. */
+  effective_stock?: number;
 }
 
 export interface OrderItem {

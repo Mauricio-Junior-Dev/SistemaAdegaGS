@@ -58,9 +58,9 @@
                 <div class="product-option">
                   <span class="name">{{product.name}}</span>
                   <span class="price">{{formatCurrency(product.price)}}</span>
-                  <span class="stock" [class.out-of-stock]="product.current_stock === 0">
-                    Estoque: {{product.current_stock}}
-                    <span *ngIf="product.current_stock === 0">(Sem estoque)</span>
+                  <span class="stock" [class.out-of-stock]="getDisplayStock(product) === 0">
+                    Estoque: {{getDisplayStock(product)}}
+                    <span *ngIf="getDisplayStock(product) === 0">(Sem estoque)</span>
                   </span>
                 </div>
               </mat-option>
@@ -78,7 +78,7 @@
                   </span>
                 </div>
                 <div class="product-details" *ngIf="!(selectedProduct.is_bundle || selectedProduct.type === 'bundle')">
-                  <span class="stock">Estoque: {{selectedProduct.current_stock}} garrafas</span>
+                  <span class="stock">Estoque: {{getDisplayStock(selectedProduct)}} {{ selectedProduct.parent_product_id ? 'caixas' : 'garrafas' }}</span>
                 </div>
                 <div class="product-details combo-hint" *ngIf="selectedProduct.is_bundle || selectedProduct.type === 'bundle'">
                   <mat-icon>tune</mat-icon>
@@ -111,7 +111,7 @@
                        (keydown.enter)="$event.preventDefault(); addToCart()">
                 <button mat-icon-button 
                         (click)="quantity = quantity + 1"
-                        [disabled]="selectedProduct.current_stock === 0 || (saleType === 'garrafa' ? quantity >= selectedProduct.current_stock : false)">
+                        [disabled]="getDisplayStock(selectedProduct) === 0 || (saleType === 'garrafa' ? quantity >= getDisplayStock(selectedProduct) : false)">
                   <mat-icon>add</mat-icon>
                 </button>
               </div>
@@ -124,7 +124,7 @@
                 </span>
               </div>
               
-              <div *ngIf="selectedProduct.current_stock === 0 && !(selectedProduct.is_bundle || selectedProduct.type === 'bundle')" class="stock-warning">
+              <div *ngIf="getDisplayStock(selectedProduct) === 0 && !(selectedProduct.is_bundle || selectedProduct.type === 'bundle')" class="stock-warning">
                 <mat-icon color="warn">warning</mat-icon>
                 <span>Produto sem estoque. Não é possível adicionar ao carrinho.</span>
               </div>
@@ -133,7 +133,7 @@
                       color="primary" 
                       (click)="addToCart()"
                       class="add-button"
-                      [disabled]="!(selectedProduct.is_bundle || selectedProduct.type === 'bundle') && selectedProduct.current_stock === 0">
+                      [disabled]="!(selectedProduct.is_bundle || selectedProduct.type === 'bundle') && getDisplayStock(selectedProduct) === 0">
                 <mat-icon>{{ (selectedProduct.is_bundle || selectedProduct.type === 'bundle') ? 'tune' : 'add_shopping_cart' }}</mat-icon>
                 {{ (selectedProduct.is_bundle || selectedProduct.type === 'bundle') ? 'Escolher itens do Combo' : 'Adicionar ao Carrinho' }}
               </button>
@@ -178,7 +178,7 @@
                     <span class="quantity">{{item.quantity}}</span>
                     <button mat-icon-button 
                             (click)="updateQuantity(i, 1)"
-                            [disabled]="(item.product?.current_stock || 0) === 0 || (item.sale_type === 'garrafa' ? item.quantity >= (item.product?.current_stock || 0) : false)">
+                            [disabled]="item.product && (getDisplayStock(item.product) === 0 || (item.sale_type === 'garrafa' && item.quantity >= getDisplayStock(item.product)))">
                       <mat-icon>add</mat-icon>
                     </button>
                   </div>

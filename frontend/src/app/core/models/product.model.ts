@@ -15,6 +15,8 @@ export interface Product {
     original_price?: number;
     cost_price: number;
     current_stock: number;
+    /** Estoque efetivo (virtual): para Packs = floor(estoque pai / multiplier); para unitário = current_stock. Usar na vitrine. */
+    effective_stock?: number;
     min_stock: number;
     doses_por_garrafa: number;
     doses_vendidas: number;
