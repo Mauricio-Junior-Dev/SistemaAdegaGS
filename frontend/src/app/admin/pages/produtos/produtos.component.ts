@@ -355,6 +355,9 @@ export class ProdutosComponent implements OnInit, AfterViewInit, OnDestroy {
       is_pack: false,
       visible_online: false
     }, { emitEvent: true });
+    // Limpar também o valor visível/selecionado do filtro de categoria
+    // Usamos null para que o mat-autocomplete selecione "Todas as categorias"
+    this.categorySearchCtrl.setValue(null, { emitEvent: false });
     
     this.sortColumn = '';
     this.sortDirection = '';
@@ -559,6 +562,15 @@ export class ProdutosComponent implements OnInit, AfterViewInit, OnDestroy {
             if (selected) {
               this.categorySearchCtrl.setValue(selected.name, { emitEvent: false });
             }
+          }
+
+          // Garantir que o autocomplete receba um primeiro valor assim que as categorias carregarem
+          const currentSearch = this.categorySearchCtrl.value;
+          if (currentSearch === '' || currentSearch === null) {
+            // Quando não há busca digitada, usar null para alinhar com a opção "Todas as categorias"
+            this.categorySearchCtrl.setValue(null, { emitEvent: true });
+          } else {
+            this.categorySearchCtrl.setValue(currentSearch, { emitEvent: true });
           }
         },
         error: (error) => {
