@@ -30,7 +30,7 @@
          class="nav-link">
         Cardápio
       </a>
-      <ng-container *ngIf="user$ | async; else navLogin">
+      <ng-container *ngIf="user$ | async">
         <a routerLink="/pedidos" 
            routerLinkActive="active"
            class="nav-link">
@@ -42,11 +42,6 @@
           Perfil
         </a>
       </ng-container>
-      <ng-template #navLogin>
-        <a routerLink="/login" class="nav-link">
-          Login
-        </a>
-      </ng-template>
     </nav>
 
     <!-- Botões de Ação -->
