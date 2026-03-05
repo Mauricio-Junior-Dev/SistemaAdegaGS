@@ -408,18 +408,27 @@ button.mat-accent,
    CAMPOS DE INPUT, SELECT E PESQUISA
    ========================================== */
 
-/* Material Form Fields - Estado Normal */
+/* Material Form Fields - Estado Normal (mantém geometria padrão do MDC) */
 .mat-mdc-form-field,
 .mat-form-field {
   background-color: transparent !important;
 }
 
-.mat-mdc-text-field-wrapper,
-.mdc-text-field {
-  background-color: var(--white) !important;
-  border-radius: 4px;
+/* Cores de marca usando CSS vars oficiais do MDC Outlined Text Field */
+.mat-mdc-form-field {
+  /* Borda padrão (inativa) */
+  --mdc-outlined-text-field-outline-color: #d1d5db;
+  /* Hover (opcional, um pouco mais escuro) */
+  --mdc-outlined-text-field-hover-outline-color: #9ca3af;
+  /* Foco: laranja da marca */
+  --mdc-outlined-text-field-focus-outline-color: #ff914d;
+  --mdc-outlined-text-field-focus-label-text-color: #ff914d;
+  /* Cor da label quando não focada (um cinza suave) */
+  --mdc-outlined-text-field-label-text-color: rgba(0, 0, 0, 0.6);
+  --mdc-outlined-text-field-input-text-color: #212529;
 }
 
+/* Garantir fundo branco no campo em si, sem interferir na borda/notch */
 .mdc-text-field__input,
 .mat-mdc-input-element,
 .mat-mdc-select-trigger {
@@ -427,47 +436,11 @@ button.mat-accent,
   color: #212529 !important;
 }
 
-/* Input base do Material - sem borda no input (borda fica no .mdc-notched-outline) */
-input.mat-mdc-input-element,
-input.mdc-text-field__input,
-textarea.mat-mdc-input-element,
-textarea.mdc-text-field__input {
-  background-color: var(--white) !important;
-  color: #212529 !important;
-  border: none !important;
-  border-radius: 4px;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
-}
-
 /* Select base do Material */
 .mat-mdc-select,
 .mat-select {
   background-color: var(--white) !important;
   color: #212529 !important;
-}
-
-/* Estado de Foco - Input */
-input.mat-mdc-input-element:focus,
-input.mdc-text-field__input:focus,
-textarea.mat-mdc-input-element:focus,
-textarea.mdc-text-field__input:focus,
-.mdc-text-field--focused .mdc-text-field__input {
-  background-color: var(--white) !important;
-  color: #212529 !important;
-  border-color: var(--primary) !important;
-  box-shadow: 0 0 0 3px rgba(255, 204, 0, 0.1) !important;
-  outline: none !important;
-}
-
-/* Material Form Field Focus */
-.mat-mdc-form-field.mat-focused .mat-mdc-text-field-wrapper,
-.mat-form-field.mat-focused .mat-form-field-wrapper {
-  background-color: transparent !important;
-}
-
-.mat-mdc-form-field.mat-focused .mdc-text-field__input,
-.mat-form-field.mat-focused .mat-input-element {
-  border-color: var(--primary) !important;
 }
 
 /* Label e hint do Material */
@@ -494,43 +467,8 @@ textarea.mdc-text-field__input:focus,
   background-color: var(--primary) !important;
 }
 
-/* Select - Estado Normal */
-.mat-mdc-select-trigger,
-.mat-select-trigger {
-  background-color: var(--white) !important;
-  color: #212529 !important;
-  border: 1px solid #ced4da !important;
-  padding: 12px 16px !important;
-  border-radius: 4px;
-  min-height: 40px;
-}
-
-/* Select - Estado de Foco */
-.mat-mdc-select.mat-focused .mat-mdc-select-trigger,
-.mat-select.mat-focused .mat-select-trigger {
-  border-color: var(--primary) !important;
-  box-shadow: 0 0 0 3px rgba(255, 204, 0, 0.1) !important;
-}
-
-/* Search Field / Campo de Pesquisa */
-input[type="search"],
-input.mat-input-element[type="search"],
-.search-field input,
-.search-field .mat-input-element {
-  background-color: var(--white) !important;
-  color: #212529 !important;
-  border: 1px solid #ced4da !important;
-  border-radius: 4px;
-  padding: 10px 16px !important;
-}
-
-input[type="search"]:focus,
-input.mat-input-element[type="search"]:focus,
-.search-field input:focus {
-  border-color: var(--primary) !important;
-  box-shadow: 0 0 0 3px rgba(255, 204, 0, 0.1) !important;
-  outline: none !important;
-}
+/* Selects e campos de busca que usam mat-form-field herdam as cores via vars acima.
+   Campos de busca totalmente customizados devem ser estilizados localmente em seus componentes. */
 
 /* Remove background amarelo dos inputs desabilitados */
 input:disabled,
@@ -855,12 +793,6 @@ mat-progress-spinner .mat-mdc-progress-spinner,
   height: auto !important;
 }
 
-/* Manter espaço do infix para a label flutuante do Material */
-.mdc-text-field--filled .mat-mdc-form-field-infix,
-.mdc-text-field--outlined .mat-mdc-form-field-infix {
-  padding-top: 16px !important;
-  padding-bottom: 16px !important;
-}
 
 /* Ajustar para inputs densos */
 .mat-mdc-form-field--dense .mat-mdc-form-field-infix,
@@ -892,34 +824,4 @@ textarea.mdc-text-field__input {
   min-height: 80px !important;
 }
 
-/* MDC Text Field Input - padding compacto */
-.mdc-text-field__input {
-  box-sizing: border-box !important;
-  padding-top: 16px !important;
-  padding-bottom: 16px !important;
-  padding-left: 14px !important; /* Reduzido de 16px para 14px */
-  padding-right: 14px !important; /* Reduzido de 16px para 14px */
-  line-height: 1.5 !important;
-  height: auto !important;
-}
-
-/* Garantir que o input dentro do wrapper esteja centralizado */
-.mdc-text-field--filled .mdc-text-field__input,
-.mdc-text-field--outlined .mdc-text-field__input {
-  padding-top: 16px !important;
-  padding-bottom: 16px !important;
-  padding-left: 14px !important; /* Reduzido de 16px para 14px */
-  padding-right: 14px !important; /* Reduzido de 16px para 14px */
-  line-height: 1.5 !important;
-  height: auto !important;
-  display: block !important;
-}
-
-/* Remover padding-top do wrapper quando o input está dentro */
-.mdc-text-field--filled .mat-mdc-form-field-infix .mdc-text-field__input,
-.mdc-text-field--outlined .mat-mdc-form-field-infix .mdc-text-field__input {
-  padding-top: 16px !important;
-  padding-bottom: 16px !important;
-  padding-left: 14px !important; /* Reduzido de 16px para 14px */
-  padding-right: 14px !important; /* Reduzido de 16px para 14px */
-}
+/* Deixar o MDC controlar padding/altura do input; não sobrescrever aqui. */
