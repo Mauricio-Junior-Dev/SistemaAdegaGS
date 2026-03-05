@@ -90,6 +90,7 @@
                 <div 
                   *ngFor="let option of group.options; trackBy: trackByOptionId" 
                   class="option-item"
+                  [class.item-esgotado]="isOptionOutOfStock(option)"
                   [class.selected]="isOptionSelected(group, option)"
                   (click)="onOptionItemClick(group, option, $event)">
                   <!-- Miniatura -->
@@ -103,7 +104,10 @@
 
                   <!-- Texto -->
                   <div class="option-info">
-                    <div class="option-name">{{ option.product?.name || 'Produto' }}</div>
+                    <div class="option-name">
+                      {{ option.product?.name || 'Produto' }}
+                      <span *ngIf="isOptionOutOfStock(option)" class="badge-esgotado">Esgotado</span>
+                    </div>
                     <div class="option-meta">
                       <span *ngIf="group.max_selections > 1" class="max-selections">
                         Máx {{ group.max_selections }}
@@ -121,6 +125,7 @@
                       *ngIf="group.max_selections === 1"
                       [value]="option"
                       [checked]="getSelectedOption(group)?.id === option.id"
+                      [disabled]="isOptionOutOfStock(option)"
                       (change)="onRadioSelect(group, option)"
                       class="option-radio">
                     </mat-radio-button>
@@ -131,7 +136,7 @@
                         mat-icon-button
                         type="button"
                         (click)="onQuantityChange(group, option, -1); $event.stopPropagation()"
-                        [disabled]="getOptionQuantity(group, option) === 0"
+                        [disabled]="getOptionQuantity(group, option) === 0 || isOptionOutOfStock(option)"
                         class="quantity-btn">
                         <mat-icon>remove</mat-icon>
                       </button>
@@ -140,7 +145,7 @@
                         mat-icon-button
                         type="button"
                         (click)="onQuantityChange(group, option, 1); $event.stopPropagation()"
-                        [disabled]="!canSelectMore(group)"
+                        [disabled]="!canSelectMore(group) || isOptionOutOfStock(option)"
                         class="quantity-btn">
                         <mat-icon>add</mat-icon>
                       </button>
@@ -194,11 +199,15 @@
         <div class="price-value">{{ formatPrice(getTotalPrice()) }}</div>
       </div>
 
+      <div class="combo-unavailable-message" *ngIf="!isComboAvailable()">
+        Um ou mais itens deste combo estão esgotados.
+      </div>
+
       <button 
         mat-raised-button
         color="primary"
         (click)="onAddToCart()" 
-        [disabled]="!canAddToCart()"
+        [disabled]="!canAddToCart() || !isComboAvailable()"
         class="add-button">
         <mat-icon>add_shopping_cart</mat-icon>
         <span>Adicionar</span>

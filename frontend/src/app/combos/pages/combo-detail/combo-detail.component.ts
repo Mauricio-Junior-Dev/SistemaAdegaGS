@@ -144,6 +144,20 @@ export class ComboDetailComponent implements OnInit, AfterViewInit {
       return;
     }
 
+    // Bloqueio extra por estoque: não permitir adicionar combos com itens esgotados
+    if (!this.isComboAvailable()) {
+      this.toastr.warning(
+        'Um ou mais itens obrigatórios deste combo estão esgotados. Ajuste suas seleções ou escolha outro combo.',
+        'Estoque indisponível',
+        {
+          toastClass: 'modern-toast-notification',
+          positionClass: 'toast-bottom-center',
+          timeOut: 3000
+        }
+      );
+      return;
+    }
+
     if (!this.canAddToCart()) {
       this.toastr.warning('Complete todas as seleções obrigatórias antes de adicionar ao carrinho', 'Seleções Incompletas', {
         toastClass: 'modern-toast-notification',
@@ -220,6 +234,65 @@ export class ComboDetailComponent implements OnInit, AfterViewInit {
   }
 
   /**
+   * Estoque efetivo de uma opção (produto do combo):
+   * usa effective_stock quando existir (packs) ou current_stock como fallback.
+   */
+  getOptionStock(option: BundleOption | null | undefined): number {
+    const product: any = option?.product as any;
+    if (!product) return 0;
+    return (product.effective_stock ?? product.current_stock ?? 0) as number;
+  }
+
+  /**
+   * Verifica se a opção está esgotada (sem estoque disponível).
+   */
+  isOptionOutOfStock(option: BundleOption): boolean {
+    return this.getOptionStock(option) <= 0;
+  }
+
+  /**
+   * Verifica se um grupo obrigatório possui pelo menos uma opção com estoque.
+   */
+  isGroupAvailable(group: BundleGroup): boolean {
+    if (!group.is_required) {
+      return true;
+    }
+    if (!group.options || group.options.length === 0) {
+      return false;
+    }
+    return group.options.some(opt => this.getOptionStock(opt) > 0);
+  }
+
+  /**
+   * Verifica se o combo está disponível considerando o estoque
+   * dos itens obrigatórios.
+   */
+  isComboAvailable(): boolean {
+    if (!this.bundle || !this.bundle.groups || this.bundle.groups.length === 0) {
+      return true;
+    }
+
+    // 1) Verificar se cada grupo obrigatório possui pelo menos uma opção com estoque
+    for (const group of this.bundle.groups) {
+      if (!this.isGroupAvailable(group)) {
+        return false;
+      }
+    }
+
+    // 2) Verificar se TODAS as opções selecionadas ainda têm estoque
+    for (const groupId of Object.keys(this.selections)) {
+      const options = this.selections[+groupId] || [];
+      for (const opt of options) {
+        if (this.isOptionOutOfStock(opt)) {
+          return false;
+        }
+      }
+    }
+
+    return true;
+  }
+
+  /**
    * Verifica se pode adicionar ao carrinho
    */
   canAddToCart(): boolean {
@@ -275,6 +348,11 @@ export class ComboDetailComponent implements OnInit, AfterViewInit {
    * Manipula clique no card da opção (UX melhorada)
    */
   onOptionItemClick(group: BundleGroup, option: BundleOption, event: Event): void {
+    // Não permitir interação com opções esgotadas
+    if (this.isOptionOutOfStock(option)) {
+      return;
+    }
+
     // Se o clique foi no controle, não fazer nada (já foi tratado)
     const target = event.target as HTMLElement;
     if (target.closest('.option-control') || target.closest('button') || target.closest('mat-radio-button')) {
@@ -303,6 +381,11 @@ export class ComboDetailComponent implements OnInit, AfterViewInit {
    * Manipula seleção de opção (single selection via radio)
    */
   onRadioSelect(group: BundleGroup, option: BundleOption | null): void {
+    // Guardar: não permitir selecionar opção esgotada
+    if (option && this.isOptionOutOfStock(option)) {
+      return;
+    }
+
     if (option) {
       this.selections[group.id] = [option];
     } else {
@@ -320,6 +403,11 @@ export class ComboDetailComponent implements OnInit, AfterViewInit {
    * Manipula seleção de opção (multiple selection via checkbox)
    */
   onCheckboxSelect(group: BundleGroup, option: BundleOption, checked: boolean): void {
+    // Guardar: não permitir selecionar opção esgotada
+    if (this.isOptionOutOfStock(option)) {
+      return;
+    }
+
     if (!this.selections[group.id]) {
       this.selections[group.id] = [];
     }
@@ -352,6 +440,11 @@ export class ComboDetailComponent implements OnInit, AfterViewInit {
    * Manipula contador de quantidade para múltiplas seleções
    */
   onQuantityChange(group: BundleGroup, option: BundleOption, delta: number): void {
+    // Guardar: não permitir alterar quantidade de opção esgotada
+    if (this.isOptionOutOfStock(option)) {
+      return;
+    }
+
     if (!this.selections[group.id]) {
       this.selections[group.id] = [];
     }

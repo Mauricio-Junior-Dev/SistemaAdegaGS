@@ -141,28 +141,31 @@
   }
 }
 
-/* Mobile: esconder a barra visualmente, manter scroll por toque
-   e adicionar efeito de "fading" à direita para indicar continuidade */
+/* Mobile: esconder a barra visualmente, manter scroll por toque,
+   adicionar efeito de "fading" à direita + seta animada */
 @media (max-width: 767px) {
-  .categories-wrapper {
+  /* Mantém o sticky em .categories-wrapper (não alterar position aqui) */
+
+  /* Usa o container interno como pai para névoa + seta */
+  .categories-wrapper .container {
     position: relative;
+    padding-right: 0; /* deixa o último item entrar na névoa */
   }
 
-  .categories-wrapper::after {
+  .categories-wrapper .container::after {
     content: '';
     position: absolute;
     top: 0;
     right: 0;
     height: 100%;
     width: 48px; /* largura da névoa */
-    background: linear-gradient(to right, rgba(255, 255, 255, 0), rgba(255, 255, 255, 1));
+    background: linear-gradient(
+      to right,
+      rgba(248, 249, 250, 0),
+      rgba(248, 249, 250, 1)
+    );
     pointer-events: none; /* não bloqueia cliques/scroll */
     z-index: 2;
-  }
-
-  /* Ajustar padding direito para o último item "entrar" na névoa */
-  .categories-wrapper .container {
-    padding-right: 0;
   }
 
   .categories-scroll {
@@ -173,6 +176,32 @@
     display: none;
     height: 0;
     width: 0;
+  }
+
+  /* Seta animada indicando scroll lateral */
+  .scroll-hint-arrow {
+    position: absolute;
+    right: 8px;
+    top: 37%;
+    transform: translateY(-50%);
+    font-size: 18px;
+    color: #ff914d;
+    z-index: 5;
+    pointer-events: none;
+    animation: bounceHorizontal 1.5s infinite;
+    display: block;
+  }
+}
+
+/* Animação da seta de scroll */
+@keyframes bounceHorizontal {
+  0%, 100% {
+    transform: translate(0, -50%);
+    opacity: 0.7;
+  }
+  50% {
+    transform: translate(4px, -50%);
+    opacity: 1;
   }
 }
 
