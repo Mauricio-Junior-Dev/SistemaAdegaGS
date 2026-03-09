@@ -83,6 +83,8 @@ export class CaixaComponent implements OnInit, OnDestroy {
   // Carrinho
   cartItems: CartItem[] = [];
   total = 0;
+  /** Guarda o último total calculado (itens + frete) para detectar mudanças e limpar pagamentos antigos. */
+  private lastTotal = 0;
 
   // Busca de Produtos
   searchTerm = '';
@@ -929,7 +931,16 @@ export class CaixaComponent implements OnInit, OnDestroy {
     const itemsTotal = this.cartItems.reduce((sum, item) => sum + item.subtotal, 0);
     // Somar taxa de entrega apenas se estiver em modo entrega e se a cobrança estiver habilitada
     const appliedDeliveryFee = (this.isPayOnDelivery && this.isDeliveryFeeEnabled) ? this.deliveryFee : 0;
-    this.total = itemsTotal + appliedDeliveryFee;
+    const newTotal = itemsTotal + appliedDeliveryFee;
+
+    // Se o total mudou depois de já haver pagamentos lançados, limpar pagamentos para evitar "sujeira" de vendas anteriores.
+    if (this.payments.length > 0 && this.lastTotal !== 0 && newTotal !== this.lastTotal) {
+      this.payments = [];
+      this.inputAmount = 0;
+    }
+
+    this.total = newTotal;
+    this.lastTotal = newTotal;
     
     // Recalcular troco automaticamente se o método de pagamento for dinheiro (legado)
     if (this.selectedPaymentMethod === 'dinheiro' && this.receivedAmount > 0) {
@@ -1010,6 +1021,7 @@ export class CaixaComponent implements OnInit, OnDestroy {
   clearCart(): void {
     this.cartItems = [];
     this.total = 0;
+    this.lastTotal = 0;
     this.customerName = '';
     this.customerPhone = '';
     this.customerEmail = '';

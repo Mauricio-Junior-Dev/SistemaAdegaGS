@@ -286,6 +286,17 @@ public class PrinterService
             rawPaymentMethod = order.PaymentMethod;
         }
 
+        // Verifica se há pelo menos um pagamento via cartão (crédito ou débito) no split
+        bool hasCardPayment =
+            order.Payments != null &&
+            order.Payments.Any(p =>
+                !string.IsNullOrEmpty(p.Method) &&
+                (p.Method.Contains("cartão", StringComparison.OrdinalIgnoreCase) ||
+                 p.Method.Contains("credito", StringComparison.OrdinalIgnoreCase) ||
+                 p.Method.Contains("crédito", StringComparison.OrdinalIgnoreCase) ||
+                 p.Method.Contains("debito", StringComparison.OrdinalIgnoreCase) ||
+                 p.Method.Contains("débito", StringComparison.OrdinalIgnoreCase)));
+
         string paymentMethodFormatted = GetPaymentMethod(order); // Ex: "DINHEIRO", "PIX"
 
         // Regra de negócio correta: decidir se está pago pelo PaymentStatus (e NÃO pelo Status logístico)
@@ -388,7 +399,8 @@ public class PrinterService
                     buffer.AddRange(PrintLine(1));
                 }
             }
-            else if (rawPaymentMethod.ToLower().Contains("cartão") || 
+            else if (hasCardPayment ||
+                     rawPaymentMethod.ToLower().Contains("cartão") || 
                      rawPaymentMethod.ToLower().Contains("credito") || 
                      rawPaymentMethod.ToLower().Contains("crédito") ||
                      rawPaymentMethod.ToLower().Contains("debito") ||
