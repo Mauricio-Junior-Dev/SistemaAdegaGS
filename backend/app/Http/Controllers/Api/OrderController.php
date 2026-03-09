@@ -826,14 +826,29 @@ class OrderController extends Controller
                 ], 422);
             }
             
-            // Se o frontend enviou delivery_fee, usar o maior valor (segurança)
-            // Mas se já calculamos o frete e o frontend enviou 0, aceitar (pode ser frete grátis)
-            $frontendFrete = (float) $request->input('delivery_fee', 0);
-            if ($frontendFrete > $frete) {
-                $frete = $frontendFrete;
-            } elseif ($isPending && $frontendFrete === 0 && $frete === 0) {
-                // Se ambos são 0 e é entrega, aceitar (frete grátis)
-                $frete = 0;
+            // Harmonizar frete calculado no backend com o valor informado pelo frontend.
+            //
+            // Regras:
+            // - PDV (split payment, funcionário/admin): respeitar SEMPRE o delivery_fee enviado
+            //   no payload, inclusive quando for 0 (taxa isenta manualmente no caixa).
+            // - E-commerce: manter lógica anterior de segurança (frontend só pode aumentar o frete
+            //   ou informar 0 em cenários de frete grátis).
+            $frontendFreteRaw = $request->has('delivery_fee') ? $request->input('delivery_fee') : null;
+            $frontendFrete = $frontendFreteRaw !== null ? (float) $frontendFreteRaw : null;
+
+            if ($isPdvSplitPayment && $isEmployeeOrAdmin && $frontendFrete !== null) {
+                // PDV: funcionário/admin no caixa decide explicitamente qual frete aplicar.
+                // Se o operador isentar a taxa, delivery_fee virá 0 e deve prevalecer.
+                $frete = max(0, $frontendFrete);
+            } else {
+                // E-commerce (checkout do site): lógica de segurança original.
+                $frontendFrete = (float) $request->input('delivery_fee', 0);
+                if ($frontendFrete > $frete) {
+                    $frete = $frontendFrete;
+                } elseif ($isPending && $frontendFrete === 0 && $frete === 0) {
+                    // Se ambos são 0 e é entrega, aceitar (frete grátis)
+                    $frete = 0;
+                }
             }
 
             // Calcular total final (subtotal + frete)
