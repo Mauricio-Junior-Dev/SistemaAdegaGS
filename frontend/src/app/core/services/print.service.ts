@@ -62,11 +62,11 @@ export class PrintService {
    * Imprime um pedido manualmente (quando usuário clica no botão)
    * Reutiliza a mesma lógica do autoPrintOrder para garantir layout idêntico
    * Tenta primeiro o Print Bridge, e só usa fallback se falhar
-   * O Print Bridge imprime exatamente 2 vias (uma para cozinha/separação e uma para motoboy/cliente)
+   * O Print Bridge imprime exatamente 1 via
    */
   printOrderManual(order: Order): void {
     // Enviar pedido para Print Bridge (mesma lógica do autoPrintOrder)
-    // O Print Bridge já imprime 2 vias internamente, então chamamos apenas uma vez
+    // O Print Bridge já imprime 1 via internamente, então chamamos apenas uma vez
     this.printingBridge.printOrder(order).subscribe({
       next: (response) => {
         if (!response.success) {
@@ -74,7 +74,7 @@ export class PrintService {
           // Fallback: tentar método antigo via backend Laravel
           this.fallbackToBackendPrint(order);
         } else {
-          console.log(`%c✅ Pedido #${order.order_number} impresso com sucesso (2 vias)`, 'color: green; font-weight: bold;');
+          console.log(`%c✅ Pedido #${order.order_number} impresso com sucesso (1 via)`, 'color: green; font-weight: bold;');
         }
       },
       error: (error) => {
@@ -291,7 +291,7 @@ export class PrintService {
    * Imprime automaticamente um pedido pendente
    * Usado para impressão automática quando novos pedidos são detectados
    * Agora usa o Print Bridge (serviço C# local) para impressão automática e silenciosa
-   * O Print Bridge imprime exatamente 2 vias (uma para cozinha/separação e uma para motoboy/cliente)
+   * O Print Bridge imprime exatamente 1 via
    */
   autoPrintOrder(order: Order): void {
     const config = this.loadConfig();
@@ -301,7 +301,7 @@ export class PrintService {
     }
     
     // Enviar pedido completo para Print Bridge
-    // O Print Bridge já imprime 2 vias internamente, então chamamos apenas uma vez
+    // O Print Bridge já imprime 1 via internamente, então chamamos apenas uma vez
     this.printingBridge.printOrder(order).subscribe({
       next: (response) => {
         if (!response.success) {

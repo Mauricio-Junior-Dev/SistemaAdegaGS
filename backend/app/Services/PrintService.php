@@ -14,7 +14,7 @@ class PrintService
      * @param Order $order
      * @param int $copies Número de cópias
      */
-    public function printOrder(Order $order, int $copies = 2): bool
+    public function printOrder(Order $order, int $copies = 1): bool
     {
         try {
             Log::info("=== INÍCIO DA IMPRESSÃO (HTML) ===");

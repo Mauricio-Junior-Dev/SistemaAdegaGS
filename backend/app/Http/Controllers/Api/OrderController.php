@@ -1366,7 +1366,7 @@ class OrderController extends Controller
     {
         try {
             $printService = new PrintService();
-            $copies = 2; // 2 cópias conforme solicitado
+            $copies = 1; // 1 cópia conforme solicitado
             
             $success = $printService->printOrder($order, $copies);
             

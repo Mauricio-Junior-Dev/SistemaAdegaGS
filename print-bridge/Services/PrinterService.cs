@@ -71,7 +71,7 @@ public class PrinterService
 
     /// <summary>
     /// Imprime um pedido completo formatado
-    /// Configurado para imprimir exatamente 2 vias (uma para cozinha/separação e uma para motoboy/cliente)
+    /// Configurado para imprimir exatamente 1 via
     /// </summary>
     public bool PrintOrder(OrderDto order)
     {
@@ -89,11 +89,11 @@ public class PrinterService
             // Gerar conteúdo ESC/POS (uma única vez)
             byte[] printData = GenerateEscPosContent(order);
 
-            // Número de vias configurado: 2 (uma para cozinha/separação e uma para motoboy/cliente)
-            const int numberOfCopies = 2;
+            // Número de vias configurado: 1
+            const int numberOfCopies = 1;
             bool allSuccess = true;
 
-            // Imprimir exatamente 2 vias
+            // Imprimir exatamente 1 via
             for (int copy = 1; copy <= numberOfCopies; copy++)
             {
                 _logger.LogInformation($"Enviando via {copy}/{numberOfCopies} para o pedido #{order.OrderNumber}");
