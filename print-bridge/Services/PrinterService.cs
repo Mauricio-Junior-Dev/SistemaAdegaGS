@@ -176,17 +176,22 @@ public class PrinterService
 
         buffer.AddRange(PrintSeparator());
 
-        // Informações do cliente
+        // Informações do cliente (nome e telefone em linhas separadas)
         buffer.AddRange(PrintBold("CLIENTE:"));
         if (order.User != null)
         {
             buffer.AddRange(PrintText(order.User.Name));
+            buffer.AddRange(PrintLine());
             if (!string.IsNullOrEmpty(order.User.Phone))
             {
-                buffer.AddRange(PrintText($" TEL: {order.User.Phone}"));
+                buffer.AddRange(PrintText($"TEL: {order.User.Phone}"));
+                buffer.AddRange(PrintLine());
             }
         }
-        buffer.AddRange(PrintLine());
+        else
+        {
+            buffer.AddRange(PrintLine());
+        }
 
         // Endereço de entrega (se houver)
         if (order.DeliveryAddress != null && HasDeliveryAddress(order.DeliveryAddress))
