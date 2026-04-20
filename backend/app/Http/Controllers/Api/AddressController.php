@@ -164,11 +164,6 @@ class AddressController extends Controller
             return response()->json(['message' => 'Endereço não encontrado'], 404);
         }
 
-        // Verificar se o endereço está sendo usado em pedidos
-        if ($address->orders()->exists()) {
-            return response()->json(['message' => 'Não é possível excluir endereço que está sendo usado em pedidos'], 422);
-        }
-
         $address->delete();
 
         return response()->json(['message' => 'Endereço excluído com sucesso']);

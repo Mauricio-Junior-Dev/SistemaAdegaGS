@@ -6,10 +6,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Address extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'user_id',
@@ -28,7 +29,8 @@ class Address extends Model
 
     protected $casts = [
         'is_default' => 'boolean',
-        'is_active' => 'boolean'
+        'is_active' => 'boolean',
+        'deleted_at' => 'datetime'
     ];
 
     public function user(): BelongsTo
