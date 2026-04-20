@@ -358,10 +358,28 @@ export class EnderecosComponent implements OnInit, OnDestroy {
           },
           error: (error) => {
             console.error('Erro ao excluir endereço:', error);
-            this.snackBar.open('Erro ao excluir endereço', 'Fechar', { duration: 3000 });
+            const message = this.getApiErrorMessage(error, 'Erro ao excluir endereço');
+            this.snackBar.open(message, 'Fechar', { duration: 4000 });
           }
         });
     }
+  }
+
+  private getApiErrorMessage(error: any, fallback: string): string {
+    if (!error) {
+      return fallback;
+    }
+
+    const apiMessage = error?.error?.message;
+    if (typeof apiMessage === 'string' && apiMessage.trim() !== '') {
+      return apiMessage;
+    }
+
+    if (typeof error?.message === 'string' && error.message.trim() !== '') {
+      return error.message;
+    }
+
+    return fallback;
   }
 
   setDefaultAddress(address: Address): void {
